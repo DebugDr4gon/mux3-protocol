@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity 0.8.26;
+
+bytes32 constant MC_BORROWING_BASE_APY = keccak256("MC_BORROWING_BASE_APY");
+bytes32 constant MC_BORROWING_INTERVAL = keccak256("MC_BORROWING_INTERVAL");
+bytes32 constant MC_FEE_DISTRIBUTOR = keccak256("MC_FEE_DISTRIBUTOR");
+
+bytes32 constant MM_POSITION_FEE_RATE = keccak256("MM_POSITION_FEE_RATE");
+bytes32 constant MM_INITIAL_MARGIN_RATE = keccak256("MM_INITIAL_MARGIN_RATE");
+bytes32 constant MM_MAINTENANCE_MARGIN_RATE = keccak256(
+    "MM_MAINTENANCE_MARGIN_RATE"
+);
+bytes32 constant MM_MAX_INITIAL_LEVERAGE = keccak256("MM_MAX_INITIAL_LEVERAGE");
+bytes32 constant MM_LOT_SIZE = keccak256("MM_LOT_SIZE");
