@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import "../interfaces/ICollateralPool.sol";
-import "../libraries/LibConfigTable.sol";
+import "../libraries/LibConfigMap.sol";
 import "../libraries/LibTypeCast.sol";
 import "./CollateralPoolStore.sol";
 
@@ -13,7 +13,7 @@ contract CollateralPoolComputed is CollateralPoolStore {
     using LibTypeCast for uint256;
     using LibTypeCast for int256;
     using LibTypeCast for bytes32;
-    using LibConfigTable for ConfigTable;
+    using LibConfigMap for mapping(bytes32 => bytes32);
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
 
@@ -59,6 +59,7 @@ contract CollateralPoolComputed is CollateralPoolStore {
         );
         rate = _configTable.getUint256(key);
     }
+
     function _adlTriggerRate(
         bytes32 marketId
     ) internal view returns (uint256 rate) {
@@ -71,6 +72,7 @@ contract CollateralPoolComputed is CollateralPoolStore {
     function _aumUsdWithoutPnl(
         uint256 collateralPrice
     ) internal view returns (uint256 aum) {
+        // TODO: read balances of all tokens!
         aum = ((_liquidityBalance * collateralPrice) / 1e18);
     }
 
@@ -120,7 +122,7 @@ contract CollateralPoolComputed is CollateralPoolStore {
             bytes32 marketId = _marketIds.at(i);
             MarketState storage data = _marketStates[marketId];
             uint256 reserveRatio = _adlReserveRate(marketId);
-            require(reserveRatio > 0, "zero reserveRatio");
+            require(reserveRatio > 0, "reserveRatio <= 0");
             uint256 marketPrice = IFacetReader(_core).priceOf(marketId);
             uint256 sizeUsd = (data.totalSize * marketPrice) / 1e18;
             reservedUsd += (sizeUsd * reserveRatio) / 1e18;
@@ -142,19 +144,37 @@ contract CollateralPoolComputed is CollateralPoolStore {
         }
     }
 
-    function _toWad(uint256 rawAmount) internal view returns (uint256) {
-        if (_collateralDecimals <= 18) {
-            return rawAmount * (10 ** (18 - _collateralDecimals));
+    function _toWad(
+        address token,
+        uint256 rawAmount
+    ) internal view returns (uint256) {
+        uint8 decimals = _collateralDecimals;
+        if (token != address(_collateralToken)) {
+            bool enabled;
+            (enabled, decimals) = IFacetReader(_core).getCollateralToken(token);
+            require(enabled, "Token not enabled");
+        }
+        if (decimals <= 18) {
+            return rawAmount * (10 ** (18 - decimals));
         } else {
-            return rawAmount / (10 ** (_collateralDecimals - 18));
+            return rawAmount / (10 ** (decimals - 18));
         }
     }
 
-    function _toRaw(uint256 wadAmount) internal view returns (uint256) {
-        if (_collateralDecimals <= 18) {
-            return wadAmount / 10 ** (18 - _collateralDecimals);
+    function _toRaw(
+        address token,
+        uint256 wadAmount
+    ) internal view returns (uint256) {
+        uint8 decimals = _collateralDecimals;
+        if (token != address(_collateralToken)) {
+            bool enabled;
+            (enabled, decimals) = IFacetReader(_core).getCollateralToken(token);
+            require(enabled, "Token not enabled");
+        }
+        if (decimals <= 18) {
+            return wadAmount / 10 ** (18 - decimals);
         } else {
-            return wadAmount * 10 ** (_collateralDecimals - 18);
+            return wadAmount * 10 ** (decimals - 18);
         }
     }
 }

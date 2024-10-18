@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -9,11 +9,8 @@ import "../interfaces/IMarket.sol";
 import "../interfaces/IPositionAccount.sol";
 import "../interfaces/ICollateralPool.sol";
 
-// import "../interfaces/IControlPanel.sol";
-// import "../interfaces/IMux3.sol";
-
 contract Mux3Store is AccessControlEnumerableUpgradeable {
-    ConfigTable internal _configs;
+    mapping(bytes32 => bytes32) internal _configs;
     // whitelist
     address[] internal _collateralTokenList;
     mapping(address => CollateralTokenInfo) internal _collateralTokens;

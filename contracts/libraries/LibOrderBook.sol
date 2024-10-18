@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/IAccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
 // import "../interfaces/IReferralManager.sol"; TODO
 import "../interfaces/IOrderBook.sol";
@@ -13,7 +14,7 @@ import "../interfaces/IFacetReader.sol";
 import "../interfaces/ICollateralPool.sol";
 import "../interfaces/IWETH9.sol";
 import "../libraries/LibOrder.sol";
-import "../libraries/LibConfigTable.sol";
+import "../libraries/LibConfigMap.sol";
 import "../libraries/LibCodec.sol";
 
 library LibOrderBook {
@@ -21,7 +22,7 @@ library LibOrderBook {
     using LibTypeCast for bytes32;
     using LibTypeCast for uint256;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
-    using LibConfigTable for ConfigTable;
+    using LibConfigMap for mapping(bytes32 => bytes32);
 
     function _appendOrder(
         OrderBookStorage storage orderBook,
@@ -47,7 +48,7 @@ library LibOrderBook {
         address account,
         uint256 blockTimestamp
     ) external {
-        require(orderParams.rawAmount != 0, "zero amount");
+        require(orderParams.rawAmount != 0, "Zero amount");
         _validatePool(orderBook, orderParams.poolAddress);
         if (orderParams.isAdding) {
             address collateralAddress = ICollateralPool(orderParams.poolAddress)
@@ -73,7 +74,7 @@ library LibOrderBook {
 
     function fillLiquidityOrder(
         OrderBookStorage storage orderBook,
-        ConfigTable storage configTable,
+        mapping(bytes32 => bytes32) storage configTable,
         uint64 orderId,
         uint256 blockTimestamp
     ) external returns (uint256 outAmount) {
@@ -84,8 +85,6 @@ library LibOrderBook {
             orderData.orderType == OrderType.LiquidityOrder,
             "Order type mismatch"
         );
-        //  // TODO update funding state
-        //  // IDegenPool(_storage.pool).updateFundingState();
         // fill
         LiquidityOrderParams memory orderParams = LibOrder.decodeLiquidityOrder(
             orderData
@@ -124,7 +123,7 @@ library LibOrderBook {
     //     uint8 assetId,
     //     uint96 rawAmount // erc20.decimals
     // ) external {
-    //     require(rawAmount != 0, "zero amount");
+    //     require(rawAmount != 0, "Zero amount");
     //     address collateralAddress = IDegenPool(orderBook.pool)
     //         .getAssetParameter(assetId, LibConfigKeys.TOKEN_ADDRESS)
     //         .toAddress();
@@ -140,7 +139,7 @@ library LibOrderBook {
         require(orderParams.size != 0, "Position order size = 0");
         require(
             orderParams.expiration > blockTimestamp,
-            "Deadline is earlier than now"
+            "Expiration is earlier than now"
         );
         require(
             orderParams.limitPrice > 0,
@@ -226,7 +225,15 @@ library LibOrderBook {
             // _placeTpslOrders(orderBook, orderParams, blockTimestamp);
         } else {
             // normal close-position-order
-            _validateCollateral(orderBook, orderParams.profitToken);
+            if (
+                orderParams.collateralToken != address(0) &&
+                orderParams.collateralAmount > 0
+            ) {
+                _validateCollateral(orderBook, orderParams.collateralToken);
+            }
+            if (orderParams.profitToken != address(0)) {
+                _validateCollateral(orderBook, orderParams.profitToken);
+            }
             _appendPositionOrder(orderBook, orderParams, blockTimestamp);
         }
     }
@@ -260,9 +267,9 @@ library LibOrderBook {
     ) external {
         require(
             _isFullyClosed(orderBook, positionId),
-            "position is not fully closed"
+            "Position is not fully closed"
         );
-        _withdrawAllCollateral(orderBook, positionId);
+        ITrade(orderBook.mux3Facet).withdrawAll(positionId);
     }
 
     function placeWithdrawalOrder(
@@ -273,7 +280,7 @@ library LibOrderBook {
         (address withdrawAccount, ) = LibCodec.decodePositionId(
             orderParams.positionId
         );
-        require(orderParams.rawAmount != 0, "zero amount");
+        require(orderParams.rawAmount != 0, "Zero amount");
         uint64 newOrderId = orderBook.nextOrderId++;
         OrderData memory orderData = LibOrder.encodeWithdrawalOrder(
             orderParams,
@@ -291,7 +298,7 @@ library LibOrderBook {
 
     function fillPositionOrder(
         OrderBookStorage storage orderBook,
-        ConfigTable storage configTable,
+        mapping(bytes32 => bytes32) storage configTable,
         uint64 orderId,
         uint256 blockTimestamp
     ) external returns (uint256 tradingPrice) {
@@ -305,13 +312,12 @@ library LibOrderBook {
         PositionOrderParams memory orderParams = LibOrder.decodePositionOrder(
             orderData
         );
-        uint256 expiration = _positionOrderExpiration(configTable, orderParams);
-        require(
-            blockTimestamp <= orderData.placeOrderTime + expiration,
-            "Order expired"
+        uint256 deadline = MathUpgradeable.min(
+            orderData.placeOrderTime +
+                _positionOrderTimeout(configTable, orderParams),
+            orderParams.expiration
         );
-        //  // TODO update funding state
-        //  // IDegenPool(_storage.pool).updateFundingState();
+        require(blockTimestamp <= deadline, "Order expired");
         // fill
         if (LibOrder.isOpenPosition(orderParams)) {
             tradingPrice = fillOpenPositionOrder(
@@ -345,7 +351,7 @@ library LibOrderBook {
 
     function fillOpenPositionOrder(
         OrderBookStorage storage orderBook,
-        ConfigTable storage configTable,
+        mapping(bytes32 => bytes32) storage configTable,
         PositionOrderParams memory orderParams
     ) internal returns (uint256 tradingPrice) {
         // auto deposit
@@ -413,7 +419,7 @@ library LibOrderBook {
         orderBook.tpslOrders[orderParams.positionId].remove(uint256(orderId));
         // is the position completely closed
         if (_isFullyClosed(orderBook, orderParams.positionId)) {
-            _withdrawAllCollateral(orderBook, orderParams.positionId);
+            _afterFullyClosed(orderBook, orderParams);
         }
     }
 
@@ -421,11 +427,14 @@ library LibOrderBook {
         OrderBookStorage storage orderBook,
         bytes32 positionId
     ) internal view returns (bool) {
-        (, PositionData[] memory positions) = IFacetReader(orderBook.mux3Facet)
+        PositionReader[] memory positions = IFacetReader(orderBook.mux3Facet)
             .listAccountPositions(positionId);
         for (uint256 i = 0; i < positions.length; i++) {
-            if (positions[i].size != 0) {
-                return false;
+            PositionPoolReader[] memory pools = positions[i].pools;
+            for (uint256 j = 0; j < pools.length; j++) {
+                if (pools[j].size != 0) {
+                    return false;
+                }
             }
         }
         return true;
@@ -436,32 +445,12 @@ library LibOrderBook {
         PositionOrderParams memory orderParams
     ) internal {
         // auto withdraw
-        if (LibOrder.isWithdrawIfEmpty(orderParams)) {}
+        if (LibOrder.isWithdrawIfEmpty(orderParams)) {
+            ITrade(orderBook.mux3Facet).withdrawAll(orderParams.positionId);
+        }
         // cancel activated tp/sl orders
         // TODO
         // cancelActivatedTpslOrders(orderBook, orderParams.subAccountId);
-    }
-
-    function _withdrawAllCollateral(
-        OrderBookStorage storage orderBook,
-        bytes32 positionId
-    ) internal {
-        (
-            address[] memory tokenAddresses,
-            uint256[] memory balances
-        ) = IFacetReader(orderBook.mux3Facet).listAccountCollaterals(
-                positionId
-            );
-        for (uint256 i = 0; i < balances.length; i++) {
-            uint256 wad = balances[i];
-            if (wad > 0) {
-                ITrade(orderBook.mux3Facet).withdraw(
-                    positionId,
-                    tokenAddresses[i],
-                    _collateralToRaw(orderBook, tokenAddresses[i], wad)
-                );
-            }
-        }
     }
 
     // function fillAdlOrder(
@@ -596,7 +585,7 @@ library LibOrderBook {
     // }
     function cancelOrder(
         OrderBookStorage storage orderBook,
-        ConfigTable storage configTable,
+        mapping(bytes32 => bytes32) storage configTable,
         uint64 orderId,
         uint256 blockTimestamp,
         address msgSender
@@ -635,7 +624,7 @@ library LibOrderBook {
 
     function _cancelPositionOrder(
         OrderBookStorage storage orderBook,
-        ConfigTable storage configTable,
+        mapping(bytes32 => bytes32) storage configTable,
         OrderData memory orderData,
         uint256 blockTimestamp,
         address msgSender
@@ -645,14 +634,12 @@ library LibOrderBook {
         );
         if (_isBroker(msgSender)) {
             // broker can cancel expired order
-            uint256 expiration = _positionOrderExpiration(
-                configTable,
-                orderParams
+            uint256 deadline = MathUpgradeable.min(
+                orderData.placeOrderTime +
+                    _positionOrderTimeout(configTable, orderParams),
+                orderParams.expiration
             );
-            require(
-                blockTimestamp > orderData.placeOrderTime + expiration,
-                "Not expired"
-            );
+            require(blockTimestamp > deadline, "Not expired");
         } else if (_isDelegator(msgSender)) {} else {
             // account owner can cancel order
             require(msgSender == orderData.account, "Not authorized");
@@ -680,7 +667,7 @@ library LibOrderBook {
 
     function _cancelLiquidityOrder(
         OrderBookStorage storage orderBook,
-        ConfigTable storage configTable,
+        mapping(bytes32 => bytes32) storage configTable,
         OrderData memory orderData,
         address msgSender
     ) private {
@@ -712,14 +699,14 @@ library LibOrderBook {
     }
 
     function _cancelWithdrawalOrder(
-        ConfigTable storage configTable,
+        mapping(bytes32 => bytes32) storage configTable,
         OrderData memory orderData,
         uint256 blockTimestamp,
         address msgSender
     ) private view {
         if (_isBroker(msgSender)) {
             uint256 deadline = orderData.placeOrderTime +
-                _withdrawalOrderExpiration(configTable);
+                _withdrawalOrderTimeout(configTable);
             require(blockTimestamp > deadline, "Not expired");
         } else {
             require(msgSender == orderData.account, "Not authorized");
@@ -751,12 +738,12 @@ library LibOrderBook {
 
     function depositCollateral(
         OrderBookStorage storage orderBook,
-        ConfigTable storage configTable,
+        mapping(bytes32 => bytes32) storage configTable,
         bytes32 positionId,
         address collateralToken,
         uint256 collateralAmount
     ) internal {
-        require(collateralAmount != 0, "zero collateral");
+        require(collateralAmount != 0, "Zero collateral");
         _transferIn(orderBook, collateralToken, collateralAmount);
         _transferOut(
             orderBook,
@@ -782,15 +769,15 @@ library LibOrderBook {
         uint256 newBalance = IERC20Upgradeable(tokenAddress).balanceOf(
             address(this)
         );
-        require(newBalance >= oldBalance, "token balance decreased");
+        require(newBalance >= oldBalance, "Token balance decreased");
         uint256 realRawAmount = newBalance - oldBalance;
-        require(realRawAmount >= rawAmount, "token balance not enough");
+        require(realRawAmount >= rawAmount, "Token balance not enough");
         orderBook.previousTokenBalance[tokenAddress] = newBalance;
     }
 
     function _transferOut(
         OrderBookStorage storage orderBook,
-        ConfigTable storage configTable,
+        mapping(bytes32 => bytes32) storage configTable,
         address tokenAddress,
         address recipient,
         uint256 rawAmount,
@@ -863,8 +850,8 @@ library LibOrderBook {
             );
     }
 
-    function _positionOrderExpiration(
-        ConfigTable storage configTable,
+    function _positionOrderTimeout(
+        mapping(bytes32 => bytes32) storage configTable,
         PositionOrderParams memory orderParams
     ) private view returns (uint256) {
         return
@@ -873,14 +860,14 @@ library LibOrderBook {
                 : configTable.getUint256(MCO_LIMIT_ORDER_TIMEOUT);
     }
 
-    function _withdrawalOrderExpiration(
-        ConfigTable storage configTable
+    function _withdrawalOrderTimeout(
+        mapping(bytes32 => bytes32) storage configTable
     ) private view returns (uint256) {
         return configTable.getUint256(MCO_MARKET_ORDER_TIMEOUT);
     }
 
     function _cancelCoolDown(
-        ConfigTable storage configTable
+        mapping(bytes32 => bytes32) storage configTable
     ) private view returns (uint256) {
         return configTable.getUint256(MCO_CANCEL_COOL_DOWN);
     }
@@ -896,7 +883,7 @@ library LibOrderBook {
     }
 
     function _liquidityLockPeriod(
-        ConfigTable storage configTable
+        mapping(bytes32 => bytes32) storage configTable
     ) private view returns (uint256) {
         return configTable.getUint256(MCO_LIQUIDITY_LOCK_PERIOD);
     }
@@ -905,14 +892,14 @@ library LibOrderBook {
         OrderBookStorage storage orderBook,
         bytes32 marketId
     ) private view returns (bool) {
-        (, bool isLong, , ) = IFacetReader(orderBook.mux3Facet).marketState(
+        (, bool isLong) = IFacetReader(orderBook.mux3Facet).marketState(
             marketId
         );
         return isLong;
     }
 
     function _withdrawGasLimit(
-        ConfigTable storage configTable
+        mapping(bytes32 => bytes32) storage configTable
     ) private view returns (uint256 gasLimit) {
         gasLimit = configTable.getUint256(MCO_UNWRAP_WETH_GAS_LIMIT);
         if (gasLimit == 0) {
@@ -927,7 +914,7 @@ library LibOrderBook {
     ) internal view returns (uint256) {
         (bool enabled, uint8 decimals) = IFacetReader(orderBook.mux3Facet)
             .getCollateralToken(collateralToken);
-        require(enabled, "collateral token not enabled");
+        require(enabled, "Collateral token not enabled");
         if (decimals <= 18) {
             return rawAmount * (10 ** (18 - decimals));
         } else {
@@ -942,7 +929,7 @@ library LibOrderBook {
     ) internal view returns (uint256) {
         (bool enabled, uint8 decimals) = IFacetReader(orderBook.mux3Facet)
             .getCollateralToken(collateralToken);
-        require(enabled, "collateral token not enabled");
+        require(enabled, "Collateral token not enabled");
         if (decimals <= 18) {
             return wadAmount / 10 ** (18 - decimals);
         } else {

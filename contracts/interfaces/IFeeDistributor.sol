@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 interface IFeeDistributor {
     function updateLiquidityFees(
@@ -7,6 +7,9 @@ interface IFeeDistributor {
         address poolAddress,
         uint256 amount // decimals = 18
     ) external;
+
+    // note: allocation only represents a proportional relationship.
+    //       the sum of allocations does not necessarily have to be consistent with the total value.
     function updatePositionFees(
         address trader,
         bytes32 marketId,

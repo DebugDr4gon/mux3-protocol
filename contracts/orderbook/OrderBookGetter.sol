@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import "../interfaces/IOrderBook.sol";
 import "../interfaces/IConstants.sol";
-import "../libraries/LibConfigTable.sol";
+import "../libraries/LibConfigMap.sol";
 import "./OrderBookStore.sol";
 
 contract OrderBookGetter is OrderBookStore, IOrderBookGetter {
-    using LibConfigTable for ConfigTable;
+    using LibConfigMap for mapping(bytes32 => bytes32);
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
 
     function nextOrderId() external view returns (uint64) {

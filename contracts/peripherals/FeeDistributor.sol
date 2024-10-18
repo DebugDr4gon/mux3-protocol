@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -33,6 +33,8 @@ contract FeeDistributor is
         // TODO
     }
 
+    // note: allocation only represents a proportional relationship.
+    //       the sum of allocations does not necessarily have to be consistent with the total value.
     function updatePositionFees(
         address trader,
         bytes32 marketId,
@@ -46,13 +48,13 @@ contract FeeDistributor is
         //   pool_fee_i = fee * allocation_i / Σallocation_i
         require(
             feeAddresses.length == feeAmounts.length,
-            "mismatched feeAddresses and feeAmounts"
+            "feeAddresses and feeAmounts mismatched"
         );
         BackedPoolState[] memory marketPools = IFacetReader(_mux3Facet)
             .listMarketPools(marketId);
         require(
             marketPools.length == allocations.length,
-            "mismatched marketPools and allocations"
+            "marketPools and allocations mismatched"
         );
         uint256 totalAllocation = 0;
         for (uint256 i = 0; i < allocations.length; i++) {

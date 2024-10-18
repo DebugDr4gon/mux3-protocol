@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "../../interfaces/IFacetReader.sol";
 import "../../libraries/LibTypeCast.sol";
@@ -7,7 +7,7 @@ import "../Mux3FacetBase.sol";
 
 contract FacetReader is Mux3FacetBase, IFacetReader {
     using LibTypeCast for address;
-    using LibConfigTable for ConfigTable;
+    using LibConfigMap for mapping(bytes32 => bytes32);
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
 
@@ -32,23 +32,9 @@ contract FacetReader is Mux3FacetBase, IFacetReader {
 
     function marketState(
         bytes32 marketId
-    )
-        external
-        view
-        returns (
-            string memory symbol,
-            bool isLong,
-            uint256 cumulatedBorrowingPerUsd,
-            uint256 lastBorrowingFeeUpdateTime
-        )
-    {
+    ) external view returns (string memory symbol, bool isLong) {
         MarketInfo storage market = _markets[marketId];
-        return (
-            market.symbol,
-            market.isLong,
-            market.cumulatedBorrowingPerUsd,
-            market.lastBorrowingFeeUpdateTime
-        );
+        return (market.symbol, market.isLong);
     }
 
     function getCollateralToken(
@@ -91,24 +77,16 @@ contract FacetReader is Mux3FacetBase, IFacetReader {
 
     function listAccountCollaterals(
         bytes32 positionId
-    )
-        public
-        view
-        returns (
-            address[] memory collateralAddresses,
-            uint256[] memory collateralAmounts
-        )
-    {
+    ) public view returns (CollateralReader[] memory collaterals) {
         PositionAccountInfo storage positionAccount = _positionAccounts[
             positionId
         ];
         uint256 length = positionAccount.activeCollaterals.length();
-        collateralAddresses = new address[](length);
-        collateralAmounts = new uint256[](length);
+        collaterals = new CollateralReader[](length);
         for (uint256 i = 0; i < length; i++) {
             address collateralToken = positionAccount.activeCollaterals.at(i);
-            collateralAddresses[i] = collateralToken;
-            collateralAmounts[i] = _positionAccounts[positionId].collaterals[
+            collaterals[i].collateralAddress = collateralToken;
+            collaterals[i].collateralAmount = positionAccount.collaterals[
                 collateralToken
             ];
         }
@@ -116,45 +94,47 @@ contract FacetReader is Mux3FacetBase, IFacetReader {
 
     function listAccountPositions(
         bytes32 positionId
-    )
-        public
-        view
-        returns (bytes32[] memory marketIds, PositionData[] memory positions)
-    {
+    ) public view returns (PositionReader[] memory positions) {
         PositionAccountInfo storage positionAccount = _positionAccounts[
             positionId
         ];
         uint256 length = positionAccount.activeMarkets.length();
-        marketIds = new bytes32[](length);
-        positions = new PositionData[](length);
+        positions = new PositionReader[](length);
         for (uint256 i = 0; i < length; i++) {
-            marketIds[i] = positionAccount.activeMarkets.at(i);
-            positions[i] = positionAccount.positions[marketIds[i]];
+            bytes32 marketId = positionAccount.activeMarkets.at(i);
+            PositionData storage positionData = positionAccount.positions[
+                marketId
+            ];
+            positions[i].marketId = marketId;
+            positions[i].initialLeverage = positionData.initialLeverage;
+            positions[i].lastIncreasedTime = positionData.lastIncreasedTime;
+            positions[i].realizedBorrowingUsd = positionData
+                .realizedBorrowingUsd;
+            BackedPoolState[] storage backedPools = _markets[marketId].pools;
+            positions[i].pools = new PositionPoolReader[](backedPools.length);
+            for (uint256 j = 0; j < backedPools.length; j++) {
+                address backedPool = backedPools[j].backedPool;
+                PositionPoolData memory pool = positionData.pools[backedPool];
+                positions[i].pools[j].poolAddress = backedPool;
+                positions[i].pools[j].size = pool.size;
+                positions[i].pools[j].entryPrice = pool.entryPrice;
+                positions[i].pools[j].entryBorrowing = pool.entryBorrowing;
+            }
         }
     }
 
     function listAccountCollateralsAndPositionsOf(
         address trader
-    )
-        external
-        view
-        returns (AccountCollateralsAndPositions[] memory positions)
-    {
+    ) external view returns (AccountReader[] memory positions) {
         EnumerableSetUpgradeable.Bytes32Set
             storage positionIds = _positionAccountLists[trader];
         uint256 positionIdCount = positionIds.length();
-        positions = new AccountCollateralsAndPositions[](positionIdCount);
+        positions = new AccountReader[](positionIdCount);
         for (uint256 i = 0; i < positionIdCount; i++) {
             bytes32 positionId = positionIds.at(i);
             positions[i].positionId = positionId;
-            (
-                positions[i].collateralAddresses,
-                positions[i].collateralAmounts
-            ) = listAccountCollaterals(positionId);
-            (
-                positions[i].marketIds,
-                positions[i].positions
-            ) = listAccountPositions(positionId);
+            positions[i].collaterals = listAccountCollaterals(positionId);
+            positions[i].positions = listAccountPositions(positionId);
         }
     }
 }

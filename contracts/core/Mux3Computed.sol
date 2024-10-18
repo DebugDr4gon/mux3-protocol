@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
-import "../libraries/LibConfigTable.sol";
+import "../libraries/LibConfigMap.sol";
 import "../interfaces/IBorrowingRate.sol";
 import "../libraries/LibExpBorrowingRate.sol";
 import "../libraries/LibTypeCast.sol";
@@ -14,7 +14,7 @@ import "./Mux3Store.sol";
 contract Mux3Computed is Mux3Store {
     using LibTypeCast for int256;
     using LibTypeCast for uint256;
-    using LibConfigTable for ConfigTable;
+    using LibConfigMap for mapping(bytes32 => bytes32);
 
     function _priceOf(address token) internal view virtual returns (uint256) {
         return _priceOf(bytes32(bytes20(token)));
@@ -22,7 +22,7 @@ contract Mux3Computed is Mux3Store {
 
     function _priceOf(bytes32 id) internal view virtual returns (uint256) {
         uint256 price = uint256(_readCacheUint256(id));
-        require(price > 0, "price is zero");
+        require(price > 0, "price <= 0");
         return price;
     }
 
@@ -47,12 +47,6 @@ contract Mux3Computed is Mux3Store {
 
     function _marketLotSize(bytes32 marketId) internal view returns (uint256) {
         return _markets[marketId].configs.getUint256(MM_LOT_SIZE);
-    }
-
-    function _marketCumulativeBorrowingPerUsd(
-        bytes32 marketId
-    ) internal view returns (uint256) {
-        return _markets[marketId].cumulatedBorrowingPerUsd;
     }
 
     function _marketMaxInitialLeverage(

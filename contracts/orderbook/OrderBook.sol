@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import "../interfaces/IOrderBook.sol";
 import "../interfaces/IWETH9.sol";
-import "../libraries/LibConfigTable.sol";
+import "../libraries/LibConfigMap.sol";
 import "../libraries/LibOrderBook.sol";
 import "../libraries/LibCodec.sol";
 import "./OrderBookStore.sol";
@@ -89,7 +89,7 @@ contract OrderBook is
         address token,
         uint256 amount
     ) external {
-        require(_isDelegator(msg.sender), "delegator only");
+        require(_isDelegator(msg.sender), "Delegator only");
         IERC20Upgradeable(token).safeTransferFrom(from, address(this), amount);
     }
 
@@ -107,7 +107,7 @@ contract OrderBook is
             orderParams.positionId
         );
         if (_isDelegator(msg.sender)) {} else {
-            require(positionAccount == msg.sender, "not authorized");
+            require(positionAccount == msg.sender, "Not authorized");
         }
         // TODO: referral code
         // address referralManager = _referralManager();
@@ -155,7 +155,7 @@ contract OrderBook is
         (address positionAccount, ) = LibCodec.decodePositionId(
             orderParams.positionId
         );
-        require(positionAccount == msg.sender, "not authorized");
+        require(positionAccount == msg.sender, "Not authorized");
         LibOrderBook.placeWithdrawalOrder(
             _storage,
             orderParams,
@@ -242,8 +242,6 @@ contract OrderBook is
     //             orderData.placeOrderTime + _marketOrderTimeout(),
     //         "EXP"
     //     ); // EXPired
-    //     // update funding state
-    //     IDegenPool(_storage.pool).updateFundingState();
     //     // fill
     //     if (orderParams.isProfit) {
     //         require(false, "PFT"); // withdraw profit is not supported yet
@@ -309,7 +307,7 @@ contract OrderBook is
         bytes32 positionId
     ) external updateSequence whenNotPaused(OrderType.WithdrawalOrder) {
         (address positionAccount, ) = LibCodec.decodePositionId(positionId);
-        require(positionAccount == msg.sender, "not authorized");
+        require(positionAccount == msg.sender, "Not authorized");
         LibOrderBook.withdrawAllCollateral(_storage, positionId);
     }
 
@@ -336,8 +334,6 @@ contract OrderBook is
     //     uint96 tradingPrice,
     //     uint96[] memory assetPrices
     // ) external onlyRole(BROKER_ROLE) updateSequence {
-    //     // update funding state
-    //     IDegenPool(_storage.pool).updateFundingState();
     //     // fill
     //     IDegenPool(_storage.pool).liquidate(
     //         subAccountId,
@@ -360,9 +356,6 @@ contract OrderBook is
     //     uint96 tradingPrice,
     //     uint96[] memory markPrices
     // ) public onlyRole(BROKER_ROLE) nonReentrant updateSequence {
-    //     // update funding state
-    //     IDegenPool(_storage.pool).updateFundingState();
-    //     // fill
     //     _storage.fillAdlOrder(orderParams, tradingPrice, markPrices);
     // }
     // /**
@@ -384,7 +377,7 @@ contract OrderBook is
     function setConfig(bytes32 key, bytes32 value) external updateSequence {
         _checkRole(MAINTAINER_ROLE, msg.sender);
         // TODO: add test rules for specified key
-        LibConfigTable.setBytes32(_configTable, key, value);
+        LibConfigMap.setBytes32(_configTable, key, value);
     }
 
     // TODO: remove me if oracleProvider is ready

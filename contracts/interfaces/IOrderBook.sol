@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
@@ -78,9 +78,9 @@ struct PositionOrderParams {
     uint256 limitPrice; // 1e18
     uint256 tpPrice; // take-profit price. decimals = 18. only valid when flags.POSITION_TPSL_STRATEGY.
     uint256 slPrice; // stop-loss price. decimals = 18. only valid when flags.POSITION_TPSL_STRATEGY.
-    uint256 expiration; // 1e0 seconds
-    uint256 tpslExpiration; // 1e0 seconds
-    address profitToken; // only valid when close a position
+    uint256 expiration; // 1e0, timestamp
+    uint256 tpslExpiration; // 1e0, timestamp
+    address profitToken; // only valid when close a position and the trader wants to swap
     address tpslProfitToken; // only valid when flags.POSITION_TPSL_STRATEGY.
     address collateralToken; // deposit or withdraw. optional.
     uint256 collateralAmount; // deposit or withdraw. optional. erc20.decimals

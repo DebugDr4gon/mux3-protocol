@@ -87,33 +87,33 @@ describe("Mini", () => {
     await core.createCollateralPool("TN1", "TS1", usdc.address, 6)
     const pool1Addr = (await core.listCollateralPool())[0]
     pool1 = (await ethers.getContractAt("CollateralPool", pool1Addr)) as CollateralPool
-    await pool1.setConfig(ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306")))
-    await pool1.setConfig(ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938")))
-    await pool1.setConfig(ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(toWei("0")))
-    await pool1.setConfig(ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000")))
-    await pool1.setConfig(ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001")))
-    await pool1.setConfig(encodePoolMarketKey("MCP_ADL_RESERVE_RATE", long1), u2b(toWei("0.80")))
-    await pool1.setConfig(encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", long1), u2b(toWei("0.75")))
-    await pool1.setConfig(encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", long1), u2b(toWei("0.70")))
-    await pool1.setConfig(encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short1), u2b(toWei("0.80")))
-    await pool1.setConfig(encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short1), u2b(toWei("0.75")))
-    await pool1.setConfig(encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short1), u2b(toWei("0.70")))
+    await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306")))
+    await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938")))
+    await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(toWei("0")))
+    await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000")))
+    await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001")))
+    await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", long1), u2b(toWei("0.80")))
+    await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", long1), u2b(toWei("0.75")))
+    await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", long1), u2b(toWei("0.70")))
+    await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short1), u2b(toWei("0.80")))
+    await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short1), u2b(toWei("0.75")))
+    await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short1), u2b(toWei("0.70")))
 
     // pool 2
     await core.createCollateralPool("TN2", "TS2", arb.address, 18)
     const pool2Addr = (await core.listCollateralPool())[1]
     pool2 = (await ethers.getContractAt("CollateralPool", pool2Addr)) as CollateralPool
-    await pool2.setConfig(ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("3.46024")))
-    await pool2.setConfig(ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-2.34434")))
-    await pool2.setConfig(ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(toWei("0")))
-    await pool2.setConfig(ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000")))
-    await pool2.setConfig(ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001")))
-    await pool2.setConfig(encodePoolMarketKey("MCP_ADL_RESERVE_RATE", long1), u2b(toWei("0.80")))
-    await pool2.setConfig(encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", long1), u2b(toWei("0.75")))
-    await pool2.setConfig(encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", long1), u2b(toWei("0.70")))
-    await pool2.setConfig(encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short1), u2b(toWei("0.80")))
-    await pool2.setConfig(encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short1), u2b(toWei("0.75")))
-    await pool2.setConfig(encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short1), u2b(toWei("0.70")))
+    await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("3.46024")))
+    await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-2.34434")))
+    await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(toWei("0")))
+    await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000")))
+    await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001")))
+    await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", long1), u2b(toWei("0.80")))
+    await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", long1), u2b(toWei("0.75")))
+    await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", long1), u2b(toWei("0.70")))
+    await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short1), u2b(toWei("0.80")))
+    await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short1), u2b(toWei("0.75")))
+    await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short1), u2b(toWei("0.70")))
 
     // markets only uses pool1
     await core.createMarket(
@@ -289,14 +289,15 @@ describe("Mini", () => {
           short1,
           false, // isLong
           args.size,
-          [toWei("1")], // allocations
           toWei("2000"), // trading price
-          toWei("2000"), // new entry
-          toWei("1"), // new size
-          [usdc.address], // positionFeeAddress
-          [toWei("2")], // positionFeeAmount
-          [], // borrowingFeeAddress
-          [] // borrowingFeeAmount
+          [pool1.address],
+          [toWei("1")], // allocations
+          [toWei("1")], // new size
+          [toWei("2000")], // new entry
+          toWei("2"), // positionFee
+          toWei("0"), // borrowingFee
+          [usdc.address],
+          [toWei("998")]
         )
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("99000", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("0", 6))
@@ -305,30 +306,34 @@ describe("Mini", () => {
       expect(await usdc.balanceOf(core.address)).to.equal(toUnit("998", 6)) // collateral - fee
       {
         const collaterals = await core.listAccountCollaterals(positionId)
-        expect(collaterals.collateralAddresses[0]).to.equal(usdc.address)
-        expect(collaterals.collateralAmounts[0]).to.equal(toWei("998")) // fee = 2
+        expect(collaterals[0].collateralAddress).to.equal(usdc.address)
+        expect(collaterals[0].collateralAmount).to.equal(toWei("998")) // fee = 2
         const positions = await core.listAccountPositions(positionId)
-        expect(positions.marketIds[0]).to.equal(short1)
-        expect(positions.positions[0].size).to.equal(toWei("1"))
-        expect(positions.positions[0].entryPrice).to.equal(toWei("2000"))
-        expect(positions.positions[0].entryBorrowing).to.equal(toWei("0"))
+        expect(positions[0].marketId).to.equal(short1)
+        expect(positions[0].pools[0].size).to.equal(toWei("1"))
+        expect(positions[0].pools[0].entryPrice).to.equal(toWei("2000"))
+        expect(positions[0].pools[0].entryBorrowing).to.equal(toWei("0"))
       }
       expect(await pool1.liquidityBalance()).to.equal(toWei("999900")) // unchanged
       {
         const shortPools = await core.listMarketPools(short1)
         expect(shortPools[0].backedPool).to.equal(pool1.address)
-        expect(shortPools[0].totalSize).to.equal(toWei("1"))
-        expect(shortPools[0].unpaidBorrowingFeeUsd).to.equal(toWei("0"))
         const shortPoolState = await pool1.marketState(short1)
         expect(shortPoolState.isLong).to.equal(false)
         expect(shortPoolState.totalSize).to.equal(toWei("1"))
         expect(shortPoolState.averageEntryPrice).to.equal(toWei("2000"))
       }
+      {
+        const state = await pool1.marketState(short1)
+        expect(state.isLong).to.equal(false)
+        expect(state.totalSize).to.equal(toWei("1"))
+        expect(state.averageEntryPrice).to.equal(toWei("2000"))
+      }
     }
   })
 
   it("2 pool mini test: +liq, +trade", async () => {
-    // +liq pool1
+    // +liq to pool1
     await usdc.connect(lp1).transfer(orderBook.address, toUnit("1000000", 6))
     {
       await time.increaseTo(timestampOfTest + 86400 * 2)
@@ -344,20 +349,8 @@ describe("Mini", () => {
       await time.increaseTo(timestampOfTest + 86400 * 2 + 905)
       await orderBook.connect(broker).fillLiquidityOrder(0, [])
     }
-    // +liq pool2
+    // append pool2 to market
     await core.appendBackedPoolsToMarket(short1, [pool2.address])
-    {
-      const pools = await core.listCollateralPool()
-      expect(pools.length).to.equal(2)
-      expect(pools[0]).to.equal(pool1.address)
-      expect(pools[1]).to.equal(pool2.address)
-    }
-    {
-      const markets = await core.listMarkets()
-      expect(markets.length).to.equal(2)
-      expect(markets[0]).to.equal(long1)
-      expect(markets[1]).to.equal(short1)
-    }
     {
       const pools = await core.listMarketPools(long1)
       expect(pools.length).to.equal(1)
@@ -369,6 +362,7 @@ describe("Mini", () => {
       expect(pools[0].backedPool).to.equal(pool1.address)
       expect(pools[1].backedPool).to.equal(pool2.address)
     }
+    // +liq to pool2
     await arb.connect(lp1).transfer(orderBook.address, toUnit("500000", 18))
     {
       const args = {
@@ -455,7 +449,7 @@ describe("Mini", () => {
       expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("999900", 6))
       expect(await pool1.liquidityBalance()).to.equal(toWei("999900")) // unchanged
       // fill
-      await core.setMockPrice(short1, toWei("2000")) // TODO: use oracle builder
+      await core.setMockPrice(short1, toWei("2000"))
       const tx2 = orderBook.connect(broker).fillPositionOrder(2, [])
       await expect(tx2)
         .to.emit(core, "OpenPosition")
@@ -465,14 +459,15 @@ describe("Mini", () => {
           short1,
           false, // isLong
           args.size,
-          [toWei("1")], // allocations
           toWei("2000"), // trading price
-          toWei("2000"), // new entry
-          toWei("1"), // new size
-          [usdc.address], // positionFeeAddress
-          [toWei("2")], // positionFeeUsd
-          [], // borrowingFeeAddress
-          [] // borrowingFeeAmount
+          [pool1.address],
+          [toWei("1")], // allocations
+          [toWei("1")], // new size
+          [toWei("2000")], // new entry
+          toWei("2"), // positionFeeUsd
+          toWei("0"), // borrowingFeeUsd
+          [usdc.address],
+          [toWei("998")]
         )
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("99000", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("0", 6))
@@ -481,31 +476,31 @@ describe("Mini", () => {
       expect(await usdc.balanceOf(core.address)).to.equal(toUnit("998", 6)) // collateral - fee
       {
         const collaterals = await core.listAccountCollaterals(positionId)
-        expect(collaterals.collateralAddresses[0]).to.equal(usdc.address)
-        expect(collaterals.collateralAmounts[0]).to.equal(toWei("998")) // fee = 2
+        expect(collaterals[0].collateralAddress).to.equal(usdc.address)
+        expect(collaterals[0].collateralAmount).to.equal(toWei("998")) // fee = 2
         const positions = await core.listAccountPositions(positionId)
-        expect(positions.marketIds[0]).to.equal(short1)
-        expect(positions.positions[0].size).to.equal(toWei("1"))
-        expect(positions.positions[0].entryPrice).to.equal(toWei("2000"))
-        expect(positions.positions[0].entryBorrowing).to.equal(toWei("0"))
+        expect(positions[0].marketId).to.equal(short1)
+        expect(positions[0].pools[0].poolAddress).to.equal(pool1.address)
+        expect(positions[0].pools[0].size).to.equal(toWei("1"))
+        expect(positions[0].pools[0].entryPrice).to.equal(toWei("2000"))
+        expect(positions[0].pools[0].entryBorrowing).to.equal(toWei("0"))
+        expect(positions[0].pools[1].poolAddress).to.equal(pool2.address)
+        expect(positions[0].pools[1].size).to.equal(toWei("0"))
+        expect(positions[0].pools[1].entryPrice).to.equal(toWei("0"))
+        expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0"))
       }
       expect(await pool1.liquidityBalance()).to.equal(toWei("999900")) // unchanged
       {
-        const shortPools = await core.listMarketPools(short1)
-        expect(shortPools[0].backedPool).to.equal(pool1.address)
-        expect(shortPools[0].totalSize).to.equal(toWei("1"))
-        expect(shortPools[0].unpaidBorrowingFeeUsd).to.equal(toWei("0"))
-        expect(shortPools[1].backedPool).to.equal(pool2.address)
-        expect(shortPools[1].totalSize).to.equal(toWei("0"))
-        expect(shortPools[1].unpaidBorrowingFeeUsd).to.equal(toWei("0"))
-        const shortPool1State = await pool1.marketState(short1)
-        expect(shortPool1State.isLong).to.equal(false)
-        expect(shortPool1State.totalSize).to.equal(toWei("1"))
-        expect(shortPool1State.averageEntryPrice).to.equal(toWei("2000"))
-        const shortPool2State = await pool2.marketState(short1)
-        expect(shortPool2State.isLong).to.equal(false)
-        expect(shortPool2State.totalSize).to.equal(toWei("0"))
-        expect(shortPool2State.averageEntryPrice).to.equal(toWei("0"))
+        const state = await pool1.marketState(short1)
+        expect(state.isLong).to.equal(false)
+        expect(state.totalSize).to.equal(toWei("1"))
+        expect(state.averageEntryPrice).to.equal(toWei("2000"))
+      }
+      {
+        const state = await pool2.marketState(short1)
+        expect(state.isLong).to.equal(false)
+        expect(state.totalSize).to.equal(toWei("0"))
+        expect(state.averageEntryPrice).to.equal(toWei("0"))
       }
     }
   })

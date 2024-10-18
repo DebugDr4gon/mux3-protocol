@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 
@@ -21,7 +21,7 @@ contract FacetManagement is
     IManagement,
     IBeacon
 {
-    using LibConfigTable for ConfigTable;
+    using LibConfigMap for mapping(bytes32 => bytes32);
 
     function implementation() public view virtual override returns (address) {
         return _collateralPoolImplementation;
@@ -64,6 +64,10 @@ contract FacetManagement is
         address collateralToken,
         uint8 collateralDecimals
     ) external onlyRole(DEFAULT_ADMIN_ROLE) returns (address) {
+        require(
+            _isCollateralExists(collateralToken),
+            CollateralNotExists(collateralToken)
+        );
         address pool = _createCollateralPool(
             name,
             symbol,

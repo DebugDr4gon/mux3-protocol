@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -33,7 +33,7 @@ contract Delegator is Initializable {
 
     function delegate(address delegator, uint256 actionCount) public payable {
         address owner = msg.sender;
-        require(delegator != address(0), "invalid address");
+        require(delegator != address(0), "Invalid delegator address");
         _delegators[delegator] = Delegation(owner, actionCount);
         if (msg.value > 0) {
             // forward eth to delegator
@@ -60,8 +60,8 @@ contract Delegator is Initializable {
     function transferToken(address token, uint256 amount) external {
         address delegator = msg.sender;
         Delegation storage delegation = _delegators[delegator];
-        require(delegation.owner != address(0), "not delegated");
-        require(delegation.actionCount > 0, "no action count");
+        require(delegation.owner != address(0), "Not delegated");
+        require(delegation.actionCount > 0, "No action count");
         delegation.actionCount--;
         IOrderBook(_orderBook).transferTokenFrom(
             delegation.owner,
@@ -76,29 +76,29 @@ contract Delegator is Initializable {
     ) external {
         address delegator = msg.sender;
         Delegation storage delegation = _delegators[delegator];
-        require(delegation.owner != address(0), "not delegated");
-        require(delegation.actionCount > 0, "no action count");
+        require(delegation.owner != address(0), "Not delegated");
+        require(delegation.actionCount > 0, "No action count");
         delegation.actionCount--;
         (address positionAccount, ) = LibCodec.decodePositionId(
             orderParams.positionId
         );
-        require(positionAccount == delegation.owner, "not authorized");
+        require(positionAccount == delegation.owner, "Not authorized");
         IOrderBook(_orderBook).placePositionOrder(orderParams, referralCode);
     }
 
     function cancelOrder(uint64 orderId) external {
         address delegator = msg.sender;
         Delegation storage delegation = _delegators[delegator];
-        require(delegation.owner != address(0), "not delegated");
-        require(delegation.actionCount > 0, "no action count");
+        require(delegation.owner != address(0), "Not delegated");
+        require(delegation.actionCount > 0, "No action count");
         delegation.actionCount--;
         (OrderData memory orderData, bool exists) = IOrderBookGetter(_orderBook)
             .getOrder(orderId);
-        require(exists, "order not exists");
-        require(orderData.account == delegation.owner, "not authorized");
+        require(exists, "Order not exists");
+        require(orderData.account == delegation.owner, "Not authorized");
         require(
             orderData.orderType == OrderType.PositionOrder,
-            "invalid order type"
+            "Invalid order type"
         );
         IOrderBook(_orderBook).cancelOrder(orderId);
     }

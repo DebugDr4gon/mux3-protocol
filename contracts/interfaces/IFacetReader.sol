@@ -1,17 +1,34 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "../interfaces/IPositionAccount.sol";
 import "../interfaces/IMarket.sol";
 
-struct AccountCollateralsAndPositions {
+struct AccountReader {
     bytes32 positionId;
-    address[] collateralAddresses;
-    uint256[] collateralAmounts;
-    bytes32[] marketIds;
-    PositionData[] positions;
+    CollateralReader[] collaterals;
+    PositionReader[] positions;
 }
 
+struct CollateralReader {
+    address collateralAddress;
+    uint256 collateralAmount;
+}
+
+struct PositionReader {
+    bytes32 marketId;
+    uint256 initialLeverage;
+    uint256 lastIncreasedTime;
+    uint256 realizedBorrowingUsd;
+    PositionPoolReader[] pools;
+}
+
+struct PositionPoolReader {
+    address poolAddress;
+    uint256 size;
+    uint256 entryPrice;
+    uint256 entryBorrowing;
+}
 interface IFacetReader {
     function priceOf(address token) external view returns (uint256);
 
@@ -23,19 +40,9 @@ interface IFacetReader {
         bytes32 marketId,
         bytes32 key
     ) external view returns (bytes32);
-
     function marketState(
         bytes32 marketId
-    )
-        external
-        view
-        returns (
-            string memory symbol,
-            bool isLong,
-            uint256 cumulatedBorrowingPerUsd,
-            uint256 lastBorrowingFeeUpdateTime
-        );
-
+    ) external view returns (string memory symbol, bool isLong);
     function getCollateralToken(
         address token
     ) external view returns (bool enabled, uint8 decimals);
@@ -52,19 +59,13 @@ interface IFacetReader {
 
     function listAccountCollaterals(
         bytes32 positionId
-    )
-        external
-        view
-        returns (address[] memory tokenAddresses, uint256[] memory balances);
+    ) external view returns (CollateralReader[] memory collaterals);
 
     function listAccountPositions(
         bytes32 positionId
-    )
-        external
-        view
-        returns (bytes32[] memory marketIds, PositionData[] memory positions);
+    ) external view returns (PositionReader[] memory positions);
 
     function listAccountCollateralsAndPositionsOf(
         address trader
-    ) external view returns (AccountCollateralsAndPositions[] memory positions);
+    ) external view returns (AccountReader[] memory positions);
 }

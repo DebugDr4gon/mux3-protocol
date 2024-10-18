@@ -37,6 +37,7 @@ describe("Trade (normal pools)", () => {
   let broker: SignerWithAddress
   let lp1: SignerWithAddress
   let trader1: SignerWithAddress
+  let trader2: SignerWithAddress
 
   let core: TestMux3
   let imp: CollateralPool
@@ -54,6 +55,7 @@ describe("Trade (normal pools)", () => {
     broker = accounts[1]
     lp1 = accounts[2]
     trader1 = accounts[3]
+    trader2 = accounts[4]
     weth = (await createContract("WETH9", [])) as WETH9
   })
 
@@ -66,6 +68,7 @@ describe("Trade (normal pools)", () => {
     btc = (await createContract("MockERC20", ["BTC", "BTC", 8])) as MockERC20
     await usdc.mint(lp1.address, toUnit("1000000", 6))
     await usdc.mint(trader1.address, toUnit("100000", 6))
+    await usdc.mint(trader2.address, toUnit("100000", 6))
     await arb.mint(lp1.address, toUnit("1000000", 18))
     await arb.mint(trader1.address, toUnit("100000", 18))
     await btc.mint(lp1.address, toUnit("1000000", 8))
@@ -89,50 +92,50 @@ describe("Trade (normal pools)", () => {
     await core.createCollateralPool("TN0", "TS0", usdc.address, 6)
     const poolAddr = (await core.listCollateralPool())[0]
     pool1 = (await ethers.getContractAt("CollateralPool", poolAddr)) as CollateralPool
-    await pool1.setConfig(ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306")))
-    await pool1.setConfig(ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938")))
-    await pool1.setConfig(ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(toWei("0")))
-    await pool1.setConfig(ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000")))
-    await pool1.setConfig(ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001")))
-    await pool1.setConfig(encodePoolMarketKey("MCP_ADL_RESERVE_RATE", long1), u2b(toWei("0.80")))
-    await pool1.setConfig(encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", long1), u2b(toWei("0.75")))
-    await pool1.setConfig(encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", long1), u2b(toWei("0.70")))
-    await pool1.setConfig(encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short1), u2b(toWei("0.80")))
-    await pool1.setConfig(encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short1), u2b(toWei("0.75")))
-    await pool1.setConfig(encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short1), u2b(toWei("0.70")))
+    await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("10")))
+    await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-7")))
+    await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(toWei("0")))
+    await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000")))
+    await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001")))
+    await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", long1), u2b(toWei("0.80")))
+    await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", long1), u2b(toWei("0.75")))
+    await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", long1), u2b(toWei("0.70")))
+    await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short1), u2b(toWei("0.80")))
+    await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short1), u2b(toWei("0.75")))
+    await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short1), u2b(toWei("0.70")))
 
     // pool 2
     await core.createCollateralPool("TN1", "TS1", usdc.address, 6)
     const pool2Addr = (await core.listCollateralPool())[1]
     pool2 = (await ethers.getContractAt("CollateralPool", pool2Addr)) as CollateralPool
-    await pool2.setConfig(ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("3.46024")))
-    await pool2.setConfig(ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-2.34434")))
-    await pool2.setConfig(ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(toWei("0")))
-    await pool2.setConfig(ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000")))
-    await pool2.setConfig(ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001")))
-    await pool2.setConfig(encodePoolMarketKey("MCP_ADL_RESERVE_RATE", long1), u2b(toWei("0.80")))
-    await pool2.setConfig(encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", long1), u2b(toWei("0.75")))
-    await pool2.setConfig(encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", long1), u2b(toWei("0.70")))
-    await pool2.setConfig(encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short1), u2b(toWei("0.80")))
-    await pool2.setConfig(encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short1), u2b(toWei("0.75")))
-    await pool2.setConfig(encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short1), u2b(toWei("0.70")))
+    await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6")))
+    await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6")))
+    await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(toWei("0")))
+    await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000")))
+    await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001")))
+    await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", long1), u2b(toWei("0.80")))
+    await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", long1), u2b(toWei("0.75")))
+    await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", long1), u2b(toWei("0.70")))
+    await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short1), u2b(toWei("0.80")))
+    await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short1), u2b(toWei("0.75")))
+    await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short1), u2b(toWei("0.70")))
 
     // pool 3
     await core.createCollateralPool("TN2", "TS2", btc.address, 8)
     const pool3Addr = (await core.listCollateralPool())[2]
     pool3 = (await ethers.getContractAt("CollateralPool", pool3Addr)) as CollateralPool
-    await pool3.setConfig(ethers.utils.id("MCP_BORROWING_BASE_APY"), u2b(toWei("0.10")))
-    await pool3.setConfig(ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("1.92131")))
-    await pool3.setConfig(ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-2.91416")))
-    await pool3.setConfig(ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(toWei("0")))
-    await pool3.setConfig(ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000")))
-    await pool3.setConfig(ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001")))
-    await pool3.setConfig(encodePoolMarketKey("MCP_ADL_RESERVE_RATE", long1), u2b(toWei("0.80")))
-    await pool3.setConfig(encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", long1), u2b(toWei("0.75")))
-    await pool3.setConfig(encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", long1), u2b(toWei("0.70")))
-    await pool3.setConfig(encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short1), u2b(toWei("0.80")))
-    await pool3.setConfig(encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short1), u2b(toWei("0.75")))
-    await pool3.setConfig(encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short1), u2b(toWei("0.70")))
+    await core.setPoolConfig(pool3.address, ethers.utils.id("MCP_BORROWING_BASE_APY"), u2b(toWei("0.10")))
+    await core.setPoolConfig(pool3.address, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("2.2")))
+    await core.setPoolConfig(pool3.address, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-3")))
+    await core.setPoolConfig(pool3.address, ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(toWei("0")))
+    await core.setPoolConfig(pool3.address, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000")))
+    await core.setPoolConfig(pool3.address, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001")))
+    await core.setPoolConfig(pool3.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", long1), u2b(toWei("0.80")))
+    await core.setPoolConfig(pool3.address, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", long1), u2b(toWei("0.75")))
+    await core.setPoolConfig(pool3.address, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", long1), u2b(toWei("0.70")))
+    await core.setPoolConfig(pool3.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short1), u2b(toWei("0.80")))
+    await core.setPoolConfig(pool3.address, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short1), u2b(toWei("0.75")))
+    await core.setPoolConfig(pool3.address, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short1), u2b(toWei("0.70")))
 
     // market 1 - uses 3 pools
     await core.createMarket(
@@ -144,19 +147,19 @@ describe("Trade (normal pools)", () => {
     await core.setMarketConfig(long1, ethers.utils.id("MM_POSITION_FEE_RATE"), u2b(toWei("0.001")))
     await core.setMarketConfig(long1, ethers.utils.id("MM_INITIAL_MARGIN_RATE"), u2b(toWei("0.006")))
     await core.setMarketConfig(long1, ethers.utils.id("MM_MAINTENANCE_MARGIN_RATE"), u2b(toWei("0.005")))
-    await core.setMarketConfig(long1, ethers.utils.id("MM_LOT_SIZE"), u2b(toWei("0.1")))
+    await core.setMarketConfig(long1, ethers.utils.id("MM_LOT_SIZE"), u2b(toWei("0.0001")))
     await core.setMarketConfig(long1, ethers.utils.id("MM_MAX_INITIAL_LEVERAGE"), u2b(toWei("100")))
 
     await core.createMarket(
       short1,
       "Short1",
       false, // isLong
-      [pool1.address, pool2.address, pool3.address]
+      [pool2.address, pool3.address]
     )
     await core.setMarketConfig(short1, ethers.utils.id("MM_POSITION_FEE_RATE"), u2b(toWei("0.001")))
     await core.setMarketConfig(short1, ethers.utils.id("MM_INITIAL_MARGIN_RATE"), u2b(toWei("0.006")))
     await core.setMarketConfig(short1, ethers.utils.id("MM_MAINTENANCE_MARGIN_RATE"), u2b(toWei("0.005")))
-    await core.setMarketConfig(short1, ethers.utils.id("MM_LOT_SIZE"), u2b(toWei("0.1")))
+    await core.setMarketConfig(short1, ethers.utils.id("MM_LOT_SIZE"), u2b(toWei("0.0001")))
     await core.setMarketConfig(short1, ethers.utils.id("MM_MAX_INITIAL_LEVERAGE"), u2b(toWei("100")))
 
     const libOrderBook = await createContract("LibOrderBook")
@@ -192,17 +195,16 @@ describe("Trade (normal pools)", () => {
     {
       await expect(
         orderBook.connect(trader1).depositCollateral(positionId, usdc.address, toUnit("0", 6))
-      ).to.revertedWith("zero collateral")
+      ).to.revertedWith("Zero collateral")
       const tx1 = await orderBook.connect(trader1).depositCollateral(positionId, usdc.address, toUnit("1000", 6))
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("99000", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("0", 6))
       expect(await usdc.balanceOf(core.address)).to.equal(toUnit("1000", 6))
       const collaterals = await core.listAccountCollaterals(positionId)
-      expect(collaterals.collateralAddresses[0]).to.equal(usdc.address)
-      expect(collaterals.collateralAmounts[0]).to.equal(toWei("1000"))
+      expect(collaterals[0].collateralAddress).to.equal(usdc.address)
+      expect(collaterals[0].collateralAmount).to.equal(toWei("1000"))
       const positions = await core.listAccountPositions(positionId)
-      expect(positions.marketIds.length).to.equal(0)
-      expect(positions.positions.length).to.equal(0)
+      expect(positions.length).to.equal(0)
     }
     {
       const tx1 = await orderBook.connect(trader1).depositCollateral(positionId, arb.address, toUnit("500", 18))
@@ -210,16 +212,15 @@ describe("Trade (normal pools)", () => {
       expect(await arb.balanceOf(orderBook.address)).to.equal(toUnit("0", 18))
       expect(await arb.balanceOf(core.address)).to.equal(toUnit("500", 18))
       const collaterals = await core.listAccountCollaterals(positionId)
-      expect(collaterals.collateralAddresses[0]).to.equal(usdc.address)
-      expect(collaterals.collateralAmounts[0]).to.equal(toWei("1000"))
-      expect(collaterals.collateralAddresses[1]).to.equal(arb.address)
-      expect(collaterals.collateralAmounts[1]).to.equal(toWei("500"))
+      expect(collaterals[0].collateralAddress).to.equal(usdc.address)
+      expect(collaterals[0].collateralAmount).to.equal(toWei("1000"))
+      expect(collaterals[1].collateralAddress).to.equal(arb.address)
+      expect(collaterals[1].collateralAmount).to.equal(toWei("500"))
       const positions = await core.listAccountPositions(positionId)
-      expect(positions.marketIds.length).to.equal(0)
-      expect(positions.positions.length).to.equal(0)
+      expect(positions.length).to.equal(0)
     }
     {
-      await expect(orderBook.connect(lp1).withdrawAllCollateral(positionId)).to.revertedWith("not authorized")
+      await expect(orderBook.connect(lp1).withdrawAllCollateral(positionId)).to.revertedWith("Not authorized")
       await orderBook.connect(trader1).withdrawAllCollateral(positionId)
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("100000", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("0", 6))
@@ -228,10 +229,9 @@ describe("Trade (normal pools)", () => {
       expect(await arb.balanceOf(orderBook.address)).to.equal(toUnit("0", 18))
       expect(await arb.balanceOf(core.address)).to.equal(toUnit("0", 18))
       const collaterals = await core.listAccountCollaterals(positionId)
-      expect(collaterals.collateralAddresses.length).to.equal(0)
+      expect(collaterals.length).to.equal(0)
       const positions = await core.listAccountPositions(positionId)
-      expect(positions.marketIds.length).to.equal(0)
-      expect(positions.positions.length).to.equal(0)
+      expect(positions.length).to.equal(0)
     }
   })
 
@@ -296,130 +296,126 @@ describe("Trade (normal pools)", () => {
       expect(await pool3.totalSupply()).to.equal(toWei("999900"))
       expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("999900"))
       {
-        const marketInfo1 = await core.marketState(long1)
-        expect(marketInfo1.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
-        const marketInfo2 = await core.marketState(short1)
-        expect(marketInfo2.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
+        const state = await pool1.marketState(long1)
+        expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
+      }
+      {
+        const state = await pool1.marketState(short1)
+        expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
       }
     })
 
-    // it("remove liquidity", async () => {
-    //   {
-    //     const args = { poolAddress: pool3.address, rawAmount: toWei("100"), isAdding: false, isUnwrapWeth: false }
-    //     await expect(orderBook.connect(lp1).placeLiquidityOrder({ ...args, rawAmount: toWei("0") })).to.revertedWith(
-    //       "zero amount"
-    //     )
-    //     await pool3.connect(lp1).transfer(orderBook.address, toWei("100"))
-    //     const tx1 = await orderBook.connect(lp1).placeLiquidityOrder(args)
-    //     await expect(tx1)
-    //       .to.emit(orderBook, "NewLiquidityOrder")
-    //       .withArgs(lp1.address, 3, [args.poolAddress, args.rawAmount, args.isAdding])
-    //     expect(await pool3.balanceOf(lp1.address)).to.equal(toWei("999800")) // 999900 - 100
-    //     expect(await pool3.balanceOf(orderBook.address)).to.equal(toWei("100"))
-    //   }
-    //   expect(await btc.balanceOf(lp1.address)).to.equal(toUnit("999980", 8)) // unchanged
-    //   expect(await pool3.totalSupply()).to.equal(toWei("999900")) // unchanged
-    //   expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("999900")) // unchanged
-    //   await core.setMockPrice(a2b(btc.address), toWei("40000"))
-    //   expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("799920")) // aum = 19.998 * 40000 = 799920, nav = 799920 / 999900 = 0.8
-    //   {
-    //     await expect(orderBook.connect(broker).fillLiquidityOrder(3, [])).to.revertedWith("lock period")
-    //     await time.increaseTo(timestampOfTest + 86400 * 2 + 905 + 905)
-    //     const tx1 = await orderBook.connect(broker).fillLiquidityOrder(3, []) // return 100 * nav / 40000 = 0.002, fee = * 0.01% = 0.0000002
-    //     expect(await btc.balanceOf(lp1.address)).to.equal(toUnit("999980.0019998", 8)) // 999980 + 0.002 - fee
-    //     expect(await btc.balanceOf(feeDistributor.address)).to.equal(toUnit("0.0020002", 8)) // +fee
-    //     expect(await btc.balanceOf(orderBook.address)).to.equal(toUnit("0", 8))
-    //     expect(await btc.balanceOf(pool3.address)).to.equal(toUnit("19.996", 8)) // 19.998 - 100 * nav / 40000
-    //     expect(await pool3.balanceOf(lp1.address)).to.equal(toWei("999800")) // unchanged
-    //     expect(await pool3.balanceOf(orderBook.address)).to.equal(toWei("0"))
-    //     expect(await pool3.liquidityBalance()).to.equal(toWei("19.996")) // 19.998 - 100 * nav / 40000
-    //   }
-    //   expect(await pool3.totalSupply()).to.equal(toWei("999800")) // 999900 - 100
-    //   expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("799840")) // 19.996 * 40000
-    // })
+    it("remove liquidity", async () => {
+      {
+        const args = { poolAddress: pool3.address, rawAmount: toWei("100"), isAdding: false, isUnwrapWeth: false }
+        await expect(orderBook.connect(lp1).placeLiquidityOrder({ ...args, rawAmount: toWei("0") })).to.revertedWith(
+          "Zero amount"
+        )
+        await pool3.connect(lp1).transfer(orderBook.address, toWei("100"))
+        const tx1 = await orderBook.connect(lp1).placeLiquidityOrder(args)
+        await expect(tx1)
+          .to.emit(orderBook, "NewLiquidityOrder")
+          .withArgs(lp1.address, 3, [args.poolAddress, args.rawAmount, args.isAdding])
+        expect(await pool3.balanceOf(lp1.address)).to.equal(toWei("999800")) // 999900 - 100
+        expect(await pool3.balanceOf(orderBook.address)).to.equal(toWei("100"))
+      }
+      expect(await btc.balanceOf(lp1.address)).to.equal(toUnit("999980", 8)) // unchanged
+      expect(await pool3.totalSupply()).to.equal(toWei("999900")) // unchanged
+      expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("999900")) // unchanged
+      await core.setMockPrice(a2b(btc.address), toWei("40000"))
+      expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("799920")) // aum = 19.998 * 40000 = 799920, nav = 799920 / 999900 = 0.8
+      {
+        await expect(orderBook.connect(broker).fillLiquidityOrder(3, [])).to.revertedWith("lock period")
+        await time.increaseTo(timestampOfTest + 86400 * 2 + 905 + 905)
+        const tx1 = await orderBook.connect(broker).fillLiquidityOrder(3, []) // return 100 * nav / 40000 = 0.002, fee = * 0.01% = 0.0000002
+        expect(await btc.balanceOf(lp1.address)).to.equal(toUnit("999980.0019998", 8)) // 999980 + 0.002 - fee
+        expect(await btc.balanceOf(feeDistributor.address)).to.equal(toUnit("0.0020002", 8)) // +fee
+        expect(await btc.balanceOf(orderBook.address)).to.equal(toUnit("0", 8))
+        expect(await btc.balanceOf(pool3.address)).to.equal(toUnit("19.996", 8)) // 19.998 - 100 * nav / 40000
+        expect(await pool3.balanceOf(lp1.address)).to.equal(toWei("999800")) // unchanged
+        expect(await pool3.balanceOf(orderBook.address)).to.equal(toWei("0"))
+        expect(await pool3.liquidityBalance()).to.equal(toWei("19.996")) // 19.998 - 100 * nav / 40000
+      }
+      expect(await pool3.totalSupply()).to.equal(toWei("999800")) // 999900 - 100
+      expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("799840")) // 19.996 * 40000
+    })
 
-    // it("open long: exceeds initial leverage", async () => {
-    //   const positionId = encodePositionId(trader1.address, 0)
-    //   await usdc.connect(trader1).transfer(orderBook.address, toUnit("1000", 6))
-    //   {
-    //     const args = {
-    //       positionId,
-    //       marketId: long1,
-    //       size: toWei("1"),
-    //       flags: PositionOrderFlags.OpenPosition,
-    //       limitPrice: toWei("50000"),
-    //       tpPrice: "0",
-    //       slPrice: "0",
-    //       expiration: timestampOfTest + 86400 * 2 + 905 + 300,
-    //       tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 300,
-    //       profitTokenId: 0,
-    //       tpslProfitTokenId: 0,
-    //       initialLeverage: toWei("10"),
-    //       collateralToken: usdc.address,
-    //       collateralAmount: toUnit("1000", 6),
-    //       profitToken: zeroAddress,
-    //       tpslProfitToken: zeroAddress,
-    //     }
-    //     await orderBook.connect(trader1).placePositionOrder(args, refCode)
-    //     await expect(orderBook.connect(broker).fillPositionOrder(3, [])).to.revertedWith("UnsafePositionAccount")
-    //   }
-    // })
+    it("open long: exceeds initial leverage", async () => {
+      const positionId = encodePositionId(trader1.address, 0)
+      await usdc.connect(trader1).transfer(orderBook.address, toUnit("1000", 6))
+      {
+        const args = {
+          positionId,
+          marketId: long1,
+          size: toWei("1"),
+          flags: PositionOrderFlags.OpenPosition,
+          limitPrice: toWei("50000"),
+          tpPrice: "0",
+          slPrice: "0",
+          expiration: timestampOfTest + 86400 * 2 + 905 + 300,
+          tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 300,
+          initialLeverage: toWei("10"),
+          collateralToken: usdc.address,
+          collateralAmount: toUnit("1000", 6),
+          profitToken: zeroAddress,
+          tpslProfitToken: zeroAddress,
+        }
+        await orderBook.connect(trader1).placePositionOrder(args, refCode)
+        await expect(orderBook.connect(broker).fillPositionOrder(3, [])).to.revertedWith("UnsafePositionAccount")
+      }
+    })
 
-    // it("open long: limit price unmatched", async () => {
-    //   const positionId = encodePositionId(trader1.address, 0)
-    //   await usdc.connect(trader1).transfer(orderBook.address, toUnit("1000", 6))
-    //   {
-    //     const args = {
-    //       positionId,
-    //       marketId: long1,
-    //       size: toWei("1"),
-    //       flags: PositionOrderFlags.OpenPosition,
-    //       limitPrice: toWei("50000"),
-    //       tpPrice: "0",
-    //       slPrice: "0",
-    //       expiration: timestampOfTest + 86400 * 2 + 905 + 300,
-    //       tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 300,
-    //       profitTokenId: 0,
-    //       tpslProfitTokenId: 0,
-    //       initialLeverage: toWei("100"),
-    //       collateralToken: usdc.address,
-    //       collateralAmount: toUnit("1000", 6),
-    //       profitToken: zeroAddress,
-    //       tpslProfitToken: zeroAddress,
-    //     }
-    //     await core.setMockPrice(long1, toWei("50001"))
-    //     await orderBook.connect(trader1).placePositionOrder(args, refCode)
-    //     await expect(orderBook.connect(broker).fillPositionOrder(3, [])).to.revertedWith("limitPrice")
-    //   }
-    // })
+    it("open long: limit price unmatched", async () => {
+      const positionId = encodePositionId(trader1.address, 0)
+      await usdc.connect(trader1).transfer(orderBook.address, toUnit("1000", 6))
+      {
+        const args = {
+          positionId,
+          marketId: long1,
+          size: toWei("1"),
+          flags: PositionOrderFlags.OpenPosition,
+          limitPrice: toWei("50000"),
+          tpPrice: "0",
+          slPrice: "0",
+          expiration: timestampOfTest + 86400 * 2 + 905 + 300,
+          tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 300,
+          initialLeverage: toWei("100"),
+          collateralToken: usdc.address,
+          collateralAmount: toUnit("1000", 6),
+          profitToken: zeroAddress,
+          tpslProfitToken: zeroAddress,
+        }
+        await core.setMockPrice(long1, toWei("50001"))
+        await orderBook.connect(trader1).placePositionOrder(args, refCode)
+        await expect(orderBook.connect(broker).fillPositionOrder(3, [])).to.revertedWith("limitPrice")
+      }
+    })
 
-    // it("open short: limit price unmatched", async () => {
-    //   const positionId = encodePositionId(trader1.address, 0)
-    //   await usdc.connect(trader1).transfer(orderBook.address, toUnit("1000", 6))
-    //   {
-    //     const args = {
-    //       positionId,
-    //       marketId: short1,
-    //       size: toWei("1"),
-    //       flags: PositionOrderFlags.OpenPosition,
-    //       limitPrice: toWei("50000"),
-    //       tpPrice: "0",
-    //       slPrice: "0",
-    //       expiration: timestampOfTest + 86400 * 2 + 905 + 300,
-    //       tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 300,
-    //       profitTokenId: 0,
-    //       tpslProfitTokenId: 0,
-    //       initialLeverage: toWei("100"),
-    //       collateralToken: usdc.address,
-    //       collateralAmount: toUnit("1000", 6),
-    //       profitToken: zeroAddress,
-    //       tpslProfitToken: zeroAddress,
-    //     }
-    //     await core.setMockPrice(short1, toWei("49999"))
-    //     await orderBook.connect(trader1).placePositionOrder(args, refCode)
-    //     await expect(orderBook.connect(broker).fillPositionOrder(3, [])).to.revertedWith("limitPrice")
-    //   }
-    // })
+    it("open short: limit price unmatched", async () => {
+      const positionId = encodePositionId(trader1.address, 0)
+      await usdc.connect(trader1).transfer(orderBook.address, toUnit("1000", 6))
+      {
+        const args = {
+          positionId,
+          marketId: short1,
+          size: toWei("1"),
+          flags: PositionOrderFlags.OpenPosition,
+          limitPrice: toWei("50000"),
+          tpPrice: "0",
+          slPrice: "0",
+          expiration: timestampOfTest + 86400 * 2 + 905 + 300,
+          tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 300,
+          initialLeverage: toWei("100"),
+          collateralToken: usdc.address,
+          collateralAmount: toUnit("1000", 6),
+          profitToken: zeroAddress,
+          tpslProfitToken: zeroAddress,
+        }
+        await core.setMockPrice(short1, toWei("49999"))
+        await orderBook.connect(trader1).placePositionOrder(args, refCode)
+        await expect(orderBook.connect(broker).fillPositionOrder(3, [])).to.revertedWith("limitPrice")
+      }
+    })
 
     describe("long a little and test more", () => {
       let positionId = ""
@@ -437,8 +433,6 @@ describe("Trade (normal pools)", () => {
           slPrice: "0",
           expiration: timestampOfTest + 86400 * 2 + 905 + 300,
           tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 300,
-          profitTokenId: 0,
-          tpslProfitTokenId: 0,
           initialLeverage: toWei("100"),
           collateralToken: usdc.address,
           collateralAmount: toUnit("10000", 6),
@@ -451,148 +445,932 @@ describe("Trade (normal pools)", () => {
           expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("200", 6)) // unchanged
           expect(await usdc.balanceOf(core.address)).to.equal(toUnit("0", 6)) // unchanged
           expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("999900", 6)) // unchanged
-          expect(await pool1.liquidityBalance()).to.equal(toWei("999900")) // 1000000 - fee
+          expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("999900", 6)) // unchanged
+          expect(await btc.balanceOf(pool3.address)).to.equal(toUnit("19.998", 8)) // unchanged
+          expect(await pool1.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+          expect(await pool2.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+          expect(await pool3.liquidityBalance()).to.equal(toWei("19.998")) // unchanged
         }
         {
           // fee = 50000 * 1 * 0.1% = 50
+          await time.increaseTo(timestampOfTest + 86400 * 2 + 905 + 30)
           await orderBook.connect(broker).fillPositionOrder(3, [])
           expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
           expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("250", 6)) // + 50
           expect(await usdc.balanceOf(core.address)).to.equal(toUnit("9950", 6)) // + collateral - fee = 0 + 10000 - 50
           expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("999900", 6)) // unchanged
           {
-            const marketInfo1 = await core.marketState(long1)
-            expect(marketInfo1.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
-            const marketInfo2 = await core.marketState(short1)
-            expect(marketInfo2.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
+            const state = await pool1.marketState(long1)
+            expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
           }
-          expect(await pool1.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+          {
+            const state = await pool1.marketState(short1)
+            expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
+          }
           {
             const collaterals = await core.listAccountCollaterals(positionId)
-            expect(collaterals.collateralAddresses[0]).to.equal(usdc.address)
-            expect(collaterals.collateralAmounts[0]).to.equal(toWei("9950")) // collateral - fee = 10000 - 50
+            expect(collaterals[0].collateralAddress).to.equal(usdc.address)
+            expect(collaterals[0].collateralAmount).to.equal(toWei("9950")) // collateral - fee = 10000 - 50
             const positions = await core.listAccountPositions(positionId)
-            expect(positions.marketIds[0]).to.equal(long1)
-            expect(positions.positions[0].size).to.equal(toWei("1"))
-            expect(positions.positions[0].entryPrice).to.equal(toWei("50000"))
-            expect(positions.positions[0].entryBorrowing).to.equal(toWei("0"))
+            expect(positions[0].marketId).to.equal(long1)
+            expect(positions[0].pools[0].size).to.equal(toWei("1"))
+            expect(positions[0].pools[0].entryPrice).to.equal(toWei("50000"))
+            expect(positions[0].pools[0].entryBorrowing).to.equal(toWei("0"))
           }
           {
             const collateralsAndPositions = await core.listAccountCollateralsAndPositionsOf(trader1.address)
             expect(collateralsAndPositions.length).to.equal(1)
             expect(collateralsAndPositions[0].positionId).to.equal(positionId)
-            expect(collateralsAndPositions[0].collateralAddresses[0]).to.equal(usdc.address)
-            expect(collateralsAndPositions[0].collateralAmounts[0]).to.equal(toWei("9950"))
-            expect(collateralsAndPositions[0].positions[0].size).to.equal(toWei("1"))
-            expect(collateralsAndPositions[0].positions[0].entryPrice).to.equal(toWei("50000"))
-            expect(collateralsAndPositions[0].positions[0].entryBorrowing).to.equal(toWei("0"))
+            expect(collateralsAndPositions[0].collaterals[0].collateralAddress).to.equal(usdc.address)
+            expect(collateralsAndPositions[0].collaterals[0].collateralAmount).to.equal(toWei("9950"))
+            expect(collateralsAndPositions[0].positions[0].pools[0].size).to.equal(toWei("1"))
+            expect(collateralsAndPositions[0].positions[0].pools[0].entryPrice).to.equal(toWei("50000"))
+            expect(collateralsAndPositions[0].positions[0].pools[0].entryBorrowing).to.equal(toWei("0"))
           }
           {
-            const longPools = await core.listMarketPools(long1)
-            expect(longPools[0].backedPool).to.equal(pool1.address)
-            expect(longPools[0].totalSize).to.equal(toWei("1"))
-            expect(longPools[0].unpaidBorrowingFeeUsd).to.equal(toWei("0"))
-            expect(longPools[1].backedPool).to.equal(pool2.address)
-            expect(longPools[1].totalSize).to.equal(toWei("0"))
-            expect(longPools[1].unpaidBorrowingFeeUsd).to.equal(toWei("0"))
-            expect(longPools[2].backedPool).to.equal(pool3.address)
-            expect(longPools[2].totalSize).to.equal(toWei("0"))
-            expect(longPools[2].unpaidBorrowingFeeUsd).to.equal(toWei("0"))
-            const longPoolState = await pool1.marketState(long1)
-            expect(longPoolState.isLong).to.equal(true)
-            expect(longPoolState.totalSize).to.equal(toWei("1"))
-            expect(longPoolState.averageEntryPrice).to.equal(toWei("50000"))
+            const state = await pool1.marketState(long1)
+            expect(state.isLong).to.equal(true)
+            expect(state.totalSize).to.equal(toWei("1"))
+            expect(state.averageEntryPrice).to.equal(toWei("50000"))
+            expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
+          }
+          {
+            const state = await pool2.marketState(long1)
+            expect(state.isLong).to.equal(true)
+            expect(state.totalSize).to.equal(toWei("0"))
+            expect(state.averageEntryPrice).to.equal(toWei("0"))
+            expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
+          }
+          {
+            const state = await pool3.marketState(long1)
+            expect(state.isLong).to.equal(true)
+            expect(state.totalSize).to.equal(toWei("0"))
+            expect(state.averageEntryPrice).to.equal(toWei("0"))
+            expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
+          }
+          {
+            expect(await pool1.callStatic.estimatedAumUsd()).to.equal(toWei("999900")) // unchanged
+            expect(await pool2.callStatic.estimatedAumUsd()).to.equal(toWei("999900")) // unchanged
+            expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("999900")) // unchanged
           }
         }
       })
 
-      it("long again, allocate 2 pools", async () => {
+      it("open position cause reserved > aum", async () => {
         const positionId = encodePositionId(trader1.address, 0)
-        await usdc.mint(orderBook.address, toUnit("100000", 6))
+        await usdc.mint(orderBook.address, toUnit("1000000", 6))
         const args = {
           positionId,
           marketId: long1,
-          size: toWei("20"),
+          size: toWei("75"),
           flags: PositionOrderFlags.OpenPosition,
           limitPrice: toWei("50000"),
           tpPrice: "0",
           slPrice: "0",
           expiration: timestampOfTest + 86400 * 2 + 905 + 300,
           tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 300,
-          profitTokenId: 0,
-          tpslProfitTokenId: 0,
           initialLeverage: toWei("100"),
           collateralToken: usdc.address,
-          collateralAmount: toUnit("100000", 6),
+          collateralAmount: toUnit("1000000", 6),
           profitToken: zeroAddress,
           tpslProfitToken: zeroAddress,
         }
         {
           await orderBook.connect(trader1).placePositionOrder(args, refCode)
-          expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // - 10000
-          expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("250", 6)) // unchanged
-          expect(await usdc.balanceOf(core.address)).to.equal(toUnit("9950", 6)) // unchanged
-          expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("999900", 6)) // unchanged
-          expect(await pool1.liquidityBalance()).to.equal(toWei("999900")) // 1000000 - fee
         }
         {
-          // fee = 50000 * 20 * 0.1% = 1000
-          await orderBook.connect(broker).fillPositionOrder(4, [])
-          expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
-          expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("1250", 6)) // + 1000
-          expect(await usdc.balanceOf(core.address)).to.equal(toUnit("108950", 6)) // + collateral - fee = 9950 + 100000 - 1000
-          expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("999900", 6)) // unchanged
-          {
-            const marketInfo1 = await core.marketState(long1)
-            expect(marketInfo1.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
-            const marketInfo2 = await core.marketState(short1)
-            expect(marketInfo2.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
-          }
-          expect(await pool1.liquidityBalance()).to.equal(toWei("999900")) // unchanged
-          {
-            const collaterals = await core.listAccountCollaterals(positionId)
-            expect(collaterals.collateralAddresses[0]).to.equal(usdc.address)
-            expect(collaterals.collateralAmounts[0]).to.equal(toWei("108950")) // collateral - fee = 9950 + 100000 - 1000
-            const positions = await core.listAccountPositions(positionId)
-            expect(positions.marketIds[0]).to.equal(long1)
-            expect(positions.positions[0].size).to.equal(toWei("21"))
-            expect(positions.positions[0].entryPrice).to.equal(toWei("50000"))
-            expect(positions.positions[0].entryBorrowing).to.equal(toWei("0"))
-          }
-          {
-            const collateralsAndPositions = await core.listAccountCollateralsAndPositionsOf(trader1.address)
-            expect(collateralsAndPositions.length).to.equal(1)
-            expect(collateralsAndPositions[0].positionId).to.equal(positionId)
-            expect(collateralsAndPositions[0].collateralAddresses[0]).to.equal(usdc.address)
-            expect(collateralsAndPositions[0].collateralAmounts[0]).to.equal(toWei("108950"))
-            expect(collateralsAndPositions[0].positions[0].size).to.equal(toWei("21"))
-            expect(collateralsAndPositions[0].positions[0].entryPrice).to.equal(toWei("50000"))
-            expect(collateralsAndPositions[0].positions[0].entryBorrowing).to.equal(toWei("0"))
-          }
-          {
-            expect(await pool1.estimatedAumUsd()).to.equal(toWei("1000000"))
-          }
-          {
-            const longPools = await core.listMarketPools(long1)
-            expect(longPools[0].backedPool).to.equal(pool1.address)
-            expect(longPools[0].totalSize).to.equal(toWei("1"))
-            expect(longPools[0].unpaidBorrowingFeeUsd).to.equal(toWei("0"))
-            expect(longPools[1].backedPool).to.equal(pool2.address)
-            expect(longPools[1].totalSize).to.equal(toWei("0"))
-            expect(longPools[1].unpaidBorrowingFeeUsd).to.equal(toWei("0"))
-            expect(longPools[2].backedPool).to.equal(pool3.address)
-            expect(longPools[2].totalSize).to.equal(toWei("0"))
-            expect(longPools[2].unpaidBorrowingFeeUsd).to.equal(toWei("0"))
-            const longPoolState = await pool1.marketState(long1)
-            expect(longPoolState.isLong).to.equal(true)
-            expect(longPoolState.totalSize).to.equal(toWei("1"))
-            expect(longPoolState.averageEntryPrice).to.equal(toWei("50000"))
-          }
+          await expect(orderBook.connect(broker).fillPositionOrder(4, [])).to.revertedWith("ExpBorrow: full")
         }
       })
 
-      it("normal profit", async () => {})
-      it("normal loss", async () => {})
+      describe("the same trader longs again, allocate into 2 pools", () => {
+        beforeEach(async () => {
+          const positionId = encodePositionId(trader1.address, 0)
+          await usdc.mint(orderBook.address, toUnit("100000", 6))
+          const args = {
+            positionId,
+            marketId: long1,
+            size: toWei("20"),
+            flags: PositionOrderFlags.OpenPosition,
+            limitPrice: toWei("51000"),
+            tpPrice: "0",
+            slPrice: "0",
+            expiration: timestampOfTest + 86400 * 2 + 905 + 300,
+            tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 300,
+            initialLeverage: toWei("100"),
+            collateralToken: usdc.address,
+            collateralAmount: toUnit("100000", 6),
+            profitToken: zeroAddress,
+            tpslProfitToken: zeroAddress,
+          }
+          {
+            await orderBook.connect(trader1).placePositionOrder(args, refCode)
+            expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
+            expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("250", 6)) // unchanged
+            expect(await usdc.balanceOf(core.address)).to.equal(toUnit("9950", 6)) // unchanged
+            expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("999900", 6)) // unchanged
+            expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("999900", 6)) // unchanged
+            expect(await btc.balanceOf(pool3.address)).to.equal(toUnit("19.998", 8)) // unchanged
+            expect(await pool1.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+            expect(await pool2.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+            expect(await pool3.liquidityBalance()).to.equal(toWei("19.998")) // unchanged
+          }
+          await core.setMockPrice(long1, toWei("50500"))
+          await core.setMockPrice(short1, toWei("50500"))
+          await core.setMockPrice(a2b(btc.address), toWei("50500"))
+          {
+            // fee = 50500 * 20 * 0.1% = 1010
+            await time.increaseTo(timestampOfTest + 86400 * 2 + 905 + 30 + 30)
+            await orderBook.connect(broker).fillPositionOrder(4, [])
+            expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
+            expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("1260", 6)) // + 1010
+            expect(await usdc.balanceOf(core.address)).to.equal(toUnit("108940", 6)) // + collateral - fee = 9950 + 100000 - 1010
+            expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("999900", 6)) // unchanged
+            expect(await pool1.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+            {
+              const marketInfo1 = await pool1.marketState(long1)
+              expect(marketInfo1.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
+            }
+            {
+              const marketInfo2 = await pool2.marketState(long1)
+              expect(marketInfo2.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
+            }
+            // 10 * 9.4219 * 50500 * 0.80 / 999900 - 7 = -3.1931717
+            // 6 * 11.5781 * 50500 * 0.80 / 999900 - 6 = -3.1931878
+            // 2.2 * 0 - 3
+            {
+              const collaterals = await core.listAccountCollaterals(positionId)
+              expect(collaterals[0].collateralAddress).to.equal(usdc.address)
+              expect(collaterals[0].collateralAmount).to.equal(toWei("108940")) // collateral - fee = 9950 + 100000 - 1010
+              const positions = await core.listAccountPositions(positionId)
+              expect(positions[0].marketId).to.equal(long1)
+              expect(positions[0].pools[0].size).to.equal(toWei("9.4219"))
+              expect(positions[0].pools[0].entryPrice).to.equal(toWei("50446.932147443721542364")) // (50000 * 1 + 50500 * 8.4219) / 9.4219
+              expect(positions[0].pools[0].entryBorrowing).to.equal(toWei("0"))
+              expect(positions[0].pools[1].size).to.equal(toWei("11.5781"))
+              expect(positions[0].pools[1].entryPrice).to.equal(toWei("50500"))
+              expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0"))
+            }
+            {
+              const state = await pool1.marketState(long1)
+              expect(state.isLong).to.equal(true)
+              expect(state.totalSize).to.equal(toWei("9.4219"))
+              expect(state.averageEntryPrice).to.equal(toWei("50446.932147443721542364"))
+            }
+            {
+              const state = await pool2.marketState(long1)
+              expect(state.isLong).to.equal(true)
+              expect(state.totalSize).to.equal(toWei("11.5781"))
+              expect(state.averageEntryPrice).to.equal(toWei("50500"))
+            }
+            {
+              const state = await pool3.marketState(long1)
+              expect(state.isLong).to.equal(true)
+              expect(state.totalSize).to.equal(toWei("0"))
+              expect(state.averageEntryPrice).to.equal(toWei("0"))
+            }
+            {
+              expect(await pool1.callStatic.estimatedAumUsd()).to.equal(toWei("999400")) // 999900 - (50500 - 50446.932147443721542364) * 9.4219
+              expect(await pool2.callStatic.estimatedAumUsd()).to.equal(toWei("999900")) // 999900 - (50500 - 50500) * 11.5781
+              expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("1009899")) // 19.998 * 50500
+            }
+          }
+        })
+
+        it("close half (profit), close all (profit)", async () => {
+          // close half
+          {
+            const args = {
+              positionId,
+              marketId: long1,
+              size: toWei("10"),
+              flags: PositionOrderFlags.WithdrawAllIfEmpty,
+              limitPrice: toWei("55000"),
+              tpPrice: "0",
+              slPrice: "0",
+              expiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
+              tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
+              initialLeverage: toWei("0"),
+              collateralToken: zeroAddress,
+              collateralAmount: toUnit("0", 6),
+              profitToken: zeroAddress,
+              tpslProfitToken: zeroAddress,
+            }
+            {
+              await orderBook.connect(trader1).placePositionOrder(args, refCode)
+              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
+              expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("1260", 6)) // unchanged
+              expect(await usdc.balanceOf(core.address)).to.equal(toUnit("108940", 6)) // unchanged
+              expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("999900", 6)) // unchanged
+              expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("999900", 6)) // unchanged
+              expect(await pool1.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+              expect(await pool2.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+            }
+            await time.increaseTo(timestampOfTest + 86400 * 2 + 905 + 86400 * 7)
+            await expect(orderBook.connect(broker).fillPositionOrder(5, [])).to.revertedWith("limit")
+            await core.setMockPrice(long1, toWei("60000"))
+            await core.setMockPrice(short1, toWei("60000"))
+            await core.setMockPrice(a2b(btc.address), toWei("60000"))
+            {
+              expect(await pool1.callStatic.estimatedAumUsd()).to.equal(toWei("909891.95")) // 999900 - (60000 - 50446.932147443721542364) * 9.4219
+              expect(await pool2.callStatic.estimatedAumUsd()).to.equal(toWei("889908.05")) // 999900 - (60000 - 50500) * 11.5781
+              expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("1199880")) // 19.998 * 60000
+            }
+            {
+              // fr1 0.10 + exp(10 * 9.4219 * 60000 * 0.80 / 999900 - 7) = 0.183991833628738928
+              // fr2 0.10 + exp(6 * 11.5781 * 60000 * 0.80 / 999900 - 6) = 0.169587263966612892
+              // acc1 0.183991833628738928 * 7 / 365 = 0.003528610507948417
+              // acc2 0.169587263966612892 * 7 / 365 = 0.003252358487030932
+              // borrowing 60000 * 9.4219 * 0.003528610507948417 + 60000 * 11.5781 * 0.003252358487030932 = 4254.140828611921435290
+              // position fee = 60000 * 10 * 0.1% = 600
+              // fees = 600 + 4254.140828611921435290 = 4854.140828611921435290
+              // Δsize1 =  9.4219 / (9.4219 + 11.5781) * 10 = 4.4866
+              // Δsize2 = 11.5781 / (9.4219 + 11.5781) * 10 = 5.5134
+              // pnl1 = (60000 - 50446.932147443721542364) * 4.4866 = 42860.794227278998928029
+              // pnl2 = (60000 - 50500) * 5.5134 = 52377.3
+              const tx = await orderBook.connect(broker).fillPositionOrder(5, [])
+              // {
+              //   for (const i of (await (await tx).wait()).events!) {
+              //     if (i.topics[0] === "6a95c0d2b601b7c5cc8e4377c4f827c7a02e15e0f30f3e4e6e7ff6253ddbe72d") {
+              //       console.log(core.interface.parseLog(i))
+              //     }
+              //   }
+              // }
+              await expect(tx).to.emit(pool1, "UpdateMarketBorrowing").withArgs(
+                long1,
+                toWei("0.183991833628738928"), // apy
+                toWei("0.003528610507948417") // acc
+              )
+              await expect(tx).to.emit(pool2, "UpdateMarketBorrowing").withArgs(
+                long1,
+                toWei("0.169587263966612892"), // apy
+                toWei("0.003252358487030932") // acc
+              )
+              await expect(tx)
+                .to.emit(core, "ClosePosition")
+                .withArgs(
+                  trader1.address,
+                  positionId,
+                  long1,
+                  true, // isLong
+                  toWei("10"), // size
+                  toWei("60000"), // tradingPrice
+                  [pool1.address, pool2.address], // backedPools
+                  [toWei("4.4866"), toWei("5.5134")], // allocations
+                  [toWei("4.9353"), toWei("6.0647")], // newSizes
+                  [toWei("50446.932147443721542364"), toWei("50500")], // newEntryPrices
+                  [true, true], // hasProfits
+                  [toWei("42860.794227278998928029"), toWei("52377.3")], // poolPnlUsds
+                  toWei("600"), // positionFeeUsd
+                  toWei("4254.140828611921435290"), // borrowingFeeUsd
+                  [usdc.address],
+                  [toWei("199323.953398388078564710")] // collateral + pnl - fee = 108940 + 42860.794227278998928029 + 52377.3 - 600 - 4254.140828611921435290
+                )
+              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
+              expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("6114.140828", 6)) // 1260 + 4854.140828
+              expect(await usdc.balanceOf(core.address)).to.equal(toUnit("199323.953399", 6)) // the same as collateral
+              expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("957039.205773", 6)) // 999900 - 42860.794227
+              expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("947522.7", 6)) // 999900 - 52377.300000
+              expect(await btc.balanceOf(pool3.address)).to.equal(toUnit("19.998", 8)) // unchanged
+              expect(await pool1.liquidityBalance()).to.equal(toWei("957039.205773")) // the same as balanceOf
+              expect(await pool2.liquidityBalance()).to.equal(toWei("947522.7")) // the same as balanceOf
+              expect(await pool3.liquidityBalance()).to.equal(toWei("19.998")) // unchanged
+              {
+                const collaterals = await core.listAccountCollaterals(positionId)
+                expect(collaterals[0].collateralAddress).to.equal(usdc.address)
+                expect(collaterals[0].collateralAmount).to.equal(toWei("199323.953398388078564710"))
+                const positions = await core.listAccountPositions(positionId)
+                expect(positions[0].marketId).to.equal(long1)
+                expect(positions[0].pools[0].size).to.equal(toWei("4.9353"))
+                expect(positions[0].pools[0].entryPrice).to.equal(toWei("50446.932147443721542364"))
+                expect(positions[0].pools[0].entryBorrowing).to.equal(toWei("0.003528610507948417"))
+                expect(positions[0].pools[1].size).to.equal(toWei("6.0647"))
+                expect(positions[0].pools[1].entryPrice).to.equal(toWei("50500"))
+                expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0.003252358487030932"))
+              }
+              {
+                const state = await pool1.marketState(long1)
+                expect(state.isLong).to.equal(true)
+                expect(state.totalSize).to.equal(toWei("4.9353"))
+                expect(state.averageEntryPrice).to.equal(toWei("50446.932147443721542364"))
+                expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0.003528610507948417"))
+              }
+              {
+                const state = await pool2.marketState(long1)
+                expect(state.isLong).to.equal(true)
+                expect(state.totalSize).to.equal(toWei("6.0647"))
+                expect(state.averageEntryPrice).to.equal(toWei("50500"))
+                expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0.003252358487030932"))
+              }
+              {
+                const state = await pool3.marketState(long1)
+                expect(state.isLong).to.equal(true)
+                expect(state.totalSize).to.equal(toWei("0"))
+                expect(state.averageEntryPrice).to.equal(toWei("0"))
+                expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0.002872628708424787"))
+              }
+              {
+                expect(await pool1.callStatic.estimatedAumUsd()).to.equal(toWei("909891.950000278998928030")) // 957039.205773 - (60000 - 50446.932147443721542364) * 4.9353
+                expect(await pool2.callStatic.estimatedAumUsd()).to.equal(toWei("889908.05")) // 947522.7 - (60000 - 50500) * 6.0647
+                expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("1199880")) // 19.998 * 60000
+              }
+            }
+          }
+          // close all
+          {
+            const args = {
+              positionId,
+              marketId: long1,
+              size: toWei("11"),
+              flags: PositionOrderFlags.WithdrawAllIfEmpty,
+              limitPrice: toWei("55000"),
+              tpPrice: "0",
+              slPrice: "0",
+              expiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
+              tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
+              initialLeverage: toWei("0"),
+              collateralToken: zeroAddress,
+              collateralAmount: toUnit("0", 6),
+              profitToken: zeroAddress,
+              tpslProfitToken: zeroAddress,
+            }
+            {
+              await orderBook.connect(trader1).placePositionOrder(args, refCode)
+              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
+              expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("6114.140828", 6)) // unchanged
+              expect(await usdc.balanceOf(core.address)).to.equal(toUnit("199323.953399", 6)) // unchanged
+              expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("957039.205773", 6)) // unchanged
+              expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("947522.7", 6)) // unchanged
+              expect(await pool1.liquidityBalance()).to.equal(toWei("957039.205773")) // unchanged
+              expect(await pool2.liquidityBalance()).to.equal(toWei("947522.7")) // unchanged
+            }
+            {
+              // borrowing = 0
+              // position fee = 60000 * 11 * 0.1% = 660
+              // fees = 660
+              // pnl1 = (60000 - 50446.932147443721542364) * 4.9353 = 47147.255772721001071970
+              // pnl2 = (60000 - 50500) * 6.0647 = 57614.65
+              // should auto withdraw oldCollateral + pnl - fee = 199323.953398388078564710 + 47147.255772721001071970 + 57614.65 - 660 = 303425.85917110907963668
+              await orderBook.connect(broker).fillPositionOrder(6, [])
+              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("393425.859170", 6)) // 90000 + 303425.85917110907963668
+              expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("6774.140828", 6)) // 6114.140828 + 660
+              expect(await usdc.balanceOf(core.address)).to.be.closeTo(toWei("0"), toWei("0.0000001")) // near 0 is ok
+              expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("909891.950001", 6)) // 957039.205773 - 47147.255772721001071970
+              expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("889908.05", 6)) // 947522.7 - 57614.65
+              expect(await btc.balanceOf(pool3.address)).to.equal(toUnit("19.998", 8)) // unchanged
+              expect(await pool1.liquidityBalance()).to.equal(toWei("909891.950001"))
+              expect(await pool2.liquidityBalance()).to.equal(toWei("889908.05"))
+              expect(await pool3.liquidityBalance()).to.equal(toWei("19.998")) // unchanged
+              {
+                const collaterals = await core.listAccountCollaterals(positionId)
+                expect(collaterals.length).to.equal(0)
+                const positions = await core.listAccountPositions(positionId)
+                expect(positions.length).to.equal(0)
+              }
+              {
+                const state = await pool1.marketState(long1)
+                expect(state.isLong).to.equal(true)
+                expect(state.totalSize).to.equal(toWei("0"))
+                expect(state.averageEntryPrice).to.equal(toWei("0"))
+                expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0.003528610507948417"))
+              }
+              {
+                const state = await pool2.marketState(long1)
+                expect(state.isLong).to.equal(true)
+                expect(state.totalSize).to.equal(toWei("0"))
+                expect(state.averageEntryPrice).to.equal(toWei("0"))
+                expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0.003252358487030932"))
+              }
+              {
+                expect(await pool1.callStatic.estimatedAumUsd()).to.equal(toWei("909891.950001")) // the same as liquidityBalance
+                expect(await pool2.callStatic.estimatedAumUsd()).to.equal(toWei("889908.05")) // the same as liquidityBalance
+                expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("1199880"))
+              }
+            }
+          }
+        })
+
+        it("close half (loss), close all (profit+loss)", async () => {
+          // close half
+          {
+            const args = {
+              positionId,
+              marketId: long1,
+              size: toWei("10"),
+              flags: PositionOrderFlags.WithdrawAllIfEmpty,
+              limitPrice: toWei("50000"),
+              tpPrice: "0",
+              slPrice: "0",
+              expiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
+              tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
+              initialLeverage: toWei("0"),
+              collateralToken: zeroAddress,
+              collateralAmount: toUnit("0", 6),
+              profitToken: zeroAddress,
+              tpslProfitToken: zeroAddress,
+            }
+            {
+              await orderBook.connect(trader1).placePositionOrder(args, refCode)
+              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
+              expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("1260", 6)) // unchanged
+              expect(await usdc.balanceOf(core.address)).to.equal(toUnit("108940", 6)) // unchanged
+              expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("999900", 6)) // unchanged
+              expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("999900", 6)) // unchanged
+              expect(await pool1.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+              expect(await pool2.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+            }
+            await time.increaseTo(timestampOfTest + 86400 * 2 + 905 + 86400 * 7)
+            await core.setMockPrice(long1, toWei("49000"))
+            await core.setMockPrice(short1, toWei("49000"))
+            await core.setMockPrice(a2b(btc.address), toWei("49000"))
+            await expect(orderBook.connect(broker).fillPositionOrder(5, [])).to.revertedWith("limit")
+            await core.setMockPrice(long1, toWei("50000"))
+            await core.setMockPrice(short1, toWei("50000"))
+            await core.setMockPrice(a2b(btc.address), toWei("50000"))
+            {
+              expect(await pool1.callStatic.estimatedAumUsd()).to.equal(toWei("1004110.949999999999999999")) // 999900 - (50000 - 50446.932147443721542364) * 9.4219
+              expect(await pool2.callStatic.estimatedAumUsd()).to.equal(toWei("1005689.050000000000000000")) // 999900 - (50000 - 50500) * 11.5781
+              expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("999900")) // 19.998 * 50000
+            }
+            {
+              // fr1 0.10 + exp(10 * 9.4219 * 50000 * 0.80 / 999900 - 7) = 0.139523371982098885
+              // fr2 0.10 + exp(6 * 11.5781 * 50000 * 0.80 / 999900 - 6) = 0.139915997411459058
+              // acc1 0.139523371982098885 * 7 / 365 = 0.002675790695547101
+              // acc2 0.139915997411459058 * 7 / 365 = 0.002683320498301954
+              // borrowing 50000 * 9.4219 * 0.002675790695547101 + 50000 * 11.5781 * 0.002683320498301954 = 2813.939270788254225965
+              // position fee = 50000 * 10 * 0.1% = 500
+              // fees = 500 + 2813.939270788254225965 = 3213.939270788254225965
+              // Δsize1 =  9.4219 / (9.4219 + 11.5781) * 10 = 4.4866
+              // Δsize2 = 11.5781 / (9.4219 + 11.5781) * 10 = 5.5134
+              // pnl1 = (50000 - 50446.932147443721542364) * 4.4866 = -2005.205772721001071970
+              // pnl2 = (50000 - 50500) * 5.5134 = -2756.7
+              const tx = await orderBook.connect(broker).fillPositionOrder(5, [])
+              // {
+              //   for (const i of (await (await tx).wait()).events!) {
+              //     if (i.topics[0] === "6a95c0d2b601b7c5cc8e4377c4f827c7a02e15e0f30f3e4e6e7ff6253ddbe72d") {
+              //       console.log(core.interface.parseLog(i))
+              //     }
+              //   }
+              // }
+              await expect(tx).to.emit(pool1, "UpdateMarketBorrowing").withArgs(
+                long1,
+                toWei("0.139523371982098885"), // apy
+                toWei("0.002675790695547101") // acc
+              )
+              await expect(tx).to.emit(pool2, "UpdateMarketBorrowing").withArgs(
+                long1,
+                toWei("0.139915997411459058"), // apy
+                toWei("0.002683320498301954") // acc
+              )
+              await expect(tx)
+                .to.emit(core, "ClosePosition")
+                .withArgs(
+                  trader1.address,
+                  positionId,
+                  long1,
+                  true, // isLong
+                  toWei("10"), // size
+                  toWei("50000"), // tradingPrice
+                  [pool1.address, pool2.address], // backedPools
+                  [toWei("4.4866"), toWei("5.5134")], // allocations
+                  [toWei("4.9353"), toWei("6.0647")], // newSizes
+                  [toWei("50446.932147443721542364"), toWei("50500")], // newEntryPrices
+                  [false, false], // hasProfits
+                  [toWei("2005.205772721001071970"), toWei("2756.7")], // poolPnlUsds
+                  toWei("500"), // positionFeeUsd
+                  toWei("2813.939270788254225965"), // borrowingFeeUsd
+                  [usdc.address],
+                  [toWei("100864.154956490744702065")] // collateral + pnl - fee = 108940 - 2005.205772721001071970 - 2756.7 - 500 - 2813.939270788254225965
+                )
+              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
+              expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("4573.939270", 6)) // 1260 + 500 + 2813.939270788254225965
+              expect(await usdc.balanceOf(core.address)).to.equal(toUnit("100864.154958", 6)) // the same as collateral
+              expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("1001905.205772", 6)) // 999900 + 2005.205772721001071970
+              expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("1002656.7", 6)) // 999900 + 2756.7
+              expect(await btc.balanceOf(pool3.address)).to.equal(toUnit("19.998", 8)) // unchanged
+              expect(await pool1.liquidityBalance()).to.equal(toWei("1001905.205772")) // the same as balanceOf
+              expect(await pool2.liquidityBalance()).to.equal(toWei("1002656.7")) // the same as balanceOf
+              expect(await pool3.liquidityBalance()).to.equal(toWei("19.998")) // unchanged
+              {
+                const collaterals = await core.listAccountCollaterals(positionId)
+                expect(collaterals[0].collateralAddress).to.equal(usdc.address)
+                expect(collaterals[0].collateralAmount).to.equal(toWei("100864.154956490744702065"))
+                const positions = await core.listAccountPositions(positionId)
+                expect(positions[0].marketId).to.equal(long1)
+                expect(positions[0].pools[0].size).to.equal(toWei("4.9353"))
+                expect(positions[0].pools[0].entryPrice).to.equal(toWei("50446.932147443721542364"))
+                expect(positions[0].pools[0].entryBorrowing).to.equal(toWei("0.002675790695547101"))
+                expect(positions[0].pools[1].size).to.equal(toWei("6.0647"))
+                expect(positions[0].pools[1].entryPrice).to.equal(toWei("50500"))
+                expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0.002683320498301954"))
+              }
+              {
+                const state = await pool1.marketState(long1)
+                expect(state.isLong).to.equal(true)
+                expect(state.totalSize).to.equal(toWei("4.9353"))
+                expect(state.averageEntryPrice).to.equal(toWei("50446.932147443721542364"))
+                expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0.002675790695547101"))
+              }
+              {
+                const state = await pool2.marketState(long1)
+                expect(state.isLong).to.equal(true)
+                expect(state.totalSize).to.equal(toWei("6.0647"))
+                expect(state.averageEntryPrice).to.equal(toWei("50500"))
+                expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0.002683320498301954"))
+              }
+              {
+                const state = await pool3.marketState(long1)
+                expect(state.isLong).to.equal(true)
+                expect(state.totalSize).to.equal(toWei("0"))
+                expect(state.averageEntryPrice).to.equal(toWei("0"))
+                expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0.002872628708424787"))
+              }
+              {
+                expect(await pool1.callStatic.estimatedAumUsd()).to.equal(toWei("1004110.949999278998928029")) // 1001905.205772 - (50000 - 50446.932147443721542364) * 4.9353
+                expect(await pool2.callStatic.estimatedAumUsd()).to.equal(toWei("1005689.05")) // 1002656.7 - (50000 - 50500) * 6.0647
+                expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("999900")) // 19.998 * 50000
+              }
+            }
+          }
+          // close all
+          {
+            const args = {
+              positionId,
+              marketId: long1,
+              size: toWei("11"),
+              flags: PositionOrderFlags.WithdrawAllIfEmpty,
+              limitPrice: toWei("50473"),
+              tpPrice: "0",
+              slPrice: "0",
+              expiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
+              tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
+              initialLeverage: toWei("0"),
+              collateralToken: zeroAddress,
+              collateralAmount: toUnit("0", 6),
+              profitToken: zeroAddress,
+              tpslProfitToken: zeroAddress,
+            }
+            {
+              await orderBook.connect(trader1).placePositionOrder(args, refCode)
+              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
+              expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("4573.939270", 6)) // unchanged
+              expect(await usdc.balanceOf(core.address)).to.equal(toUnit("100864.154958", 6)) // unchanged
+              expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("1001905.205772", 6)) // unchanged
+              expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("1002656.7", 6)) // unchanged
+              expect(await pool1.liquidityBalance()).to.equal(toWei("1001905.205772")) // unchanged
+              expect(await pool2.liquidityBalance()).to.equal(toWei("1002656.7")) // unchanged
+            }
+            await core.setMockPrice(long1, toWei("50473"))
+            await core.setMockPrice(short1, toWei("50473"))
+            await core.setMockPrice(a2b(btc.address), toWei("50473"))
+            {
+              // borrowing = 0
+              // position fee = 50473 * 11 * 0.1% = 660
+              // fees = 555.203
+              // pnl1 = (50473 - 50446.932147443721542364) * 4.9353 = 128.652672721001071970
+              // pnl2 = (50473 - 50500) * 6.0647 = -163.7469
+              // should auto withdraw oldCollateral + pnl - fee = 100864.154956490744702065 + 128.652672721001071970 -163.7469 - 555.203 = 100273.857729211745774035
+              await orderBook.connect(broker).fillPositionOrder(6, [])
+              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("190273.857728", 6)) // 90000 + 100273.857729211745774035
+              expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("5129.14227", 6)) // 4573.939270 + 555.203
+              expect(await usdc.balanceOf(core.address)).to.be.closeTo(toWei("0"), toWei("0.0000001")) // near 0 is ok
+              expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("1001776.553100", 6)) // 1001905.205772 - 128.652672721001071970
+              expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("1002820.4469", 6)) // 1002656.7 + 163.7469
+              expect(await btc.balanceOf(pool3.address)).to.equal(toUnit("19.998", 8)) // unchanged
+              expect(await pool1.liquidityBalance()).to.equal(toWei("1001776.553100"))
+              expect(await pool2.liquidityBalance()).to.equal(toWei("1002820.4469"))
+              expect(await pool3.liquidityBalance()).to.equal(toWei("19.998")) // unchanged
+              {
+                const collaterals = await core.listAccountCollaterals(positionId)
+                expect(collaterals.length).to.equal(0)
+                const positions = await core.listAccountPositions(positionId)
+                expect(positions.length).to.equal(0)
+              }
+              {
+                const state = await pool1.marketState(long1)
+                expect(state.isLong).to.equal(true)
+                expect(state.totalSize).to.equal(toWei("0"))
+                expect(state.averageEntryPrice).to.equal(toWei("0"))
+                expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0.002675790695547101"))
+              }
+              {
+                const state = await pool2.marketState(long1)
+                expect(state.isLong).to.equal(true)
+                expect(state.totalSize).to.equal(toWei("0"))
+                expect(state.averageEntryPrice).to.equal(toWei("0"))
+                expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0.002683320498301954"))
+              }
+              {
+                expect(await pool1.callStatic.estimatedAumUsd()).to.equal(toWei("1001776.553100")) // the same as liquidityBalance
+                expect(await pool2.callStatic.estimatedAumUsd()).to.equal(toWei("1002820.4469")) // the same as liquidityBalance
+                expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("1009359.054")) // 19.998 * 50473
+              }
+            }
+          }
+        })
+      })
+
+      describe("another trader longs again, allocate into 2 pools", () => {
+        beforeEach(async () => {
+          const positionId = encodePositionId(trader2.address, 0)
+          await usdc.mint(orderBook.address, toUnit("100000", 6))
+          const args = {
+            positionId,
+            marketId: long1,
+            size: toWei("20"),
+            flags: PositionOrderFlags.OpenPosition,
+            limitPrice: toWei("51000"),
+            tpPrice: "0",
+            slPrice: "0",
+            expiration: timestampOfTest + 86400 * 2 + 905 + 300,
+            tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 300,
+            initialLeverage: toWei("100"),
+            collateralToken: usdc.address,
+            collateralAmount: toUnit("100000", 6),
+            profitToken: zeroAddress,
+            tpslProfitToken: zeroAddress,
+          }
+          {
+            await orderBook.connect(trader2).placePositionOrder(args, refCode)
+            expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
+            expect(await usdc.balanceOf(trader2.address)).to.equal(toUnit("100000", 6)) // unchanged
+            expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("250", 6)) // unchanged
+            expect(await usdc.balanceOf(core.address)).to.equal(toUnit("9950", 6)) // unchanged
+            expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("999900", 6)) // unchanged
+            expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("999900", 6)) // unchanged
+            expect(await btc.balanceOf(pool3.address)).to.equal(toUnit("19.998", 8)) // unchanged
+            expect(await pool1.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+            expect(await pool2.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+            expect(await pool3.liquidityBalance()).to.equal(toWei("19.998")) // unchanged
+          }
+          await core.setMockPrice(long1, toWei("50500"))
+          await core.setMockPrice(short1, toWei("50500"))
+          await core.setMockPrice(a2b(btc.address), toWei("50500"))
+          {
+            // fee = 50500 * 20 * 0.1% = 1010
+            await time.increaseTo(timestampOfTest + 86400 * 2 + 905 + 30 + 30)
+            await orderBook.connect(broker).fillPositionOrder(4, [])
+            expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
+            expect(await usdc.balanceOf(trader2.address)).to.equal(toUnit("100000", 6)) // unchanged
+            expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("1260", 6)) // + 1010
+            expect(await usdc.balanceOf(core.address)).to.equal(toUnit("108940", 6)) // + collateral - fee = 9950 + 100000 - 1010
+            expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("999900", 6)) // unchanged
+            expect(await pool1.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+            {
+              const marketInfo1 = await pool1.marketState(long1)
+              expect(marketInfo1.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
+            }
+            {
+              const marketInfo2 = await pool2.marketState(long1)
+              expect(marketInfo2.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
+            }
+            // 10 * 9.4219 * 50500 * 0.80 / 999900 - 7 = -3.1931717
+            // 6 * 11.5781 * 50500 * 0.80 / 999900 - 6 = -3.1931878
+            // 2.2 * 0 - 3
+            {
+              const collaterals = await core.listAccountCollaterals(positionId)
+              expect(collaterals[0].collateralAddress).to.equal(usdc.address)
+              expect(collaterals[0].collateralAmount).to.equal(toWei("98990")) // collateral - fee = 0 + 100000 - 1010
+              const positions = await core.listAccountPositions(positionId)
+              expect(positions[0].marketId).to.equal(long1)
+              expect(positions[0].pools[0].size).to.equal(toWei("8.4219"))
+              expect(positions[0].pools[0].entryPrice).to.equal(toWei("50500"))
+              expect(positions[0].pools[0].entryBorrowing).to.equal(toWei("0"))
+              expect(positions[0].pools[1].size).to.equal(toWei("11.5781"))
+              expect(positions[0].pools[1].entryPrice).to.equal(toWei("50500"))
+              expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0"))
+            }
+            {
+              const state = await pool1.marketState(long1)
+              expect(state.isLong).to.equal(true)
+              expect(state.totalSize).to.equal(toWei("9.4219"))
+              expect(state.averageEntryPrice).to.equal(toWei("50446.932147443721542364"))
+            }
+            {
+              const state = await pool2.marketState(long1)
+              expect(state.isLong).to.equal(true)
+              expect(state.totalSize).to.equal(toWei("11.5781"))
+              expect(state.averageEntryPrice).to.equal(toWei("50500"))
+            }
+            {
+              const state = await pool3.marketState(long1)
+              expect(state.isLong).to.equal(true)
+              expect(state.totalSize).to.equal(toWei("0"))
+              expect(state.averageEntryPrice).to.equal(toWei("0"))
+            }
+            {
+              expect(await pool1.callStatic.estimatedAumUsd()).to.equal(toWei("999400")) // 999900 - (50500 - 50446.932147443721542364) * 9.4219
+              expect(await pool2.callStatic.estimatedAumUsd()).to.equal(toWei("999900")) // 999900 - (50500 - 50500) * 11.5781
+              expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("1009899")) // 19.998 * 50500
+            }
+          }
+        })
+
+        it("close, profit", async () => {
+          // trader1 close
+          {
+            const positionId = encodePositionId(trader1.address, 0)
+            const args = {
+              positionId,
+              marketId: long1,
+              size: toWei("1"),
+              flags: PositionOrderFlags.WithdrawAllIfEmpty,
+              limitPrice: toWei("55000"),
+              tpPrice: "0",
+              slPrice: "0",
+              expiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
+              tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
+              initialLeverage: toWei("0"),
+              collateralToken: zeroAddress,
+              collateralAmount: toUnit("0", 6),
+              profitToken: zeroAddress,
+              tpslProfitToken: zeroAddress,
+            }
+            {
+              await orderBook.connect(trader1).placePositionOrder(args, refCode)
+              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
+              expect(await usdc.balanceOf(trader2.address)).to.equal(toUnit("100000", 6)) // unchanged
+              expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("1260", 6)) // unchanged
+              expect(await usdc.balanceOf(core.address)).to.equal(toUnit("108940", 6)) // unchanged
+              expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("999900", 6)) // unchanged
+              expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("999900", 6)) // unchanged
+              expect(await pool1.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+              expect(await pool2.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+            }
+            await time.increaseTo(timestampOfTest + 86400 * 2 + 905 + 86400 * 7)
+            await expect(orderBook.connect(broker).fillPositionOrder(5, [])).to.revertedWith("limit")
+            await core.setMockPrice(long1, toWei("60000"))
+            await core.setMockPrice(short1, toWei("60000"))
+            await core.setMockPrice(a2b(btc.address), toWei("60000"))
+            {
+              expect(await pool1.callStatic.estimatedAumUsd()).to.equal(toWei("909891.95")) // 999900 - (60000 - 50446.932147443721542364) * 9.4219
+              expect(await pool2.callStatic.estimatedAumUsd()).to.equal(toWei("889908.05")) // 999900 - (60000 - 50500) * 11.5781
+              expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("1199880")) // 19.998 * 60000
+            }
+            {
+              // fr1 0.10 + exp(10 * 9.4219 * 60000 * 0.80 / 999900 - 7) = 0.183991833628738928
+              // fr2 0.10 + exp(6 * 11.5781 * 60000 * 0.80 / 999900 - 6) = 0.169587263966612892
+              // acc1 0.183991833628738928 * 7 / 365 = 0.003528610507948417
+              // acc2 0.169587263966612892 * 7 / 365 = 0.003252358487030932
+              // borrowing 60000 * 1 * 0.003528610507948417 + 60000 * 0 * 0.003252358487030932 = 211.71663047690502
+              // position fee = 60000 * 1 * 0.1% = 60
+              // fees = 60 + 211.71663047690502 = 271.71663047690502
+              // Δsize1 = 1
+              // Δsize2 = 0
+              // pnl1 = (60000 - 50000) * 1 = 10000
+              const tx = await orderBook.connect(broker).fillPositionOrder(5, [])
+              await expect(tx).to.emit(pool1, "UpdateMarketBorrowing").withArgs(
+                long1,
+                toWei("0.183991833628738928"), // apy
+                toWei("0.003528610507948417") // acc
+              )
+              await expect(tx).to.emit(pool2, "UpdateMarketBorrowing").withArgs(
+                long1,
+                toWei("0.169587263966612892"), // apy
+                toWei("0.003252358487030932") // acc
+              )
+              await expect(tx)
+                .to.emit(core, "ClosePosition")
+                .withArgs(
+                  trader1.address,
+                  positionId,
+                  long1,
+                  true, // isLong
+                  toWei("1"), // size
+                  toWei("60000"), // tradingPrice
+                  [pool1.address, pool2.address], // backedPools
+                  [toWei("1"), toWei("0")], // allocations
+                  [toWei("0"), toWei("0")], // newSizes
+                  [toWei("0"), toWei("0")], // newEntryPrices
+                  [true, false], // hasProfits
+                  [toWei("10000"), toWei("0")], // poolPnlUsds
+                  toWei("60"), // positionFeeUsd
+                  toWei("211.71663047690502"), // borrowingFeeUsd
+                  [usdc.address],
+                  [toWei("19678.28336952309498")] // collateral + pnl - fee = 9950 + 10000 - 60 - 211.71663047690502
+                )
+              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("109678.283369", 6)) // 90000 + collateral
+              expect(await usdc.balanceOf(trader2.address)).to.equal(toUnit("100000", 6)) // unchanged
+              expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("1531.716630", 6)) // 1260 + 60 + 211.71663047690502
+              expect(await usdc.balanceOf(core.address)).to.equal(toUnit("98990.000001", 6)) // trader1 = 0, trader2 = 98990
+              expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("989900", 6)) // 999900 - 10000
+              expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("999900", 6)) // 999900 - 0
+              expect(await btc.balanceOf(pool3.address)).to.equal(toUnit("19.998", 8)) // unchanged
+              expect(await pool1.liquidityBalance()).to.equal(toWei("989900")) // the same as balanceOf
+              expect(await pool2.liquidityBalance()).to.equal(toWei("999900")) // the same as balanceOf
+              expect(await pool3.liquidityBalance()).to.equal(toWei("19.998")) // unchanged
+              {
+                const collaterals = await core.listAccountCollaterals(positionId)
+                expect(collaterals.length).to.equal(0)
+                const positions = await core.listAccountPositions(positionId)
+                expect(positions.length).to.equal(0)
+              }
+              {
+                const state = await pool1.marketState(long1)
+                expect(state.isLong).to.equal(true)
+                expect(state.totalSize).to.equal(toWei("8.4219"))
+                expect(state.averageEntryPrice).to.equal(toWei("50499.999999999999999999"))
+                expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0.003528610507948417"))
+              }
+              {
+                const state = await pool2.marketState(long1)
+                expect(state.isLong).to.equal(true)
+                expect(state.totalSize).to.equal(toWei("11.5781"))
+                expect(state.averageEntryPrice).to.equal(toWei("50500"))
+                expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0.003252358487030932"))
+              }
+              {
+                const state = await pool3.marketState(long1)
+                expect(state.isLong).to.equal(true)
+                expect(state.totalSize).to.equal(toWei("0"))
+                expect(state.averageEntryPrice).to.equal(toWei("0"))
+                expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0.002872628708424787"))
+              }
+              {
+                expect(await pool1.callStatic.estimatedAumUsd()).to.equal(toWei("909891.949999999999999992")) // 989900 - (60000 - 50499.999999999999999999) * 8.4219
+                expect(await pool2.callStatic.estimatedAumUsd()).to.equal(toWei("889908.05")) // 999900 - (60000 - 50500) * 11.5781
+                expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("1199880")) // 19.998 * 60000
+              }
+            }
+          }
+          // trader2 close
+          {
+            const positionId = encodePositionId(trader2.address, 0)
+            const args = {
+              positionId,
+              marketId: long1,
+              size: toWei("20"),
+              flags: PositionOrderFlags.WithdrawAllIfEmpty,
+              limitPrice: toWei("55000"),
+              tpPrice: "0",
+              slPrice: "0",
+              expiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
+              tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
+              initialLeverage: toWei("0"),
+              collateralToken: zeroAddress,
+              collateralAmount: toUnit("0", 6),
+              profitToken: zeroAddress,
+              tpslProfitToken: zeroAddress,
+            }
+            {
+              await orderBook.connect(trader2).placePositionOrder(args, refCode)
+              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("109678.283369", 6)) // unchanged
+              expect(await usdc.balanceOf(trader2.address)).to.equal(toUnit("100000", 6)) // unchanged
+              expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("1531.716630", 6)) // unchanged
+              expect(await usdc.balanceOf(core.address)).to.equal(toUnit("98990.000001", 6)) // unchanged
+              expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("989900", 6)) // unchanged
+              expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("999900", 6)) // unchanged
+              expect(await pool1.liquidityBalance()).to.equal(toWei("989900")) // unchanged
+              expect(await pool2.liquidityBalance()).to.equal(toWei("999900")) // unchanged
+            }
+            {
+              // acc1 0.183991833628738928 * 7 / 365 = 0.003528610507948417
+              // acc2 0.169587263966612892 * 7 / 365 = 0.003252358487030932
+              // borrowing 60000 * 8.4219 * 0.003528610507948417 + 60000 * 11.5781 * 0.003252358487030932 = 4042.42419813501641529
+              // position fee = 60000 * 20 * 0.1% = 1200
+              // pnl1 = (60000 - 50499.999999999999999999) * 8.4219 = 80008.05
+              // pnl2 = (60000 - 50500) * 11.5781 = 109991.95
+              // should auto withdraw oldCollateral + pnl - fee = 98990 + 80008.05 + 109991.95 - 1200 - 4042.42419813501641529 = 283747.575801864983584710
+              await orderBook.connect(broker).fillPositionOrder(6, [])
+              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("109678.283369", 6)) // unchanged
+              expect(await usdc.balanceOf(trader2.address)).to.equal(toUnit("383747.575801", 6)) // 100000 + 283747.575801864983584710
+              expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("6774.140828", 6)) // 1531.716630 + 1200 + 4042.42419813501641529
+              expect(await usdc.balanceOf(core.address)).to.be.closeTo(toWei("0"), toWei("0.0000001")) // near 0 is ok
+              expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("909891.95", 6)) // 989900 - 80008.05
+              expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("889908.05", 6)) // 999900 - 109991.95
+              expect(await btc.balanceOf(pool3.address)).to.equal(toUnit("19.998", 8)) // unchanged
+              expect(await pool1.liquidityBalance()).to.equal(toWei("909891.95"))
+              expect(await pool2.liquidityBalance()).to.equal(toWei("889908.05"))
+              expect(await pool3.liquidityBalance()).to.equal(toWei("19.998")) // unchanged
+              {
+                const collaterals = await core.listAccountCollaterals(positionId)
+                expect(collaterals.length).to.equal(0)
+                const positions = await core.listAccountPositions(positionId)
+                expect(positions.length).to.equal(0)
+              }
+              {
+                const state = await pool1.marketState(long1)
+                expect(state.isLong).to.equal(true)
+                expect(state.totalSize).to.equal(toWei("0"))
+                expect(state.averageEntryPrice).to.equal(toWei("0"))
+                expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0.003528610507948417"))
+              }
+              {
+                const state = await pool2.marketState(long1)
+                expect(state.isLong).to.equal(true)
+                expect(state.totalSize).to.equal(toWei("0"))
+                expect(state.averageEntryPrice).to.equal(toWei("0"))
+                expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0.003252358487030932"))
+              }
+              {
+                expect(await pool1.callStatic.estimatedAumUsd()).to.equal(toWei("909891.95")) // the same as liquidityBalance
+                expect(await pool2.callStatic.estimatedAumUsd()).to.equal(toWei("889908.05")) // the same as liquidityBalance
+                expect(await pool3.callStatic.estimatedAumUsd()).to.equal(toWei("1199880"))
+              }
+            }
+          }
+        })
+      })
 
       // it("TODO: long capped pnl", async () => {
       //     // mlp price should handle capped pnl
@@ -612,8 +1390,6 @@ describe("Trade (normal pools)", () => {
       //       slPrice: "0",
       //       expiration: timestampOfTest + 86400 * 4 + 800,
       //       tpslExpiration: timestampOfTest + 86400 * 4 + 800,
-      //       profitTokenId: 0,
-      //       tpslProfitTokenId: 0,
       //       flags: 0,
       //     }
       //     {
@@ -667,7 +1443,8 @@ describe("Trade (normal pools)", () => {
       //       expect(assetInfo.averageLongPrice).to.equal(toWei("2000"))
       //     }
       //   })
-      //   it("ADL a long position", async () => {
+
+      //   it("TODO: ADL a long position", async () => {
       //     // trigger exit = 3800, trigger roe = (3800 - 2000) / 2000 = 90%
       //     // closing entry value = 2000 * 2 = 4000, maxProfit = 50% = 2000
       //     // pnl = (3501 - 2000) * 2 = 3002 > maxProfit
@@ -727,31 +1504,28 @@ describe("Trade (normal pools)", () => {
       //       expect(assetInfo.averageLongPrice).to.equal(toWei("0"))
       //     }
       //   })
-      //   it("withdraw collateral", async () => {
+
+      //   it("TODO: withdraw collateral", async () => {
       //     // update funding
       //     // funding = skew / alpha * beta = $4000 / 20000 * apy 20% = apy 4%, borrowing = apy 1%
       //     await time.increaseTo(timestampOfTest + 86400 * 2 + 86400)
       //     // withdraw
       //     {
       //       await expect(
-      //         orderBook
-      //           .connect(trader1)
-      //           .placeWithdrawalOrder({
-      //             subAccountId: longAccountId,
-      //             rawAmount: toUnit("0", 6),
-      //             profitTokenId: 0,
-      //             isProfit: false,
-      //           })
+      //         orderBook.connect(trader1).placeWithdrawalOrder({
+      //           subAccountId: longAccountId,
+      //           rawAmount: toUnit("0", 6),
+      //           profitTokenId: 0,
+      //           isProfit: false,
+      //         })
       //       ).to.revertedWith("A=0")
       //       await expect(
-      //         orderBook
-      //           .connect(trader1)
-      //           .placeWithdrawalOrder({
-      //             subAccountId: longAccountId,
-      //             rawAmount: toUnit("1", 6),
-      //             profitTokenId: 0,
-      //             isProfit: false,
-      //           })
+      //         orderBook.connect(trader1).placeWithdrawalOrder({
+      //           subAccountId: longAccountId,
+      //           rawAmount: toUnit("1", 6),
+      //           profitTokenId: 0,
+      //           isProfit: false,
+      //         })
       //       )
       //         .to.emit(orderBook, "NewWithdrawalOrder")
       //         .withArgs(trader1.address, 2, [longAccountId, toUnit("1", 6), 0, false])
@@ -789,115 +1563,263 @@ describe("Trade (normal pools)", () => {
       //       expect(collateralInfo.spotLiquidity).to.equal(toWei("999900")) // unchanged
       //     }
       //   })
-      //   describe("add liquidity on token 2", () => {
-      //     beforeEach(async () => {
-      //       // +liq usdt
-      //       await usdt.connect(lp1).transfer(orderBook.address, toUnit("1000000", 6))
+
+      // describe("TODO: add liquidity on token 2", () => {
+      //   beforeEach(async () => {
+      //     // +liq usdt
+      //     await usdt.connect(lp1).transfer(orderBook.address, toUnit("1000000", 6))
+      //     {
+      //       const args = { assetId: 2, rawAmount: toUnit("1000000", 6), isAdding: true }
+      //       await orderBook.connect(lp1).placeLiquidityOrder(args)
+      //     }
+      //     {
+      //       await time.increaseTo(timestampOfTest + 86400 * 2 + 660)
+      //       await expect(
+      //         orderBook.connect(broker).fillLiquidityOrder(2, [toWei("1"), toWei("2000"), toWei("1")])
+      //       ).to.revertedWith("LCP")
       //       {
-      //         const args = { assetId: 2, rawAmount: toUnit("1000000", 6), isAdding: true }
-      //         await orderBook.connect(lp1).placeLiquidityOrder(args)
+      //         const { keys, values } = getPoolConfigs([
+      //           { k: LIQUIDITY_CAP_USD_KEY, v: toWei("2000000"), old: toWei("0") },
+      //         ])
+      //         await pool.setPoolParameters(keys, values, [])
       //       }
-      //       {
-      //         await time.increaseTo(timestampOfTest + 86400 * 2 + 660)
-      //         await expect(
-      //           orderBook.connect(broker).fillLiquidityOrder(2, [toWei("1"), toWei("2000"), toWei("1")])
-      //         ).to.revertedWith("LCP")
-      //         {
-      //           const { keys, values } = getPoolConfigs([
-      //             { k: LIQUIDITY_CAP_USD_KEY, v: toWei("2000000"), old: toWei("0") },
-      //           ])
-      //           await pool.setPoolParameters(keys, values, [])
-      //         }
-      //         await orderBook.connect(broker).fillLiquidityOrder(2, [toWei("1"), toWei("2000"), toWei("1")])
-      //         expect(await usdt.balanceOf(feeDistributor.address)).to.equal(toUnit("100", 6)) // fee = 1000000 * 0.01% = 100
-      //         expect(await usdt.balanceOf(pool.address)).to.equal(toUnit("999900", 6))
-      //         const collateralInfo = await pool.getAssetStorageV2(0)
-      //         expect(collateralInfo.spotLiquidity).to.equal(toWei("999900")) // unchanged
-      //         const collateral2Info = await pool.getAssetStorageV2(2)
-      //         expect(collateral2Info.spotLiquidity).to.equal(toWei("999900")) // 1000000 - fee
-      //         const assetInfo = await pool.getAssetStorageV2(1)
-      //         expect(assetInfo.longCumulativeFunding).to.equal(toWei("0.000027397260273972"))
-      //         expect(assetInfo.shortCumulativeFunding).to.equal(toWei("0.000027397260273972"))
-      //       }
-      //       expect(await mlp.totalSupply()).to.equal(toWei("1999800")) // 999900 + 999900
-      //       expect(await pool.callStatic.getMlpPrice([toWei("1"), toWei("2000"), toWei("1")])).to.equal(toWei("1")) // aum = 1999800
-      //     })
-      //     it("take profit from token 2, but token 2 can not afford funding", async () => {
-      //       // close long, profit in usdt, partial withdraw
-      //       const args4 = {
-      //         subAccountId: longAccountId,
-      //         collateral: toUnit("0", 6),
-      //         size: toWei("1"),
-      //         price: toWei("2000.1"),
-      //         tpPrice: "0",
-      //         slPrice: "0",
-      //         expiration: timestampOfTest + 86400 * 4 + 800,
-      //         tpslExpiration: timestampOfTest + 86400 * 4 + 800,
-      //         profitTokenId: 2, // notice here
-      //         tpslProfitTokenId: 0,
-      //         flags: 0,
-      //       }
-      //       {
-      //         await orderBook.connect(trader1).placePositionOrder(args4, refCode)
-      //         expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
-      //         expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("104", 6)) // unchanged
-      //         expect(await usdc.balanceOf(pool.address)).to.equal(toUnit("1009896", 6)) // unchanged
-      //       }
-      //       // update funding
-      //       // funding = skew / alpha * beta = $4000 / 20000 * apy 20% = apy 4%, borrowing = apy 1%
-      //       await time.increaseTo(timestampOfTest + 86400 * 2 + 86400)
-      //       {
-      //         // longCumulativeFunding, 0.000027397260273972 + 0.05 * 1 / 365 = 0.000164383561643835013698630136986
-      //         // fundingFee = 2000 * 2 * 0.05 * 1 / 365 = 0.547945205479452054794520547945
-      //         // pnl = (2000.1 - 2000) * 1 = 0.1
-      //         const tx1 = await orderBook
-      //           .connect(broker)
-      //           .fillPositionOrder(3, toWei("1"), toWei("2000.1"), [toWei("1"), toWei("2000"), toWei("1")])
-      //         await expect(tx1)
-      //           .to.emit(pool, "ClosePosition")
-      //           .withArgs(
-      //             trader1.address,
-      //             1, // asset id
-      //             [
-      //               args4.subAccountId,
-      //               0, // collateral id
-      //               2, // profit asset id
-      //               true, // isLong
-      //               args4.size,
-      //               toWei("2000.1"), // trading price
-      //               toWei("2000"), // asset price
-      //               toWei("1"), // collateral price
-      //               toWei("1"), // profit asset price
-      //               toWei("0.547945205479448000"), // fundingFeeUsd
-      //               toWei("2.548045205479448000"), // 2000.1 * 1 * 0.1% + 0.547945205479452054794520547945, where 0.1 is usdt
-      //               true, // hasProfit
-      //               toWei("0.1"), // pnlUsd
-      //               toWei("1.0"), // remainPosition
-      //               toWei("9993.551954794520552000"), // remainCollateral = original - (fee - pnl) = 9996 - (2.548045205479448000 - 0.1)
-      //             ]
-      //           )
-      //         expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged because profit can not afford fees
-      //         expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("106.448045", 6)) // + fee = 104 + 2.548045205479448000 - 0.1 is usdt
-      //         expect(await usdt.balanceOf(feeDistributor.address)).to.equal(toUnit("100.1", 6)) // profit = 100 + 0.1
-      //         expect(await usdc.balanceOf(pool.address)).to.equal(toUnit("1009893.551955", 6)) // - withdraw - (fee - 0.1) = 1009896 - (2.548045205479448000 - 0.1)
-      //         expect(await usdt.balanceOf(pool.address)).to.equal(toUnit("999899.9", 6)) // - pnl = 999900 - 0.1
-      //         const subAccount = await pool.getSubAccount(longAccountId)
-      //         expect(subAccount.collateral).to.equal(toWei("9993.55195479452055200")) // 9996 - withdraw - (fee - 0.1) = 9996 - (2.548045205479448000 - 0.1)
-      //         expect(subAccount.size).to.equal(toWei("1"))
-      //         expect(subAccount.entryPrice).to.equal(toWei("2000")) // unchanged
-      //         expect(subAccount.entryFunding).to.equal(toWei("0.000164383561643834")) // unchanged
-      //         const collateralInfo = await pool.getAssetStorageV2(0)
-      //         expect(collateralInfo.spotLiquidity).to.equal(toWei("999900")) // unchanged
-      //         const collateral2Info = await pool.getAssetStorageV2(2)
-      //         expect(collateral2Info.spotLiquidity).to.equal(toWei("999899.9")) // - pnl
-      //         const assetInfo = await pool.getAssetStorageV2(1)
-      //         expect(assetInfo.totalShortPosition).to.equal(toWei("0"))
-      //         expect(assetInfo.averageShortPrice).to.equal(toWei("0"))
-      //         expect(assetInfo.totalLongPosition).to.equal(toWei("1"))
-      //         expect(assetInfo.averageLongPrice).to.equal(toWei("2000"))
-      //       }
-      //     })
+      //       await orderBook.connect(broker).fillLiquidityOrder(2, [toWei("1"), toWei("2000"), toWei("1")])
+      //       expect(await usdt.balanceOf(feeDistributor.address)).to.equal(toUnit("100", 6)) // fee = 1000000 * 0.01% = 100
+      //       expect(await usdt.balanceOf(pool.address)).to.equal(toUnit("999900", 6))
+      //       const collateralInfo = await pool.getAssetStorageV2(0)
+      //       expect(collateralInfo.spotLiquidity).to.equal(toWei("999900")) // unchanged
+      //       const collateral2Info = await pool.getAssetStorageV2(2)
+      //       expect(collateral2Info.spotLiquidity).to.equal(toWei("999900")) // 1000000 - fee
+      //       const assetInfo = await pool.getAssetStorageV2(1)
+      //       expect(assetInfo.longCumulativeFunding).to.equal(toWei("0.000027397260273972"))
+      //       expect(assetInfo.shortCumulativeFunding).to.equal(toWei("0.000027397260273972"))
+      //     }
+      //     expect(await mlp.totalSupply()).to.equal(toWei("1999800")) // 999900 + 999900
+      //     expect(await pool.callStatic.getMlpPrice([toWei("1"), toWei("2000"), toWei("1")])).to.equal(toWei("1")) // aum = 1999800
       //   })
+      //   it("TODO: take profit from token 2, but token 2 can not afford funding", async () => {
+      //     // close long, profit in usdt, partial withdraw
+      //     const args4 = {
+      //       subAccountId: longAccountId,
+      //       collateral: toUnit("0", 6),
+      //       size: toWei("1"),
+      //       price: toWei("2000.1"),
+      //       tpPrice: "0",
+      //       slPrice: "0",
+      //       expiration: timestampOfTest + 86400 * 4 + 800,
+      //       tpslExpiration: timestampOfTest + 86400 * 4 + 800,
+      //       profitTokenId: 2, // notice here
+      //       tpslProfitTokenId: 0,
+      //       flags: 0,
+      //     }
+      //     {
+      //       await orderBook.connect(trader1).placePositionOrder(args4, refCode)
+      //       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
+      //       expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("104", 6)) // unchanged
+      //       expect(await usdc.balanceOf(pool.address)).to.equal(toUnit("1009896", 6)) // unchanged
+      //     }
+      //     // update funding
+      //     // funding = skew / alpha * beta = $4000 / 20000 * apy 20% = apy 4%, borrowing = apy 1%
+      //     await time.increaseTo(timestampOfTest + 86400 * 2 + 86400)
+      //     {
+      //       // longCumulativeFunding, 0.000027397260273972 + 0.05 * 1 / 365 = 0.000164383561643835013698630136986
+      //       // fundingFee = 2000 * 2 * 0.05 * 1 / 365 = 0.547945205479452054794520547945
+      //       // pnl = (2000.1 - 2000) * 1 = 0.1
+      //       const tx1 = await orderBook
+      //         .connect(broker)
+      //         .fillPositionOrder(3, toWei("1"), toWei("2000.1"), [toWei("1"), toWei("2000"), toWei("1")])
+      //       await expect(tx1)
+      //         .to.emit(pool, "ClosePosition")
+      //         .withArgs(
+      //           trader1.address,
+      //           1, // asset id
+      //           [
+      //             args4.subAccountId,
+      //             0, // collateral id
+      //             2, // profit asset id
+      //             true, // isLong
+      //             args4.size,
+      //             toWei("2000.1"), // trading price
+      //             toWei("2000"), // asset price
+      //             toWei("1"), // collateral price
+      //             toWei("1"), // profit asset price
+      //             toWei("0.547945205479448000"), // fundingFeeUsd
+      //             toWei("2.548045205479448000"), // 2000.1 * 1 * 0.1% + 0.547945205479452054794520547945, where 0.1 is usdt
+      //             true, // hasProfit
+      //             toWei("0.1"), // pnlUsd
+      //             toWei("1.0"), // remainPosition
+      //             toWei("9993.551954794520552000"), // remainCollateral = original - (fee - pnl) = 9996 - (2.548045205479448000 - 0.1)
+      //           ]
+      //         )
+      //       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged because profit can not afford fees
+      //       expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("106.448045", 6)) // + fee = 104 + 2.548045205479448000 - 0.1 is usdt
+      //       expect(await usdt.balanceOf(feeDistributor.address)).to.equal(toUnit("100.1", 6)) // profit = 100 + 0.1
+      //       expect(await usdc.balanceOf(pool.address)).to.equal(toUnit("1009893.551955", 6)) // - withdraw - (fee - 0.1) = 1009896 - (2.548045205479448000 - 0.1)
+      //       expect(await usdt.balanceOf(pool.address)).to.equal(toUnit("999899.9", 6)) // - pnl = 999900 - 0.1
+      //       const subAccount = await pool.getSubAccount(longAccountId)
+      //       expect(subAccount.collateral).to.equal(toWei("9993.55195479452055200")) // 9996 - withdraw - (fee - 0.1) = 9996 - (2.548045205479448000 - 0.1)
+      //       expect(subAccount.size).to.equal(toWei("1"))
+      //       expect(subAccount.entryPrice).to.equal(toWei("2000")) // unchanged
+      //       expect(subAccount.entryFunding).to.equal(toWei("0.000164383561643834")) // unchanged
+      //       const collateralInfo = await pool.getAssetStorageV2(0)
+      //       expect(collateralInfo.spotLiquidity).to.equal(toWei("999900")) // unchanged
+      //       const collateral2Info = await pool.getAssetStorageV2(2)
+      //       expect(collateral2Info.spotLiquidity).to.equal(toWei("999899.9")) // - pnl
+      //       const assetInfo = await pool.getAssetStorageV2(1)
+      //       expect(assetInfo.totalShortPosition).to.equal(toWei("0"))
+      //       expect(assetInfo.averageShortPrice).to.equal(toWei("0"))
+      //       expect(assetInfo.totalLongPosition).to.equal(toWei("1"))
+      //       expect(assetInfo.averageLongPrice).to.equal(toWei("2000"))
+      //     }
+      //   })
+      // })
+
+      it("TODO: remove liquidity cause reserved > spotLiquidity", async () => {
+        // {
+        //   const collateralInfo = await pool.getAssetStorageV2(0)
+        //   expect(collateralInfo.spotLiquidity).to.equal(toWei("999900")) // 1000000 - fee
+        // }
+        // // open long xxx, using usdc
+        // const longAccountId = assembleSubAccountId(trader1.address, 0, 1, true)
+        // await usdc.connect(trader1).transfer(orderBook.address, toUnit("100000", 6))
+        // const args2 = {
+        //   subAccountId: longAccountId,
+        //   collateral: toUnit("100000", 6),
+        //   size: toWei("900000"),
+        //   price: toWei("1"),
+        //   tpPrice: "0",
+        //   slPrice: "0",
+        //   expiration: timestampOfTest + 86400 * 2 + 800,
+        //   tpslExpiration: timestampOfTest + 86400 * 2 + 800,
+        //   profitTokenId: 0,
+        //   tpslProfitTokenId: 0,
+        //   flags: PositionOrderFlags.OpenPosition,
+        // }
+        // await orderBook.connect(trader1).placePositionOrder(args2, refCode)
+        // await orderBook
+        //   .connect(broker)
+        //   .fillPositionOrder(1, toWei("900000"), toWei("1"), [toWei("1"), toWei("1"), toWei("1")])
+        // expect(await pool.callStatic.getMlpPrice([toWei("1"), toWei("1"), toWei("1")])).to.equal(toWei("1"))
+        // // reserve 900,000 * 80%, liquidity 999,900, can remove 279,900
+        // {
+        //   await mlp.connect(lp1).transfer(orderBook.address, toWei("279901"))
+        //   const args = { assetId: 0, rawAmount: toWei("279901"), isAdding: false }
+        //   await time.increaseTo(timestampOfTest + 86400 * 2 + 500)
+        //   await orderBook.connect(lp1).placeLiquidityOrder(args)
+        //   await time.increaseTo(timestampOfTest + 86400 * 2 + 500 + 1800)
+        //   await expect(
+        //     orderBook.connect(broker).fillLiquidityOrder(2, [toWei("1"), toWei("1"), toWei("1")])
+        //   ).to.revertedWith("RSV")
+        //   await orderBook.connect(lp1).cancelOrder(2)
+        // }
+        // {
+        //   await mlp.connect(lp1).transfer(orderBook.address, toWei("279900"))
+        //   const args = { assetId: 0, rawAmount: toWei("279900"), isAdding: false }
+        //   await orderBook.connect(lp1).placeLiquidityOrder(args)
+        //   await time.increaseTo(timestampOfTest + 86400 * 2 + 500 + 1800 + 1800)
+        //   await orderBook.connect(broker).fillLiquidityOrder(3, [toWei("1"), toWei("1"), toWei("1")])
+        // }
+      })
+
+      it("TODO: tp/sl strategy", async () => {
+        // // open long, tp/sl strategy takes effect when fill
+        // const longAccountId = assembleSubAccountId(trader1.address, 0, 1, true)
+        // await usdc.connect(trader1).transfer(orderBook.address, toUnit("10000", 6))
+        // const args2 = {
+        //   subAccountId: longAccountId,
+        //   collateral: toUnit("10000", 6),
+        //   size: toWei("2"),
+        //   price: toWei("2000"),
+        //   tpPrice: toWei("2200"),
+        //   slPrice: toWei("1800"),
+        //   expiration: timestampOfTest + 86400 * 2 + 800,
+        //   tpslExpiration: timestampOfTest + 86400 * 2 + 1000,
+        //   profitTokenId: 0,
+        //   tpslProfitTokenId: 2,
+        //   flags: PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder + PositionOrderFlags.TpSlStrategy,
+        // }
+        // await orderBook.connect(trader1).placePositionOrder(args2, refCode)
+        // const tx2 = await orderBook
+        //   .connect(broker)
+        //   .fillPositionOrder(1, toWei("2"), toWei("2000"), [toWei("1"), toWei("2000"), toWei("1")])
+        // await expect(tx2)
+        //   .to.emit(orderBook, "NewPositionOrder")
+        //   .withArgs(trader1.address, 2, [
+        //     args2.subAccountId,
+        //     toWei("0"), // collateral
+        //     args2.size,
+        //     toWei("2200"), // price
+        //     toWei("0"), // tpPrice
+        //     toWei("0"), // slPrice
+        //     timestampOfTest + 86400 * 2 + 1000, // expiration
+        //     0, // tpslExpiration
+        //     2, // profitTokenId
+        //     0, // tpslProfitTokenId
+        //     PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.ShouldReachMinProfit,
+        //   ])
+        // await expect(tx2)
+        //   .to.emit(orderBook, "NewPositionOrder")
+        //   .withArgs(trader1.address, 3, [
+        //     args2.subAccountId,
+        //     toWei("0"), // collateral
+        //     args2.size,
+        //     toWei("1800"), // price
+        //     toWei("0"), // tpPrice
+        //     toWei("0"), // slPrice
+        //     timestampOfTest + 86400 * 2 + 1000, // expiration
+        //     0, // tpslExpiration
+        //     2, // profitTokenId
+        //     0, // tpslProfitTokenId
+        //     PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.TriggerOrder,
+        //   ])
+        // // close tp+sl
+        // const args3 = {
+        //   subAccountId: longAccountId,
+        //   collateral: toUnit("12345", 6),
+        //   size: toWei("2"),
+        //   price: toWei("2000"),
+        //   tpPrice: toWei("2200"),
+        //   slPrice: toWei("1800"),
+        //   expiration: timestampOfTest + 86400 * 2 + 800,
+        //   tpslExpiration: timestampOfTest + 86400 * 2 + 1000,
+        //   profitTokenId: 0,
+        //   tpslProfitTokenId: 2,
+        //   flags: PositionOrderFlags.TpSlStrategy,
+        // }
+        // await expect(orderBook.connect(trader1).placePositionOrder(args3, refCode)).to.revertedWith("C!0")
+        // args3.collateral = toUnit("0", 6)
+        // const tx3 = await orderBook.connect(trader1).placePositionOrder(args3, refCode)
+        // await expect(tx3)
+        //   .to.emit(orderBook, "NewPositionOrder")
+        //   .withArgs(trader1.address, 4, [
+        //     args2.subAccountId,
+        //     toWei("0"), // collateral
+        //     args2.size,
+        //     toWei("2200"), // price
+        //     toWei("0"), // tpPrice
+        //     toWei("0"), // slPrice
+        //     timestampOfTest + 86400 * 2 + 1000, // expiration
+        //     0, // tpslExpiration
+        //     2, // profitTokenId
+        //     0, // tpslProfitTokenId
+        //     PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.ShouldReachMinProfit,
+        //   ])
+        // await expect(tx3)
+        //   .to.emit(orderBook, "NewPositionOrder")
+        //   .withArgs(trader1.address, 5, [
+        //     args2.subAccountId,
+        //     toWei("0"), // collateral
+        //     args2.size,
+        //     toWei("1800"), // price
+        //     toWei("0"), // tpPrice
+        //     toWei("0"), // slPrice
+        //     timestampOfTest + 86400 * 2 + 1000, // expiration
+        //     0, // tpslExpiration
+        //     2, // profitTokenId
+        //     0, // tpslProfitTokenId
+        //     PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.TriggerOrder,
+        //   ])
+      })
     }) // long a little and test more
 
     describe("TODO: short a little and test more", () => {
@@ -921,7 +1843,7 @@ describe("Trade (normal pools)", () => {
         //     }
         //     {
         //       await orderBook.connect(trader1).placePositionOrder(args2, refCode)
-        //       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // - 10000
+        //       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
         //       expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("100", 6)) // unchanged
         //       expect(await usdc.balanceOf(pool.address)).to.equal(toUnit("999900", 6)) // unchanged
         //       const collateralInfo = await pool.getAssetStorageV2(0)
@@ -948,7 +1870,7 @@ describe("Trade (normal pools)", () => {
         //       expect(assetInfo.averageLongPrice).to.equal(toWei("0"))
         //     }
       })
-      //   it("short capped pnl", async () => {
+      //   it("TODO: short capped pnl", async () => {
       //     // mlp price should handle capped pnl
       //     // entry value = 2000 * 2 = 4000, maxProfit = 50% = 2000
       //     // assume mark price = 999
@@ -1021,7 +1943,7 @@ describe("Trade (normal pools)", () => {
       //       expect(assetInfo.averageLongPrice).to.equal(toWei("0"))
       //     }
       //   })
-      //   it("liquidate because of funding", async () => {
+      //   it("TODO: liquidate because of funding", async () => {
       //     // skew = (2 - 0) * 2000 = $4000, pnl = 0
       //     // funding = skew / alpha * beta = $4000 / 20000 * apy 20% = apy 4%, borrowing = apy 1%
       //     // mm = 2000 * 2 * 0.05 = 200 (MM unsafe)
@@ -1112,7 +2034,7 @@ describe("Trade (normal pools)", () => {
       //       expect(assetInfo.averageLongPrice).to.equal(toWei("0"))
       //     }
       //   })
-      //   it("0 < fee < margin < MM. liquidate short", async () => {
+      //   it("TODO: 0 < fee < margin < MM. liquidate short", async () => {
       //     // liquidate time = 48 years + 357 days + 17 hours
       //     // funding/borrowing = 0
       //     // collateral = 9996 + (2000 - 6664.8) * 2 - 0 = 666.40
@@ -1160,7 +2082,7 @@ describe("Trade (normal pools)", () => {
       //     expect(assetInfo.totalLongPosition).to.equal(toWei("0"))
       //     expect(assetInfo.averageLongPrice).to.equal(toWei("0"))
       //   })
-      //   it("0 < margin < fee < MM. liquidate short", async () => {
+      //   it("TODO: 0 < margin < fee < MM. liquidate short", async () => {
       //     // collateral + pnl = 9996 + (2000 - 6993) * 2 = 10 < fee
       //     await expect(
       //       orderBook
@@ -1200,7 +2122,7 @@ describe("Trade (normal pools)", () => {
       //     expect(assetInfo.totalLongPosition).to.equal(toWei("0"))
       //     expect(assetInfo.averageLongPrice).to.equal(toWei("0"))
       //   })
-      //   it("margin < 0. liquidate short", async () => {
+      //   it("TODO: margin < 0. liquidate short", async () => {
       //     // collateral + pnl = 9996 + (2000 - 7000) * 2 = -4 < 0
       //     await expect(
       //       orderBook
@@ -1240,7 +2162,7 @@ describe("Trade (normal pools)", () => {
       //     expect(assetInfo.totalLongPosition).to.equal(toWei("0"))
       //     expect(assetInfo.averageLongPrice).to.equal(toWei("0"))
       //   })
-      //   describe("add chainlink", () => {
+      //   describe("TODO: add chainlink", () => {
       //     let mockChainlink: MockChainlink
       //     beforeEach(async () => {
       //       mockChainlink = (await createContract("MockChainlink")) as MockChainlink
@@ -1254,7 +2176,7 @@ describe("Trade (normal pools)", () => {
       //         await pool.setAssetParameters(0, keys, values, currentValues)
       //       }
       //     })
-      //     it("strict stable price dampener. ignore broker price", async () => {
+      //     it("TODO: strict stable price dampener. ignore broker price", async () => {
       //       await mockChainlink.setAnswer(toChainlink("0.999"))
       //       // mlp price should handle capped pnl
       //       // entry value = 2000 * 2 = 4000, maxProfit = 50% = 2000
@@ -1328,7 +2250,7 @@ describe("Trade (normal pools)", () => {
       //         expect(assetInfo.averageLongPrice).to.equal(toWei("0"))
       //       }
       //     })
-      //     it("strict stable price dampener. use broker price", async () => {
+      //     it("TODO: strict stable price dampener. use broker price", async () => {
       //       await mockChainlink.setAnswer(toChainlink("0.99"))
       //       // mlp price should handle capped pnl
       //       // entry value = 2000 * 2 = 4000, maxProfit = 50% = 2000
@@ -1404,200 +2326,11 @@ describe("Trade (normal pools)", () => {
       //     })
       //   })
     }) // short a little and test more
-
-    // it("TODO: remove liquidity cause reserved > spotLiquidity", async () => {
-    //   {
-    //     const collateralInfo = await pool.getAssetStorageV2(0)
-    //     expect(collateralInfo.spotLiquidity).to.equal(toWei("999900")) // 1000000 - fee
-    //   }
-    //   // open long xxx, using usdc
-    //   const longAccountId = assembleSubAccountId(trader1.address, 0, 1, true)
-    //   await usdc.connect(trader1).transfer(orderBook.address, toUnit("100000", 6))
-    //   const args2 = {
-    //     subAccountId: longAccountId,
-    //     collateral: toUnit("100000", 6),
-    //     size: toWei("900000"),
-    //     price: toWei("1"),
-    //     tpPrice: "0",
-    //     slPrice: "0",
-    //     expiration: timestampOfTest + 86400 * 2 + 800,
-    //     tpslExpiration: timestampOfTest + 86400 * 2 + 800,
-    //     profitTokenId: 0,
-    //     tpslProfitTokenId: 0,
-    //     flags: PositionOrderFlags.OpenPosition,
-    //   }
-    //   await orderBook.connect(trader1).placePositionOrder(args2, refCode)
-    //   await orderBook
-    //     .connect(broker)
-    //     .fillPositionOrder(1, toWei("900000"), toWei("1"), [toWei("1"), toWei("1"), toWei("1")])
-    //   expect(await pool.callStatic.getMlpPrice([toWei("1"), toWei("1"), toWei("1")])).to.equal(toWei("1"))
-    //   // reserve 900,000 * 80%, liquidity 999,900, can remove 279,900
-    //   {
-    //     await mlp.connect(lp1).transfer(orderBook.address, toWei("279901"))
-    //     const args = { assetId: 0, rawAmount: toWei("279901"), isAdding: false }
-    //     await time.increaseTo(timestampOfTest + 86400 * 2 + 500)
-    //     await orderBook.connect(lp1).placeLiquidityOrder(args)
-    //     await time.increaseTo(timestampOfTest + 86400 * 2 + 500 + 1800)
-    //     await expect(
-    //       orderBook.connect(broker).fillLiquidityOrder(2, [toWei("1"), toWei("1"), toWei("1")])
-    //     ).to.revertedWith("RSV")
-    //     await orderBook.connect(lp1).cancelOrder(2)
-    //   }
-    //   {
-    //     await mlp.connect(lp1).transfer(orderBook.address, toWei("279900"))
-    //     const args = { assetId: 0, rawAmount: toWei("279900"), isAdding: false }
-    //     await orderBook.connect(lp1).placeLiquidityOrder(args)
-    //     await time.increaseTo(timestampOfTest + 86400 * 2 + 500 + 1800 + 1800)
-    //     await orderBook.connect(broker).fillLiquidityOrder(3, [toWei("1"), toWei("1"), toWei("1")])
-    //   }
-    // })
-    // it("TODO: tp/sl strategy", async () => {
-    //   // open long, tp/sl strategy takes effect when fill
-    //   const longAccountId = assembleSubAccountId(trader1.address, 0, 1, true)
-    //   await usdc.connect(trader1).transfer(orderBook.address, toUnit("10000", 6))
-    //   const args2 = {
-    //     subAccountId: longAccountId,
-    //     collateral: toUnit("10000", 6),
-    //     size: toWei("2"),
-    //     price: toWei("2000"),
-    //     tpPrice: toWei("2200"),
-    //     slPrice: toWei("1800"),
-    //     expiration: timestampOfTest + 86400 * 2 + 800,
-    //     tpslExpiration: timestampOfTest + 86400 * 2 + 1000,
-    //     profitTokenId: 0,
-    //     tpslProfitTokenId: 2,
-    //     flags: PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder + PositionOrderFlags.TpSlStrategy,
-    //   }
-    //   await orderBook.connect(trader1).placePositionOrder(args2, refCode)
-    //   const tx2 = await orderBook
-    //     .connect(broker)
-    //     .fillPositionOrder(1, toWei("2"), toWei("2000"), [toWei("1"), toWei("2000"), toWei("1")])
-    //   await expect(tx2)
-    //     .to.emit(orderBook, "NewPositionOrder")
-    //     .withArgs(trader1.address, 2, [
-    //       args2.subAccountId,
-    //       toWei("0"), // collateral
-    //       args2.size,
-    //       toWei("2200"), // price
-    //       toWei("0"), // tpPrice
-    //       toWei("0"), // slPrice
-    //       timestampOfTest + 86400 * 2 + 1000, // expiration
-    //       0, // tpslExpiration
-    //       2, // profitTokenId
-    //       0, // tpslProfitTokenId
-    //       PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.ShouldReachMinProfit,
-    //     ])
-    //   await expect(tx2)
-    //     .to.emit(orderBook, "NewPositionOrder")
-    //     .withArgs(trader1.address, 3, [
-    //       args2.subAccountId,
-    //       toWei("0"), // collateral
-    //       args2.size,
-    //       toWei("1800"), // price
-    //       toWei("0"), // tpPrice
-    //       toWei("0"), // slPrice
-    //       timestampOfTest + 86400 * 2 + 1000, // expiration
-    //       0, // tpslExpiration
-    //       2, // profitTokenId
-    //       0, // tpslProfitTokenId
-    //       PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.TriggerOrder,
-    //     ])
-    //   // close tp+sl
-    //   const args3 = {
-    //     subAccountId: longAccountId,
-    //     collateral: toUnit("12345", 6),
-    //     size: toWei("2"),
-    //     price: toWei("2000"),
-    //     tpPrice: toWei("2200"),
-    //     slPrice: toWei("1800"),
-    //     expiration: timestampOfTest + 86400 * 2 + 800,
-    //     tpslExpiration: timestampOfTest + 86400 * 2 + 1000,
-    //     profitTokenId: 0,
-    //     tpslProfitTokenId: 2,
-    //     flags: PositionOrderFlags.TpSlStrategy,
-    //   }
-    //   await expect(orderBook.connect(trader1).placePositionOrder(args3, refCode)).to.revertedWith("C!0")
-    //   args3.collateral = toUnit("0", 6)
-    //   const tx3 = await orderBook.connect(trader1).placePositionOrder(args3, refCode)
-    //   await expect(tx3)
-    //     .to.emit(orderBook, "NewPositionOrder")
-    //     .withArgs(trader1.address, 4, [
-    //       args2.subAccountId,
-    //       toWei("0"), // collateral
-    //       args2.size,
-    //       toWei("2200"), // price
-    //       toWei("0"), // tpPrice
-    //       toWei("0"), // slPrice
-    //       timestampOfTest + 86400 * 2 + 1000, // expiration
-    //       0, // tpslExpiration
-    //       2, // profitTokenId
-    //       0, // tpslProfitTokenId
-    //       PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.ShouldReachMinProfit,
-    //     ])
-    //   await expect(tx3)
-    //     .to.emit(orderBook, "NewPositionOrder")
-    //     .withArgs(trader1.address, 5, [
-    //       args2.subAccountId,
-    //       toWei("0"), // collateral
-    //       args2.size,
-    //       toWei("1800"), // price
-    //       toWei("0"), // tpPrice
-    //       toWei("0"), // slPrice
-    //       timestampOfTest + 86400 * 2 + 1000, // expiration
-    //       0, // tpslExpiration
-    //       2, // profitTokenId
-    //       0, // tpslProfitTokenId
-    //       PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.TriggerOrder,
-    //     ])
-    // })
   }) // add some liquidity and test more
 
-  // it("TODO: trade collateral must be stable", async () => {
-  //   // // open short xxx, using xxx
-  //   // const shortAccountId = assembleSubAccountId(trader1.address, 1, 1, false)
-  //   // const args = {
-  //   //   subAccountId: shortAccountId,
-  //   //   collateral: toUnit("1", 18),
-  //   //   size: toWei("1"),
-  //   //   price: toWei("1000"),
-  //   //   tpPrice: "0",
-  //   //   slPrice: "0",
-  //   //   expiration: timestampOfTest + 86400 * 2 + 800,
-  //   //   tpslExpiration: timestampOfTest + 86400 * 2 + 800,
-  //   //   profitTokenId: 0,
-  //   //   tpslProfitTokenId: 0,
-  //   //   flags: PositionOrderFlags.OpenPosition,
-  //   // }
-  //   // await xxx.connect(trader1).transfer(orderBook.address, toUnit("1", 18))
-  //   // await expect(orderBook.connect(trader1).placePositionOrder(args, refCode)).to.revertedWith("FLG")
-  // })
-
-  // it("TODO: open position cause reserved > spotLiquidity", async () => {
-  //   // // open long xxx, using usdc
-  //   // const longAccountId = assembleSubAccountId(trader1.address, 0, 1, true)
-  //   // await usdc.connect(trader1).transfer(orderBook.address, toUnit("10000", 6))
-  //   // const args2 = {
-  //   //   subAccountId: longAccountId,
-  //   //   collateral: toUnit("10000", 6),
-  //   //   size: toWei("1"),
-  //   //   price: toWei("1"),
-  //   //   tpPrice: "0",
-  //   //   slPrice: "0",
-  //   //   expiration: timestampOfTest + 86400 * 2 + 800,
-  //   //   tpslExpiration: timestampOfTest + 86400 * 2 + 800,
-  //   //   profitTokenId: 0,
-  //   //   tpslProfitTokenId: 0,
-  //   //   flags: PositionOrderFlags.OpenPosition,
-  //   // }
-  //   // await orderBook.connect(trader1).placePositionOrder(args2, refCode)
-  //   // await expect(
-  //   //   orderBook.connect(broker).fillPositionOrder(0, toWei("1"), toWei("1"), [toWei("1"), toWei("1"), toWei("1")])
-  //   // ).to.revertedWith("RSV")
-  // })
-
-  // it("TODO: stop loss", async () => {})
-  // it("TODO: tp/sl strategy - open long", async () => {})
-  // it("TODO: tp/sl strategy - open short", async () => {})
-  // it("TODO: tp/sl strategy - close long", async () => {})
-  // it("TODO: tp/sl strategy - liquidate long", async () => {})
+  it("TODO: stop loss", async () => { })
+  it("TODO: tp/sl strategy - open long", async () => { })
+  it("TODO: tp/sl strategy - open short", async () => { })
+  it("TODO: tp/sl strategy - close long", async () => { })
+  it("TODO: tp/sl strategy - liquidate long", async () => { })
 })

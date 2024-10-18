@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 interface IErrors {
     // general error
@@ -49,7 +49,9 @@ interface IErrors {
 
     // account
     error PositionAccountAlreadyExists(bytes32 positionId);
+    error PositionAccountNotExists(bytes32 positionId);
     error UnsafePositionAccount(bytes32 positionId, uint256 unsafeType);
     error InsufficientBalance(uint256 balance, uint256 amount);
     error InitialLeverageOutOfRange(uint256 leverage, uint256 leverageLimit);
+    error PositionNotClosed(bytes32 positionId);
 }

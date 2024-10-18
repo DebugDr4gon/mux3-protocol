@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../orderbook/providers/ChainlinkStreamProvider.sol";
@@ -72,7 +72,7 @@ contract TestOracle is Pricing, TestSuit {
             sequence: 12,
             price: 2000e18,
             timestamp: 12345678,
-            signature: hex"a8f0704f7d055e1ffef0c2dedf6da6d4b3499f78c934687fbd7ef2f4c15644c14931eaa053ee399212f22a8ce014023f8b866a05038f16741a7bc0ea0d4183ff1b"
+            signature: hex"de81697f9c904e0d5680169e55bc9947f0620285e78e6ba2a1baaf3d964c8f972ecc17d7abbd99fe6261cd26707f8459621b91c740d82e3c691bf2526e1966f61c"
         });
         (uint256 price, uint256 timestamp) = mpp.getOraclePrice(bytes32(uint256(0x1234)), abi.encode(data));
         assertEq(price, 2000e18, "E01");

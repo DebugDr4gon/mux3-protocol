@@ -1,15 +1,22 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
+
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "../interfaces/IBorrowingRate.sol";
 import "../libraries/LibLogExp.sol";
+import "../libraries/LibTypeCast.sol";
 
 library LibExpBorrowingRate {
+    using LibTypeCast for uint256;
+    using LibTypeCast for int256;
+
     function validatePoolConfig(
         IBorrowingRate.Global memory global,
         IBorrowingRate.Pool memory pool
     ) internal pure {
         require(pool.k != 0, "ExpBorrow: k = 0");
+        require(pool.reserveRate > 0, "ExpBorrow: reserveRate = 0");
         int256 fr = pool.k + pool.b;
         fr = LibLogExp.exp(fr);
         fr = global.baseApy + fr;
@@ -37,29 +44,89 @@ library LibExpBorrowingRate {
         return fr;
     }
 
+    /**
+     * @dev round an allocation result to lotSize, so that the sum of allocations = target
+     *
+     *      note: the returned allocations may slightly exceed pool capacity (because of rounding),
+     *            we consider this is acceptable.
+     */
+    function alignAllocationToLotSize(
+        uint256 target,
+        uint256[] memory allocations,
+        uint256 lotSize
+    ) internal pure returns (uint256[] memory results) {
+        results = new uint256[](allocations.length);
+        require(lotSize > 0, "lotSize = 0");
+
+        // round down all allocations and keep track of the largest fractional part
+        uint256 sumAligned = 0;
+        for (uint256 i = 0; i < allocations.length; i++) {
+            results[i] = (allocations[i] / lotSize) * lotSize;
+            sumAligned += results[i];
+        }
+        if (sumAligned == target) {
+            return results;
+        }
+        if (sumAligned > target) {
+            // this implies that sum(allocations) > target. we leave this case to the caller
+            return results;
+        }
+
+        // distribute the remainder. O(n^2)
+        uint256 remainder = target - sumAligned;
+        uint256 lotsToDistribute = remainder / lotSize; // should near allocations.length
+        for (uint256 remain = 0; remain < lotsToDistribute; remain++) {
+            // find the largest remainder
+            uint256 maxDiffIndex = 0;
+            int256 maxDiff = -1;
+            for (uint256 i = 0; i < allocations.length; i++) {
+                int256 diff = allocations[i].toInt256() - results[i].toInt256();
+                if (diff > maxDiff) {
+                    maxDiff = diff;
+                    maxDiffIndex = i;
+                }
+            }
+            results[maxDiffIndex] += lotSize;
+        }
+    }
+
     struct PoolState {
         IBorrowingRate.Pool conf;
-        int256 k; // k := pool.k / pool.aum
-        int256 b; // b := pool.k * pool.reserve / pool.aum + pool.b
-        int256 maxX;
+        int256 k; // k := pool.k * pool.reserveRate / pool.aum
+        int256 b; // b := pool.k * pool.reserved    / pool.aum + pool.b
+        int256 maxX; // (aum - reserved) / reserveRate
         int256 allocated;
     }
 
     function initPoolState(
         IBorrowingRate.Pool memory conf
     ) internal pure returns (PoolState memory state) {
+        require(conf.k > 0, "initPoolState: k <= 0");
+        require(conf.poolSizeUsd > 0, "initPoolState: poolSizeUsd <= 0");
+        require(conf.reserveRate > 0, "initPoolState: reserveRate <= 0");
         state.conf = conf;
-        state.k = (conf.k * 1e18) / conf.poolSizeUsd;
-        state.maxX = conf.poolSizeUsd - conf.reservedUsd;
+        state.k = (conf.k * conf.reserveRate) / conf.poolSizeUsd;
+        // roundUp the maxX, so that isMaxCapacityReached can be detected easily
+        if (conf.poolSizeUsd > conf.reservedUsd) {
+            state.maxX = Math
+                .ceilDiv(
+                    (conf.poolSizeUsd - conf.reservedUsd).toUint256() * 1e18,
+                    conf.reserveRate.toUint256()
+                )
+                .toInt256();
+        } else {
+            state.maxX = 0;
+        }
         recalculateB(state);
     }
 
     function recalculateB(PoolState memory state) internal pure {
-        // b := k * (reservedUsd + allocated) / aum + b
-        state.b =
-            ((state.conf.reservedUsd + state.allocated) * state.conf.k) /
-            state.conf.poolSizeUsd +
-            state.conf.b;
+        // b := k * (reservedUsd + allocated * reserveRate) / aum + b
+        int256 ret = (state.allocated * state.conf.reserveRate) / 1e18;
+        ret += state.conf.reservedUsd;
+        ret = (ret * state.conf.k) / state.conf.poolSizeUsd;
+        ret += state.conf.b;
+        state.b = ret;
     }
 
     function allocate(PoolState memory state, int256 xi) internal pure {
@@ -79,8 +146,9 @@ library LibExpBorrowingRate {
     function isMaxCapacityReached(
         PoolState memory state
     ) internal pure returns (bool) {
-        return
-            state.conf.reservedUsd + state.allocated >= state.conf.poolSizeUsd;
+        int256 ret = (state.allocated * state.conf.reserveRate) / 1e18;
+        ret += state.conf.reservedUsd;
+        return ret >= state.conf.poolSizeUsd;
     }
 
     /**
@@ -188,18 +256,13 @@ library LibExpBorrowingRate {
         }
     }
 
-    struct AllocateResult {
-        address poolId;
-        int256 xi;
-    }
-
     /**
      * @dev allocate x to pools
      */
     function allocate2(
         IBorrowingRate.Pool[] memory pools,
         int256 xTotal
-    ) internal pure returns (AllocateResult[] memory result) {
+    ) internal pure returns (IBorrowingRate.AllocateResult[] memory result) {
         AllocateMem memory mem;
         mem.pools = new PoolState[](pools.length);
         mem.xTotal = xTotal;
@@ -215,7 +278,7 @@ library LibExpBorrowingRate {
 
     function allocate3(
         AllocateMem memory mem
-    ) internal pure returns (AllocateResult[] memory result) {
+    ) internal pure returns (IBorrowingRate.AllocateResult[] memory result) {
         // in each iteration, move full pools to the end
         bool poolUpdated = true; // some pools are moved
         while (
@@ -246,43 +309,23 @@ library LibExpBorrowingRate {
             }
         }
 
-        // if allocated > xTotal, reduce the xi from the last
-        for (int256 i = mem.poolCount - 1; i >= 0; i--) {
-            if (mem.totalAllocated <= mem.xTotal) {
-                break;
+        // all pools are full
+        if (mem.totalAllocated < mem.xTotal) {
+            bool isAllFull = true;
+            for (int256 i = 0; i < mem.poolsN; i++) {
+                if (!isMaxCapacityReached(mem.pools[uint256(i)])) {
+                    isAllFull = false;
+                    break;
+                }
             }
-            int256 deduct = mem.totalAllocated - mem.xTotal;
-            if (deduct > mem.pools[uint256(i)].allocated) {
-                deduct = mem.pools[uint256(i)].allocated;
-            }
-            if (deduct < 0) {
-                deduct = 0;
-            }
-            deallocate(mem.pools[uint256(i)], deduct);
-            mem.totalAllocated -= deduct;
+            require(!isAllFull, "ExpBorrow: full");
         }
-
-        // if allocated > xTotal, increase from the first
-        for (int256 i = 0; i < mem.poolCount; i++) {
-            if (mem.xTotal <= mem.totalAllocated) {
-                break;
-            }
-            int256 add = mem.xTotal - mem.totalAllocated;
-            if (add > mem.pools[uint256(i)].maxX) {
-                add = mem.pools[uint256(i)].maxX;
-            }
-            allocate(mem.pools[uint256(i)], add);
-            mem.totalAllocated += add;
-        }
-
-        // still mismatched, means all pools are full
-        require(mem.totalAllocated == mem.xTotal, "ExpBorrow: full");
 
         // return result
-        result = new AllocateResult[](uint256(mem.poolCount));
+        result = new IBorrowingRate.AllocateResult[](uint256(mem.poolCount));
         for (int256 i = 0; i < mem.poolCount; i++) {
             PoolState memory pool = mem.pools[uint256(i)];
-            result[uint256(i)] = AllocateResult(
+            result[uint256(i)] = IBorrowingRate.AllocateResult(
                 pool.conf.poolId,
                 pool.allocated
             );

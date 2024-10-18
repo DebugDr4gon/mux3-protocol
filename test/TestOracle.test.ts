@@ -47,34 +47,36 @@ describe("TestOracle", () => {
     await tester.test_setPrice()
   })
 
-  it("test_chainlinkStreamProvider", async () => {
-    await network.provider.request({
-      method: "hardhat_reset",
-      params: [
-        {
-          forking: {
-            jsonRpcUrl: "https://arb1.arbitrum.io/rpc",
-            enabled: true,
-            ignoreUnknownTxType: true, // added in our hardhat patch. see README.md
-            blockNumber: 257199002,
-          },
-        },
-      ],
-    })
-    tester = await createContract("TestOracle", [])
+  // it("test_chainlinkStreamProvider", async () => {
+  //   await network.provider.request({
+  //     method: "hardhat_reset",
+  //     params: [
+  //       {
+  //         forking: {
+  //           jsonRpcUrl: "https://arb1.arbitrum.io/rpc",
+  //           enabled: true,
+  //           ignoreUnknownTxType: true, // added in our hardhat patch. see README.md
+  //           blockNumber: 257199002,
+  //         },
+  //       },
+  //     ],
+  //   })
+  //   tester = await createContract("TestOracle", [])
 
-    await hardhatSetArbERC20Balance("0xf97f4df75117a78c1a5a0dbb814af92458539fb4", tester.address, toWei("1000"))
-    await tester.test_chainlinkStreamProvider()
-  })
+  //   await hardhatSetArbERC20Balance("0xf97f4df75117a78c1a5a0dbb814af92458539fb4", tester.address, toWei("1000"))
+  //   await tester.test_chainlinkStreamProvider()
+  // })
 
   it("test_muxPriceProvider", async () => {
-    // const message = ethers.utils.keccak256(
-    //   ethers.utils.solidityPack(
-    //     ["uint256", "address", "uint256", "uint256", "uint256"],
-    //     [31337, await tester.mpp(), 12, toWei("2000"), 12345678]
-    //   )
-    // )
-    // const signature = await user0.signMessage(ethers.utils.arrayify(message))
+    const message = ethers.utils.keccak256(
+      ethers.utils.solidityPack(
+        ["uint256", "address", "uint256", "uint256", "uint256"],
+        [31337, await tester.mpp(), 12, toWei("2000"), 12345678]
+      )
+    )
+    const signature = await user0.signMessage(ethers.utils.arrayify(message))
+    // console.log(message)
+    // console.log(signature)
     await tester.test_muxPriceProvider()
   })
 })

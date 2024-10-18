@@ -128,8 +128,8 @@ describe("Delegator", () => {
       tpslProfitToken: zeroAddress,
     }
     {
-      await expect(delegator.connect(trader3).placePositionOrder(args, refCode)).to.revertedWith("not delegated")
-      await expect(delegator.connect(trader2).placePositionOrder(args, refCode)).to.revertedWith("no action count")
+      await expect(delegator.connect(trader3).placePositionOrder(args, refCode)).to.revertedWith("Not delegated")
+      await expect(delegator.connect(trader2).placePositionOrder(args, refCode)).to.revertedWith("No action count")
       await delegator.connect(trader1).delegate(trader2.address, 100)
       const tx1 = await delegator
         .connect(trader2)
@@ -160,10 +160,10 @@ describe("Delegator", () => {
     }
     // cancel
     {
-      await expect(delegator.connect(trader3).cancelOrder(0)).to.revertedWith("not delegated")
+      await expect(delegator.connect(trader3).cancelOrder(0)).to.revertedWith("Not delegated")
       await delegator.connect(trader2).delegate(trader3.address, 100)
-      await expect(delegator.connect(trader3).cancelOrder(0)).to.revertedWith("not authorized")
-      await expect(delegator.connect(trader2).cancelOrder(1)).to.revertedWith("order not exists")
+      await expect(delegator.connect(trader3).cancelOrder(0)).to.revertedWith("Not authorized")
+      await expect(delegator.connect(trader2).cancelOrder(1)).to.revertedWith("Order not exists")
       await delegator.connect(trader2).cancelOrder(0)
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("100000", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("0", 6))

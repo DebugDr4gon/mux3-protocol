@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/proxy/beacon/IBeaconUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -116,7 +116,7 @@ contract PoolManager is Mux3FacetBase {
         assembly {
             proxy := create2(0x0, add(0x20, bytecode), mload(bytecode), salt)
         }
-        require(proxy != address(0), "CreateFailed");
+        require(proxy != address(0), "Create proxy failed");
     }
 
     function _getPoolAddress(

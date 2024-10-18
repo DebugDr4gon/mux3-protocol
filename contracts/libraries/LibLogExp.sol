@@ -12,7 +12,7 @@
 // COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 /* solhint-disable */
 
@@ -58,7 +58,8 @@ library LibLogExp {
 
     // 18 decimal constants
     int256 constant x0 = 128000000000000000000; // 2ˆ7
-    int256 constant a0 = 38877084059945950922200000000000000000000000000000000000; // eˆ(x0) (no decimals)
+    int256 constant a0 =
+        38877084059945950922200000000000000000000000000000000000; // eˆ(x0) (no decimals)
     int256 constant x1 = 64000000000000000000; // 2ˆ6
     int256 constant a1 = 6235149080811616882910000000; // eˆ(x1) (no decimals)
 
@@ -90,7 +91,10 @@ library LibLogExp {
      * Reverts if `x` is smaller than MIN_NATURAL_EXPONENT, or larger than `MAX_NATURAL_EXPONENT`.
      */
     function exp(int256 x) internal pure returns (int256) {
-        require(x >= MIN_NATURAL_EXPONENT && x <= MAX_NATURAL_EXPONENT, "LibLogExp: INVALID_EXPONENT");
+        require(
+            x >= MIN_NATURAL_EXPONENT && x <= MAX_NATURAL_EXPONENT,
+            "LibLogExp: INVALID_EXPONENT"
+        );
 
         if (x < 0) {
             // We only handle positive exponents: e^(-x) is computed as 1 / e^x. We can safely make x positive since it

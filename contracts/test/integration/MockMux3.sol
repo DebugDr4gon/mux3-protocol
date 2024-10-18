@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "../../interfaces/ITrade.sol";
 import "../../core/Mux3FacetBase.sol";
@@ -36,6 +36,8 @@ contract MockMux3 is FacetManagement, FacetReader, ITrade {
         address collateralToken,
         uint256 amount
     ) external {}
+
+    function withdrawAll(bytes32 positionId) external {}
 
     function openPosition(
         bytes32 marketId,

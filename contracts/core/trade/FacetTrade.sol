@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
@@ -14,6 +14,7 @@ import "./Pricing.sol";
 contract FacetTrade is Mux3FacetBase, PositionAccount, Market, Pricing, ITrade {
     using LibTypeCast for address;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
+    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
 
     /**
      * @dev updates the borrowing fee for a position, allowing LPs to collect fees
@@ -26,36 +27,23 @@ contract FacetTrade is Mux3FacetBase, PositionAccount, Market, Pricing, ITrade {
         PositionAccountInfo storage positionAccount = _positionAccounts[
             positionId
         ];
-        uint256 marketPrice = _priceOf(marketId);
         // update borrowing fee
-        _updateMarketBorrowingFee(marketId, marketPrice);
-        (
-            address[] memory borrowingFeeAddresses,
-            uint256[] memory borrowingFeeAmounts
-        ) = _updateAccountBorrowingFee(marketId, positionId);
-        _dispatchBorrowingFee(
+        uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(
+            marketId
+        );
+        uint256 borrowingFeeUsd = _updateAndDispatchBorrowingFee(
             positionAccount.owner,
             marketId,
             positionId,
-            borrowingFeeAddresses,
-            borrowingFeeAmounts
+            cumulatedBorrowingPerUsd,
+            true
         );
-        emit UpdateBorrowingFee(
+        emit UpdatePositionBorrowingFee(
             positionAccount.owner,
             positionId,
             marketId,
-            borrowingFeeAddresses,
-            borrowingFeeAmounts
+            borrowingFeeUsd
         );
-    }
-
-    /**
-     * @dev this function is typically called automatically when opening or
-     *      closing positions, so manual invocation is not required.
-     */
-    function updateMarketBorrowingFee(bytes32 marketId) internal {
-        uint256 tradingPrice = _priceOf(marketId);
-        _updateMarketBorrowingFee(marketId, tradingPrice);
     }
 
     function setInitialLeverage(
@@ -96,7 +84,6 @@ contract FacetTrade is Mux3FacetBase, PositionAccount, Market, Pricing, ITrade {
         PositionAccountInfo storage positionAccount = _positionAccounts[
             positionId
         ];
-        // TODO: update borrowing fee
         // deposit
         _depositToAccount(positionId, collateralToken, rawAmount);
         emit Deposit(
@@ -115,21 +102,75 @@ contract FacetTrade is Mux3FacetBase, PositionAccount, Market, Pricing, ITrade {
         // TODO: broker only
         // auth
         // _checkAuthorization(positionId); // TODO: broker only?
-        if (!_isPositionAccountExist(positionId)) {
-            _createPositionAccount(positionId);
-        }
+        require(
+            _isPositionAccountExist(positionId),
+            PositionAccountNotExists(positionId)
+        );
         PositionAccountInfo storage positionAccount = _positionAccounts[
             positionId
         ];
-        // TODO: update borrowing fee
+        // update all borrowing fee
+        uint256 allBorrowingFeeUsd;
+        uint256 marketLength = positionAccount.activeMarkets.length();
+        for (uint256 i = 0; i < marketLength; i++) {
+            bytes32 marketId = positionAccount.activeMarkets.at(i);
+            uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(
+                marketId
+            );
+            uint256 borrowingFeeUsd = _updateAndDispatchBorrowingFee(
+                positionAccount.owner,
+                marketId,
+                positionId,
+                cumulatedBorrowingPerUsd,
+                true
+            );
+            allBorrowingFeeUsd += borrowingFeeUsd;
+        }
         // withdraw
-        _withdrawFromAccount(positionId, collateralToken, rawAmount);
+        uint256 collateralAmount = _collateralToWad(collateralToken, rawAmount);
+        _withdrawFromAccount(positionId, collateralToken, collateralAmount);
         emit Withdraw(
             positionAccount.owner,
             positionId,
             collateralToken,
-            rawAmount
+            rawAmount,
+            allBorrowingFeeUsd
         );
+    }
+
+    function withdrawAll(bytes32 positionId) external {
+        // TODO: broker only
+        // auth
+        // _checkAuthorization(positionId); // TODO: broker only?
+        require(
+            _isPositionAccountExist(positionId),
+            PositionAccountNotExists(positionId)
+        );
+        PositionAccountInfo storage positionAccount = _positionAccounts[
+            positionId
+        ];
+        // all positions should be closed
+        require(
+            positionAccount.activeMarkets.length() == 0,
+            PositionNotClosed(positionId)
+        );
+        address[] memory collaterals = positionAccount
+            .activeCollaterals
+            .values();
+        for (uint256 i = 0; i < collaterals.length; i++) {
+            address collateralToken = collaterals[i];
+            uint256 collateralAmount = positionAccount.collaterals[
+                collaterals[i]
+            ];
+            _withdrawFromAccount(positionId, collateralToken, collateralAmount);
+            emit Withdraw(
+                positionAccount.owner,
+                positionId,
+                collateralToken,
+                _collateralToRaw(collateralToken, collateralAmount),
+                0 // borrowingFee must be 0 because size is 0
+            );
+        }
     }
 
     function openPosition(
@@ -141,8 +182,9 @@ contract FacetTrade is Mux3FacetBase, PositionAccount, Market, Pricing, ITrade {
             size % _marketLotSize(marketId) == 0,
             InvalidPositionSize(size)
         );
-        // auth
-        // _checkAuthorization(positionId); // TODO: broker only?
+        require(_isMarketExists(marketId), MarketNotExists(marketId));
+        // TODO: ASSET_IS_TRADABLE
+        // TODO: ASSET_IS_OPENABLE
         if (!_isPositionAccountExist(positionId)) {
             _createPositionAccount(positionId);
         }
@@ -150,127 +192,149 @@ contract FacetTrade is Mux3FacetBase, PositionAccount, Market, Pricing, ITrade {
             positionId
         ];
         tradingPrice = _priceOf(marketId);
-        // update borrowing fee
-        _updateMarketBorrowingFee(marketId, tradingPrice);
-        (
-            address[] memory borrowingFeeAddresses,
-            uint256[] memory borrowingFeeAmounts
-        ) = _updateAccountBorrowingFee(marketId, positionId);
-        _dispatchBorrowingFee(
-            positionAccount.owner,
-            marketId,
-            positionId,
-            borrowingFeeAddresses,
-            borrowingFeeAmounts
-        );
-        // allocations
         uint256[] memory allocations = _allocateLiquidity(marketId, size);
+        // update borrowing fee
+        uint256 borrowingFeeUsd;
+        {
+            uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(
+                marketId
+            );
+            borrowingFeeUsd = _updateAndDispatchBorrowingFee(
+                positionAccount.owner,
+                marketId,
+                positionId,
+                cumulatedBorrowingPerUsd,
+                true
+            );
+        }
         // position fee
-        (
-            address[] memory positionFeeAddresses,
-            uint256[] memory positionFeeAmounts
-        ) = _updatePositionFee(positionId, marketId, size);
-        // position fee
-        _dispatchFee(
+        uint256 positionFeeUsd = _dispatchPositionFee(
             positionAccount.owner,
             marketId,
             positionId,
-            positionFeeAddresses,
-            positionFeeAmounts,
-            allocations
-        );
-        // open position
-        _openAccountPosition(positionId, marketId, size);
-        _openMarketPosition(marketId, allocations);
-        // done
-        PositionData storage data = _positionAccounts[positionId].positions[
-            marketId
-        ];
-        emit OpenPosition(
-            positionAccount.owner,
-            positionId,
-            marketId,
-            _markets[marketId].isLong,
             size,
             allocations,
-            tradingPrice,
-            data.entryPrice,
-            data.size,
-            positionFeeAddresses,
-            positionFeeAmounts, // 1e18
-            borrowingFeeAddresses,
-            borrowingFeeAmounts // 1e18
+            true
         );
+        // open position
+        _openMarketPosition(marketId, allocations);
+        _openAccountPosition(positionId, marketId, allocations);
+        // done
+        {
+            (
+                address[] memory backedPools,
+                uint256[] memory newSizes,
+                uint256[] memory newEntryPrices,
+                address[] memory newCollateralTokens,
+                uint256[] memory newCollateralAmounts
+            ) = _dumpForEvent(marketId, positionId);
+            emit OpenPosition(
+                positionAccount.owner,
+                positionId,
+                marketId,
+                _markets[marketId].isLong,
+                size,
+                tradingPrice,
+                backedPools,
+                allocations,
+                newSizes,
+                newEntryPrices,
+                positionFeeUsd,
+                borrowingFeeUsd,
+                newCollateralTokens,
+                newCollateralAmounts
+            );
+        }
     }
 
     function closePosition(
         bytes32 marketId,
         bytes32 positionId,
         uint256 size
-    ) external onlyRole(BROKER_ROLE) returns (uint256 tradingPrice) {
+    ) external onlyRole(ORDER_BOOK_ROLE) returns (uint256 tradingPrice) {
         require(
             size % _marketLotSize(marketId) == 0,
             InvalidPositionSize(size)
         );
-        // auth
-        if (!_isPositionAccountExist(positionId)) {
-            _createPositionAccount(positionId);
-        }
+        require(_isMarketExists(marketId), MarketNotExists(marketId));
+        // TODO: ASSET_IS_TRADABLE
+        require(
+            _isPositionAccountExist(positionId),
+            PositionAccountNotExists(positionId)
+        );
         PositionAccountInfo storage positionAccount = _positionAccounts[
             positionId
         ];
         tradingPrice = _priceOf(marketId);
-        // update borrowing fee
-        _updateMarketBorrowingFee(marketId, tradingPrice);
-        (
-            address[] memory borrowingFeeAddresses,
-            uint256[] memory borrowingFeeAmounts
-        ) = _updateAccountBorrowingFee(marketId, positionId);
-        // allocations
-        uint256[] memory allocations = _deallocateLiquidity(marketId, size);
-        _dispatchBorrowingFee(
-            positionAccount.owner,
-            marketId,
+        uint256[] memory allocations = _deallocateLiquidity(
             positionId,
-            borrowingFeeAddresses,
-            borrowingFeeAmounts
-        );
-        // position fee
-        (
-            address[] memory positionFeeAddresses,
-            uint256[] memory positionFeeAmounts
-        ) = _updatePositionFee(positionId, marketId, size);
-        // position fee
-        _dispatchFee(
-            positionAccount.owner,
             marketId,
-            positionId,
-            positionFeeAddresses,
-            positionFeeAmounts,
-            allocations
+            size
         );
-        // close position
-        _closeAccountPosition(positionId, marketId, size);
-        _closeMarketPosition(marketId, allocations);
-        // done
-        PositionData storage data = _positionAccounts[positionId].positions[
+        // borrowing fee should be updated before pnl, because profit/loss will affect aum
+        uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(
             marketId
-        ];
-        emit ClosePosition(
-            positionAccount.owner,
-            positionId,
+        );
+        // pnl
+        (
+            bool[] memory hasProfits,
+            uint256[] memory poolPnlUsds
+        ) = _positionPnlUsd(marketId, positionId, allocations, tradingPrice);
+        poolPnlUsds = _realizeProfitAndLoss(
             marketId,
-            _markets[marketId].isLong,
+            positionId,
+            hasProfits,
+            poolPnlUsds,
+            true
+        );
+        // update borrowing fee
+        uint256 borrowingFeeUsd = _updateAndDispatchBorrowingFee(
+            positionAccount.owner,
+            marketId,
+            positionId,
+            cumulatedBorrowingPerUsd,
+            false
+        );
+        // position fee
+        uint256 positionFeeUsd = _dispatchPositionFee(
+            positionAccount.owner,
+            marketId,
+            positionId,
             size,
             allocations,
-            tradingPrice,
-            data.entryPrice,
-            data.size,
-            positionFeeAddresses,
-            positionFeeAmounts,
-            borrowingFeeAddresses,
-            borrowingFeeAmounts
+            false
         );
+        // close position
+        _closeMarketPosition(positionId, marketId, allocations);
+        _closeAccountPosition(positionId, marketId, allocations);
+        // done
+        {
+            (
+                address[] memory backedPools,
+                uint256[] memory newSizes,
+                uint256[] memory newEntryPrices,
+                address[] memory newCollateralTokens,
+                uint256[] memory newCollateralAmounts
+            ) = _dumpForEvent(marketId, positionId);
+            emit ClosePosition(
+                positionAccount.owner,
+                positionId,
+                marketId,
+                _markets[marketId].isLong,
+                size,
+                tradingPrice,
+                backedPools,
+                allocations,
+                newSizes,
+                newEntryPrices,
+                hasProfits,
+                poolPnlUsds,
+                positionFeeUsd,
+                borrowingFeeUsd,
+                newCollateralTokens,
+                newCollateralAmounts
+            );
+        }
     }
 
     function setPrice(
@@ -284,5 +348,114 @@ contract FacetTrade is Mux3FacetBase, PositionAccount, Market, Pricing, ITrade {
             oracleCalldata
         );
         emit SetPrice(priceId, provider, oracleCalldata, price, timestamp);
+    }
+
+    function _updateAndDispatchBorrowingFee(
+        address trader,
+        bytes32 marketId,
+        bytes32 positionId,
+        uint256[] memory cumulatedBorrowingPerUsd,
+        bool shouldCollateralSufficient
+    ) private returns (uint256 borrowingFeeUsd) {
+        uint256[] memory borrowingFeeUsds;
+        address[] memory borrowingFeeAddresses;
+        uint256[] memory borrowingFeeAmounts;
+        // note: if shouldCollateralSufficient = false, borrowingFeeUsd could <= sum(borrowingFeeUsds).
+        //       we only use borrowingFeeUsds as allocations
+        (
+            borrowingFeeUsd,
+            borrowingFeeUsds,
+            borrowingFeeAddresses,
+            borrowingFeeAmounts
+        ) = _updateAccountBorrowingFee(
+            marketId,
+            positionId,
+            cumulatedBorrowingPerUsd,
+            shouldCollateralSufficient
+        );
+        _dispatchFee(
+            trader,
+            marketId,
+            positionId,
+            borrowingFeeAddresses,
+            borrowingFeeAmounts,
+            borrowingFeeUsds // allocations
+        );
+    }
+
+    function _dispatchPositionFee(
+        address trader,
+        bytes32 marketId,
+        bytes32 positionId,
+        uint256 size,
+        uint256[] memory allocations,
+        bool shouldCollateralSufficient
+    ) private returns (uint256 positionFeeUsd) {
+        address[] memory positionFeeAddresses;
+        uint256[] memory positionFeeAmounts;
+        (
+            positionFeeUsd,
+            positionFeeAddresses,
+            positionFeeAmounts
+        ) = _updatePositionFee(
+            positionId,
+            marketId,
+            size,
+            shouldCollateralSufficient
+        );
+        _dispatchFee(
+            trader,
+            marketId,
+            positionId,
+            positionFeeAddresses,
+            positionFeeAmounts,
+            allocations
+        );
+    }
+
+    function _dumpForEvent(
+        bytes32 marketId,
+        bytes32 positionId
+    )
+        private
+        view
+        returns (
+            address[] memory backedPools,
+            uint256[] memory newSizes,
+            uint256[] memory newEntryPrices,
+            address[] memory collateralTokens,
+            uint256[] memory collateralAmounts
+        )
+    {
+        PositionAccountInfo storage positionAccount = _positionAccounts[
+            positionId
+        ];
+        // pools
+        {
+            BackedPoolState[] memory pools = _markets[marketId].pools;
+            PositionData storage positionData = positionAccount.positions[
+                marketId
+            ];
+            backedPools = new address[](pools.length);
+            newEntryPrices = new uint256[](pools.length);
+            newSizes = new uint256[](pools.length);
+            for (uint256 i = 0; i < pools.length; i++) {
+                address backedPool = pools[i].backedPool;
+                PositionPoolData storage pool = positionData.pools[backedPool];
+                backedPools[i] = backedPool;
+                newSizes[i] = pool.size;
+                newEntryPrices[i] = pool.entryPrice;
+            }
+        }
+        // collaterals
+        {
+            collateralTokens = positionAccount.activeCollaterals.values();
+            collateralAmounts = new uint256[](collateralTokens.length);
+            for (uint256 i = 0; i < collateralTokens.length; i++) {
+                collateralAmounts[i] = positionAccount.collaterals[
+                    collateralTokens[i]
+                ];
+            }
+        }
     }
 }

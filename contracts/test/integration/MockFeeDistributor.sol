@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "../../interfaces/IFeeDistributor.sol";
@@ -14,11 +14,15 @@ contract MockFeeDistributor is IFeeDistributor {
     constructor(address mux3Facet) {
         _mux3Facet = mux3Facet;
     }
+
     function updateLiquidityFees(
         address lp,
         address poolAddress,
         uint256 amount // decimals = 18
     ) external override {}
+
+    // note: allocation only represents a proportional relationship.
+    //       the sum of allocations does not necessarily have to be consistent with the total value.
     function updatePositionFees(
         address trader,
         bytes32 marketId,

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 bytes32 constant MC_BORROWING_BASE_APY = keccak256("MC_BORROWING_BASE_APY");
 bytes32 constant MC_BORROWING_INTERVAL = keccak256("MC_BORROWING_INTERVAL");

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 interface IManagement {
     event AddCollateralToken(address token, uint8 decimals);

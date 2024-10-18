@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../interfaces/IBorrowingRate.sol";
 import { LibExpBorrowingRate } from "../../libraries/LibExpBorrowingRate.sol";
 
@@ -15,6 +16,18 @@ contract TestLibExpBorrowingRate {
         }
     }
 
+    function testDivRoundUp(uint256 a, uint256 b) public pure returns (uint256) {
+        return Math.ceilDiv(a * 1e18, b);
+    }
+
+    function testAlignAllocationToLotSize(
+        uint256 target,
+        uint256[] memory allocations,
+        uint256 lotSize
+    ) external pure returns (uint256[] memory result) {
+        return LibExpBorrowingRate.alignAllocationToLotSize(target, allocations, lotSize);
+    }
+
     function testDistributeEquation(
         IBorrowingRate.Pool[] memory pools,
         int256 xTotal
@@ -23,9 +36,7 @@ contract TestLibExpBorrowingRate {
         mem.poolsN = int256(pools.length);
         mem.pools = new LibExpBorrowingRate.PoolState[](uint256(mem.poolsN));
         for (int256 i = 0; i < mem.poolsN; i++) {
-            mem.pools[uint256(i)] = LibExpBorrowingRate.initPoolState(
-                pools[uint256(i)]
-            );
+            mem.pools[uint256(i)] = LibExpBorrowingRate.initPoolState(pools[uint256(i)]);
         }
         xi = new int256[](uint256(mem.poolsN));
 
@@ -49,11 +60,7 @@ contract TestLibExpBorrowingRate {
     function allocate(
         IBorrowingRate.Pool[] memory pools,
         int256 xTotal
-    )
-        external
-        pure
-        returns (LibExpBorrowingRate.AllocateResult[] memory result)
-    {
+    ) external pure returns (IBorrowingRate.AllocateResult[] memory result) {
         return LibExpBorrowingRate.allocate2(pools, xTotal);
     }
 }

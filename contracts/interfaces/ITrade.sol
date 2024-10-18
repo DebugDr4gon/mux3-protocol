@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "./IConstants.sol";
 
@@ -15,7 +15,8 @@ interface ITrade {
         address indexed owner,
         bytes32 indexed positionId,
         address collateralToken,
-        uint256 collateralAmount // token.decimals
+        uint256 collateralAmount, // token.decimals
+        uint256 borrowingFeeUsd // 1e18
     );
 
     event CreatePositionAccount(
@@ -31,12 +32,11 @@ interface ITrade {
         uint256 leverage
     );
 
-    event UpdateBorrowingFee(
+    event UpdatePositionBorrowingFee(
         address indexed owner,
         bytes32 indexed positionId,
         bytes32 indexed marketId,
-        address[] feeAddresses,
-        uint256[] feeAmounts
+        uint256 borrowingFeeUsd
     );
 
     event OpenPosition(
@@ -45,14 +45,15 @@ interface ITrade {
         bytes32 indexed marketId,
         bool isLong,
         uint256 size,
-        uint256[] allocations,
         uint256 tradingPrice,
-        uint256 newEntryPrice,
-        uint256 newSize,
-        address[] positionFeeAddresses,
-        uint256[] positionFeeAmounts, // 1e18
-        address[] borrowingFeeAddresses,
-        uint256[] borrowingFeeAmounts // 1e18
+        address[] backedPools,
+        uint256[] allocations,
+        uint256[] newSizes,
+        uint256[] newEntryPrices,
+        uint256 positionFeeUsd, // 1e18
+        uint256 borrowingFeeUsd, // 1e18
+        address[] newCollateralTokens,
+        uint256[] newCollateralAmounts
     );
 
     event ClosePosition(
@@ -61,14 +62,17 @@ interface ITrade {
         bytes32 indexed marketId,
         bool isLong,
         uint256 size,
-        uint256[] allocations,
         uint256 tradingPrice,
-        uint256 newEntryPrice,
-        uint256 newSize,
-        address[] positionFeeAddresses,
-        uint256[] positionFeeAmounts, // 1e18
-        address[] borrowingFeeAddresses,
-        uint256[] borrowingFeeAmounts // 1e18
+        address[] backedPools,
+        uint256[] allocations,
+        uint256[] newSizes,
+        uint256[] newEntryPrices,
+        bool[] hasProfits,
+        uint256[] poolPnlUsds,
+        uint256 positionFeeUsd, // 1e18
+        uint256 borrowingFeeUsd, // 1e18
+        address[] newCollateralTokens,
+        uint256[] newCollateralAmounts
     );
 
     event SetPrice(
@@ -104,6 +108,8 @@ interface ITrade {
         address collateralToken,
         uint256 amount
     ) external;
+
+    function withdrawAll(bytes32 positionId) external;
 
     function openPosition(
         bytes32 marketId,

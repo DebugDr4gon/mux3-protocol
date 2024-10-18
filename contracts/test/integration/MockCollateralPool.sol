@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import "../../libraries/LibConfigTable.sol";
+import "../../libraries/LibConfigMap.sol";
 import "../../interfaces/ICollateralPool.sol";
 import "../../interfaces/IBorrowingRate.sol";
 import "../../interfaces/IErrors.sol";
@@ -23,7 +23,7 @@ contract MockCollateralPool is
     ICollateralPool,
     IErrors
 {
-    using LibConfigTable for ConfigTable;
+    using LibConfigMap for mapping(bytes32 => bytes32);
     using LibTypeCast for int256;
     using LibTypeCast for uint256;
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -47,15 +47,31 @@ contract MockCollateralPool is
         return address(_collateralToken);
     }
 
+    function markets() external view returns (bytes32[] memory) {}
+
     function marketState(
         bytes32 marketId
     ) external view returns (MarketState memory) {
         return _marketStates[marketId];
     }
 
-    function markets() external view returns (bytes32[] memory) {}
+    function marketStates()
+        external
+        view
+        returns (bytes32[] memory marketIds, MarketState[] memory states)
+    {
+        marketIds = _marketIds.values();
+        states = new MarketState[](marketIds.length);
+        for (uint256 i = 0; i < marketIds.length; i++) {
+            bytes32 marketId = marketIds[i];
+            states[i] = _marketStates[marketId];
+        }
+    }
 
-    function borrowingFeeRateApy() public pure returns (uint256 feeRateApy) {
+    function borrowingFeeRateApy(
+        bytes32 marketId
+    ) public pure returns (uint256 feeRateApy) {
+        marketId;
         return 0;
     }
 
@@ -67,9 +83,9 @@ contract MockCollateralPool is
         capUsd = _liquidityCapUsd();
     }
 
-    function setLiquidityCapUsd(uint256 capUsd) external {
-        _configTable.setUint256(MCP_LIQUIDITY_CAP_USD, capUsd);
-    }
+    // function setLiquidityCapUsd(uint256 capUsd) external {
+    //     _configTable.setUint256(MCP_LIQUIDITY_CAP_USD, capUsd);
+    // }
 
     function setMarket(bytes32 marketId, bool isLong) external {
         require(!_marketIds.contains(marketId), MarketAlreadyExists(marketId));
@@ -85,7 +101,22 @@ contract MockCollateralPool is
 
     function receiveFee(address token, uint256 rawAmount) external {}
 
-    function closePosition(bytes32 marketId, uint256 size) external override {}
+    function closePosition(
+        bytes32 marketId,
+        uint256 size,
+        uint256 entryPrice
+    ) external override {}
+
+    function realizeProfit(
+        uint256 pnlUsd
+    ) external returns (address token, uint256 wad) {
+        pnlUsd;
+    }
+
+    function realizeLoss(address token, uint256 rawAmount) external {
+        token;
+        rawAmount;
+    }
 
     function addLiquidity(
         address account,
@@ -99,5 +130,32 @@ contract MockCollateralPool is
 
     function mint(address account, uint256 amount) external {
         _mint(account, amount);
+    }
+
+    function updateMarketBorrowing(
+        bytes32 marketId
+    ) external returns (uint256 newCumulatedBorrowingPerUsd) {
+        marketId;
+        return 0;
+    }
+
+    function makeBorrowingContext(
+        bytes32 marketId
+    ) external view returns (IBorrowingRate.Pool memory) {
+        marketId;
+        return IBorrowingRate.Pool(0, 0, 0, false, 0, 0, 0);
+    }
+
+    function positionPnl(
+        bytes32 marketId,
+        uint256 size,
+        uint256 entryPrice,
+        uint256 marketPrice
+    ) external view returns (bool hasProfit, uint256 cappedPnlUsd) {
+        marketId;
+        size;
+        entryPrice;
+        marketPrice;
+        return (false, 0);
     }
 }
