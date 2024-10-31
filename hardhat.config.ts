@@ -19,9 +19,6 @@ module.exports = {
   solidity: {
     compilers: [
       {
-        // [hardhat docs](https://hardhat.org/hardhat-runner/docs/reference/solidity-support#support-for-ir-based-codegen)
-        // says (since Oct, 2024) that if you use the viaIR option, we recommend you set the optimization step sequence to "u",
-        // to make Hardhat work as well as possible
         version: "0.8.28",
         settings: {
           viaIR: true,
@@ -29,8 +26,12 @@ module.exports = {
             enabled: true,
             details: {
               yulDetails: {
-                // also see https://docs.soliditylang.org/en/v0.8.28/internals/optimizer.html#optimizer-steps
-                optimizerSteps: "u",
+                // when release the product, use default optimizerSteps. only set optimizerSteps to "u" during development.
+                // references
+                // * hardhat doc: https://hardhat.org/hardhat-runner/docs/reference/solidity-support#support-for-ir-based-codegen
+                // * optimizer steps: https://docs.soliditylang.org/en/v0.8.28/internals/optimizer.html#optimizer-steps
+                // * default sequence: https://github.com/ethereum/solidity/blob/v0.8.28/libsolidity/interface/OptimiserSettings.h#L44-L62
+                // optimizerSteps: "u",
               },
             },
           },
