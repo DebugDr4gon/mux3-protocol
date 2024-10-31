@@ -10,16 +10,18 @@ contract TestMux3FacetBase is FacetManagement, TestSuit {
     address pool;
 
     function setup() external {
-        pool = address(new CollateralPool());
+        ERC20 fakeCore = new MockERC20("fakeCore", "fakeCore", 18);
+        ERC20 fakeBook = new MockERC20("fakeBook", "fakeBook", 18);
+        pool = address(new CollateralPool(address(fakeCore), address(fakeBook)));
         _setImplementation(pool);
     }
 
     function test_isPoolExist() external {
         ERC20 fakeToken = new MockERC20("fakeToken", "fakeToken", 18);
 
-        address poolAddress = _getPoolAddress("fakePool", "fakePool", address(fakeToken), 18);
+        address poolAddress = _getPoolAddress("fakePool", "fakePool", address(fakeToken));
         assertEq(_isPoolExist(poolAddress), false, "E01");
-        _createCollateralPool("fakePool", "fakePool", address(fakeToken), 18);
+        _createCollateralPool("fakePool", "fakePool", address(fakeToken));
         assertEq(_isPoolExist(poolAddress), true, "E02");
     }
 
@@ -28,15 +30,6 @@ contract TestMux3FacetBase is FacetManagement, TestSuit {
         assertEq(_isOracleProvider(oracleProvider), false, "E01");
         _setOracleProvider(oracleProvider, true);
         assertEq(_isOracleProvider(oracleProvider), true, "E02");
-    }
-
-    function test_isAuthorized() external view {
-        address owner = address(this);
-        bytes32 positionId = LibCodec.encodePositionId(owner, 1);
-        assertEq(_isAuthorized(owner, positionId), true, "E01");
-
-        owner = pool;
-        assertEq(_isAuthorized(owner, positionId), false, "E01");
     }
 
     function test_collateralToWad() external {

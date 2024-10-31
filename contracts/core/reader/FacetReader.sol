@@ -45,6 +45,10 @@ contract FacetReader is Mux3FacetBase, IFacetReader {
         decimals = collateralToken.decimals;
     }
 
+    function listCollateralTokens() external view returns (address[] memory) {
+        return _collateralTokenList;
+    }
+
     function getCollateralPool(
         address pool
     ) public view returns (bool enabled) {
@@ -102,24 +106,7 @@ contract FacetReader is Mux3FacetBase, IFacetReader {
         positions = new PositionReader[](length);
         for (uint256 i = 0; i < length; i++) {
             bytes32 marketId = positionAccount.activeMarkets.at(i);
-            PositionData storage positionData = positionAccount.positions[
-                marketId
-            ];
-            positions[i].marketId = marketId;
-            positions[i].initialLeverage = positionData.initialLeverage;
-            positions[i].lastIncreasedTime = positionData.lastIncreasedTime;
-            positions[i].realizedBorrowingUsd = positionData
-                .realizedBorrowingUsd;
-            BackedPoolState[] storage backedPools = _markets[marketId].pools;
-            positions[i].pools = new PositionPoolReader[](backedPools.length);
-            for (uint256 j = 0; j < backedPools.length; j++) {
-                address backedPool = backedPools[j].backedPool;
-                PositionPoolData memory pool = positionData.pools[backedPool];
-                positions[i].pools[j].poolAddress = backedPool;
-                positions[i].pools[j].size = pool.size;
-                positions[i].pools[j].entryPrice = pool.entryPrice;
-                positions[i].pools[j].entryBorrowing = pool.entryBorrowing;
-            }
+            positions[i] = getPositionAccount(positionId, marketId);
         }
     }
 
@@ -135,6 +122,28 @@ contract FacetReader is Mux3FacetBase, IFacetReader {
             positions[i].positionId = positionId;
             positions[i].collaterals = listAccountCollaterals(positionId);
             positions[i].positions = listAccountPositions(positionId);
+        }
+    }
+
+    function getPositionAccount(
+        bytes32 positionId,
+        bytes32 marketId
+    ) public view returns (PositionReader memory position) {
+        PositionData storage positionData = _positionAccounts[positionId]
+            .positions[marketId];
+        position.marketId = marketId;
+        position.initialLeverage = positionData.initialLeverage;
+        position.lastIncreasedTime = positionData.lastIncreasedTime;
+        position.realizedBorrowingUsd = positionData.realizedBorrowingUsd;
+        BackedPoolState[] storage backedPools = _markets[marketId].pools;
+        position.pools = new PositionPoolReader[](backedPools.length);
+        for (uint256 j = 0; j < backedPools.length; j++) {
+            address backedPool = backedPools[j].backedPool;
+            PositionPoolData storage pool = positionData.pools[backedPool];
+            position.pools[j].poolAddress = backedPool;
+            position.pools[j].size = pool.size;
+            position.pools[j].entryPrice = pool.entryPrice;
+            position.pools[j].entryBorrowing = pool.entryBorrowing;
         }
     }
 }

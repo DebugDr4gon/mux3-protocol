@@ -8,18 +8,15 @@ contract CollateralPoolToken is ERC20Upgradeable {
 
     bytes32[50] private _gaps;
 
-    event UpdateTrustedSpender(address spender, bool trusted);
-
     function __CollateralPoolToken_init(
-        string memory name,
-        string memory symbol
+        string memory name_,
+        string memory symbol_
     ) internal onlyInitializing {
-        __ERC20_init(name, symbol);
+        __ERC20_init(name_, symbol_);
     }
 
     // function _setTrustedSpender(address spender, bool trusted) internal {
     //     _trustedSpender[spender] = trusted;
-    //     emit UpdateTrustedSpender(spender, trusted);
     // }
 
     // function _spendAllowance(

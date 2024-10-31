@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import "../../interfaces/IPriceProvider.sol";
-
 import "../Mux3FacetBase.sol";
 
 contract Pricing is Mux3FacetBase {

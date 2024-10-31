@@ -155,7 +155,9 @@ contract OrderBook is
         (address positionAccount, ) = LibCodec.decodePositionId(
             orderParams.positionId
         );
-        require(positionAccount == msg.sender, "Not authorized");
+        if (_isDelegator(msg.sender)) {} else {
+            require(positionAccount == msg.sender, "Not authorized");
+        }
         LibOrderBook.placeWithdrawalOrder(
             _storage,
             orderParams,
@@ -167,8 +169,7 @@ contract OrderBook is
      * @dev   Open/close a position. called by Broker.
      */
     function fillPositionOrder(
-        uint64 orderId,
-        uint256[] memory packedPrices
+        uint64 orderId
     )
         external
         onlyRole(BROKER_ROLE)
@@ -190,8 +191,7 @@ contract OrderBook is
      * @dev   Add/remove liquidity. called by Broker.
      */
     function fillLiquidityOrder(
-        uint64 orderId,
-        uint256[] memory packedPrices
+        uint64 orderId
     )
         external
         onlyRole(BROKER_ROLE)
@@ -217,48 +217,24 @@ contract OrderBook is
     // }
     /**
      * @dev   Withdraw collateral/profit. called by Broker.
-     *
-     * @param orderId           order id.
-     * @param markPrices        mark prices of all assets. decimals = 18.
      */
-    // function fillWithdrawalOrder(
-    //     uint64 orderId,
-    //     uint96[] memory markPrices
-    // )
-    //     external
-    //     onlyRole(BROKER_ROLE)
-    //     whenNotPaused(OrderType.WithdrawalOrder)
-    //     nonReentrant
-    //     updateSequence
-    // {
-    //     require(_storage.orders.contains(orderId), "OID"); // can not find this OrderID
-    //     OrderData memory orderData = _storage.orderData[orderId];
-    //     _storage.removeOrder(orderData);
-    //     require(orderData.orderType == OrderType.WithdrawalOrder, "TYP"); // order TYPe mismatch
-    //     WithdrawalOrderParams memory orderParams = orderData
-    //         .decodeWithdrawalOrder();
-    //     require(
-    //         _blockTimestamp() <=
-    //             orderData.placeOrderTime + _marketOrderTimeout(),
-    //         "EXP"
-    //     ); // EXPired
-    //     // fill
-    //     if (orderParams.isProfit) {
-    //         require(false, "PFT"); // withdraw profit is not supported yet
-    //     } else {
-    //         uint96 collateralPrice = markPrices[
-    //             orderParams.subAccountId.collateralId()
-    //         ];
-    //         uint96 assetPrice = markPrices[orderParams.subAccountId.assetId()];
-    //         IDegenPool(_storage.pool).withdrawCollateral(
-    //             orderParams.subAccountId,
-    //             orderParams.rawAmount,
-    //             collateralPrice,
-    //             assetPrice
-    //         );
-    //     }
-    //     emit FillOrder(orderData.account, orderId, orderData);
-    // }
+    function fillWithdrawalOrder(
+        uint64 orderId
+    )
+        external
+        onlyRole(BROKER_ROLE)
+        nonReentrant
+        whenNotPaused(OrderType.WithdrawalOrder)
+        updateSequence
+    {
+        LibOrderBook.fillWithdrawalOrder(
+            _storage,
+            _configTable,
+            orderId,
+            _blockTimestamp()
+        );
+    }
+
     /**
      * @notice Cancel an Order by orderId.
      */
@@ -307,7 +283,9 @@ contract OrderBook is
         bytes32 positionId
     ) external updateSequence whenNotPaused(OrderType.WithdrawalOrder) {
         (address positionAccount, ) = LibCodec.decodePositionId(positionId);
-        require(positionAccount == msg.sender, "Not authorized");
+        if (_isDelegator(msg.sender)) {} else {
+            require(positionAccount == msg.sender, "Not authorized");
+        }
         LibOrderBook.withdrawAllCollateral(_storage, positionId);
     }
 
@@ -328,29 +306,40 @@ contract OrderBook is
         );
     }
 
-    // function liquidate(
-    //     bytes32 subAccountId,
-    //     uint8 profitAssetId, // only used when !isLong
-    //     uint96 tradingPrice,
-    //     uint96[] memory assetPrices
-    // ) external onlyRole(BROKER_ROLE) updateSequence {
-    //     // fill
-    //     IDegenPool(_storage.pool).liquidate(
-    //         subAccountId,
-    //         profitAssetId,
-    //         tradingPrice,
-    //         assetPrices
-    //     );
-    //     // auto withdraw
-    //     (uint96 collateral, , , , ) = IDegenPool(_storage.pool).getSubAccount(
-    //         subAccountId
-    //     );
-    //     if (collateral > 0) {
-    //         IDegenPool(_storage.pool).withdrawAllCollateral(subAccountId);
-    //     }
-    //     // cancel activated tp/sl orders
-    //     _storage.cancelActivatedTpslOrders(subAccountId);
-    // }
+    function setInitialLeverage(
+        bytes32 positionId,
+        bytes32 marketId,
+        uint256 initialLeverage
+    ) external updateSequence {
+        (address positionAccount, ) = LibCodec.decodePositionId(positionId);
+        if (_isDelegator(msg.sender)) {} else {
+            require(positionAccount == msg.sender, "Not authorized");
+        }
+        LibOrderBook.setInitialLeverage(
+            _storage,
+            positionId,
+            marketId,
+            initialLeverage
+        );
+    }
+
+    /**
+     * @dev   Open/close a position. called by Broker.
+     */
+    function liquidate(
+        bytes32 positionId,
+        bytes32 marketId
+    )
+        external
+        onlyRole(BROKER_ROLE)
+        nonReentrant
+        whenNotPaused(OrderType.LiquidityOrder)
+        updateSequence
+        returns (uint256 tradingPrice)
+    {
+        return LibOrderBook.liquidatePosition(_storage, positionId, marketId);
+    }
+
     // function fillAdlOrder(
     //     AdlOrderParams memory orderParams,
     //     uint96 tradingPrice,
@@ -358,6 +347,7 @@ contract OrderBook is
     // ) public onlyRole(BROKER_ROLE) nonReentrant updateSequence {
     //     _storage.fillAdlOrder(orderParams, tradingPrice, markPrices);
     // }
+
     // /**
     //  * @dev Broker can withdraw brokerGasRebate.
     //  */
@@ -370,6 +360,7 @@ contract OrderBook is
     //             assetId
     //         );
     // }
+
     function _blockTimestamp() internal view virtual returns (uint256) {
         return block.timestamp;
     }
@@ -379,17 +370,4 @@ contract OrderBook is
         // TODO: add test rules for specified key
         LibConfigMap.setBytes32(_configTable, key, value);
     }
-
-    // TODO: remove me if oracleProvider is ready
-    function setMockPrice(
-        bytes32 key,
-        uint256 price
-    ) external onlyRole(BROKER_ROLE) nonReentrant {
-        MockPriceSetter(_storage.mux3Facet).setMockPrice(key, price);
-    }
-}
-
-// TODO: remove me if oracleProvider is ready
-interface MockPriceSetter {
-    function setMockPrice(bytes32 key, uint256 price) external;
 }

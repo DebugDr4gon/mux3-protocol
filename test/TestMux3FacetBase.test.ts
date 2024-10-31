@@ -18,7 +18,6 @@ describe("TestMux3FacetBase", () => {
 
   before(async () => {
     user0 = (await ethers.getSigners())[0]
-
   })
 
   beforeEach(async () => {
@@ -26,17 +25,12 @@ describe("TestMux3FacetBase", () => {
     await tester.setup()
   })
 
-
   it("test_isPoolExist", async () => {
     await tester.test_isPoolExist()
   })
 
   it("test_isOracleProvider", async () => {
     await tester.test_isOracleProvider()
-  })
-
-  it("test_isAuthorized", async () => {
-    await tester.test_isAuthorized()
   })
 
   it("test_collateralToRaw", async () => {

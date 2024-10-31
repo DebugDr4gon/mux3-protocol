@@ -23,4 +23,17 @@ interface IManagement {
     event SetCollateralPoolConfig(address pool, bytes32 key, bytes32 value);
     event SetCollateralTokenEnabled(address token, bool enabled);
     event SetOracleProvider(address oracleProvider, bool isValid);
+    event SetPrice(
+        bytes32 priceId,
+        address provider,
+        bytes data,
+        uint256 price,
+        uint256 timestamp
+    );
+
+    function setPrice(
+        bytes32 priceId,
+        address provider,
+        bytes memory oracleCalldata
+    ) external;
 }

@@ -19,7 +19,7 @@ contract PriceProvider is OrderBookStore {
     ) external onlyRole(BROKER_ROLE) {
         require(priceData.length > 0, "PriceProvider: priceData is empty");
         for (uint256 i = 0; i < priceData.length; i++) {
-            ITrade(_storage.mux3Facet).setPrice(
+            IManagement(_storage.mux3Facet).setPrice(
                 priceData[i].id,
                 priceData[i].provider,
                 priceData[i].rawData

@@ -2,8 +2,6 @@
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-
-import "../../interfaces/IConstants.sol";
 import "../Mux3FacetBase.sol";
 
 contract CollateralManager is Mux3FacetBase {
@@ -21,6 +19,14 @@ contract CollateralManager is Mux3FacetBase {
             enabled: Enabled.Enabled,
             decimals: _retrieveDecimals(token, decimals)
         });
+        require(
+            _collateralTokenList.length < MAX_COLLATERAL_TOKENS,
+            CapacityExceeded(
+                MAX_COLLATERAL_TOKENS,
+                _collateralTokenList.length,
+                1
+            )
+        );
         _collateralTokenList.push(token);
     }
 

@@ -8,8 +8,6 @@ import "../../interfaces/chainlink/ICommon.sol";
 import "../../interfaces/chainlink/IFeeManager.sol";
 import "../../interfaces/chainlink/IVerifyProxy.sol";
 
-import "hardhat/console.sol";
-
 contract ChainlinkStreamProvider is OwnableUpgradeable {
     struct Report {
         bytes32 feedId; // The feed ID the report has data for
@@ -25,21 +23,36 @@ contract ChainlinkStreamProvider is OwnableUpgradeable {
 
     address public chainlinkVerifier;
     uint256 public priceExpiration;
-    mapping(bytes32 => bytes32) feedIds;
+    mapping(bytes32 => bytes32) public feedIds;
+    mapping(address => bool) public callerWhitelist;
 
     event SetChainlinkVerifier(address chainlinkVerifier);
     event SetPriceExpiration(uint256 expiration);
     event SetFeedId(bytes32 priceId, bytes32 feedId);
-
+    event SetCallerWhitelist(address caller, bool isWhitelisted);
     error InvalidChainlinkVerifier();
     error InvalidPrice(int192 price);
     error InvalidPriceExpiration(uint256 expiration);
     error PriceExpired(uint256 timestamp, uint256 blockTimestamp);
     error IdMismatch(bytes32 id, bytes32 expectedId);
+    error NotWhitelisted(address caller);
+
+    modifier onlyWhitelisted() {
+        require(callerWhitelist[msg.sender], NotWhitelisted(msg.sender));
+        _;
+    }
 
     function initialize(address _chainlinkVerifier) external initializer {
         __Ownable_init();
         _setChainlinkVerifier(_chainlinkVerifier);
+    }
+
+    function setCallerWhitelist(
+        address caller,
+        bool isWhitelisted
+    ) external onlyOwner {
+        callerWhitelist[caller] = isWhitelisted;
+        emit SetCallerWhitelist(caller, isWhitelisted);
     }
 
     function setChainlinkVerifier(
@@ -67,7 +80,7 @@ contract ChainlinkStreamProvider is OwnableUpgradeable {
     function getOraclePrice(
         bytes32 priceId,
         bytes memory rawData
-    ) external returns (uint256 price, uint256 timestamp) {
+    ) external onlyWhitelisted returns (uint256 price, uint256 timestamp) {
         require(chainlinkVerifier != address(0), InvalidChainlinkVerifier());
         bytes memory unverifiedReport = rawData;
         // Report verification fees
@@ -92,7 +105,7 @@ contract ChainlinkStreamProvider is OwnableUpgradeable {
         Report memory verifiedReport = abi.decode(verifiedReportData, (Report));
         require(
             verifiedReport.feedId == feedIds[priceId],
-            IdMismatch(verifiedReport.feedId, priceId)
+            IdMismatch(verifiedReport.feedId, feedIds[priceId])
         );
         require(verifiedReport.price > 0, InvalidPrice(verifiedReport.price));
         require(

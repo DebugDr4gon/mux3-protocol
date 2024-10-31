@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.28;
 
-import "hardhat/console.sol";
-
 contract TestSuit {
     error Exception(string id);
     error ExceptionInt256(string id, int256 actual, int256 expect);

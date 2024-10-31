@@ -27,7 +27,7 @@ library LibOrder {
         );
         require(orderData.version == 1, "Unexpected order version");
         require(
-            orderData.payload.length == 14 * 32,
+            orderData.payload.length == 20 * 32,
             "Unexpected order payload length"
         );
         orderParams = abi.decode(orderData.payload, (PositionOrderParams));
@@ -115,12 +115,6 @@ library LibOrder {
         return (orderParams.flags & POSITION_TRIGGER_ORDER) != 0;
     }
 
-    function isTpslStrategy(
-        PositionOrderParams memory orderParams
-    ) internal pure returns (bool) {
-        return (orderParams.flags & POSITION_TPSL_STRATEGY) != 0;
-    }
-
     function isAdl(
         PositionOrderParams memory orderParams
     ) internal pure returns (bool) {
@@ -131,5 +125,11 @@ library LibOrder {
         PositionOrderParams memory orderParams
     ) internal pure returns (bool) {
         return (orderParams.flags & POSITION_UNWRAP_ETH) != 0;
+    }
+
+    function isWithdrawProfit(
+        PositionOrderParams memory orderParams
+    ) internal pure returns (bool) {
+        return (orderParams.flags & POSITION_WITHDRAW_PROFIT) != 0;
     }
 }

@@ -9,24 +9,23 @@ import "../interfaces/ICollateralPool.sol";
 import "./CollateralPoolToken.sol";
 
 contract CollateralPoolStore is CollateralPoolToken {
-    mapping(bytes32 => bytes32) internal _configTable;
-    address internal _core;
-    IERC20Upgradeable internal _collateralToken;
-    uint8 internal _collateralDecimals;
-    uint256 internal _liquidityBalance; // TODO: save balances of all tokens!
+    address internal immutable _core;
+    address internal immutable _orderBook;
 
+    mapping(bytes32 => bytes32) internal _configTable;
+    address internal _unused1; // was _core
+    address internal _collateralToken;
+    uint8 internal _unused2; // was _collateralDecimals
+    uint256 internal _unused3; // was _liquidityBalance
     EnumerableSetUpgradeable.Bytes32Set internal _marketIds;
     mapping(bytes32 => MarketState) internal _marketStates; // marketId => Market
+    mapping(address => uint256) internal _liquidityBalances; // token => balance(1e18)
 
-    bytes32[50] private _gaps;
+    bytes32[49] private _gaps;
 
     function __CollateralPoolStore_init(
-        address core,
-        address collateralToken,
-        uint8 collateralDecimals
+        address collateralToken
     ) internal onlyInitializing {
-        _core = core;
-        _collateralToken = IERC20Upgradeable(collateralToken);
-        _collateralDecimals = collateralDecimals;
+        _collateralToken = collateralToken;
     }
 }

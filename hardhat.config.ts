@@ -29,6 +29,7 @@ module.exports = {
             enabled: true,
             details: {
               yulDetails: {
+                // also see https://docs.soliditylang.org/en/v0.8.28/internals/optimizer.html#optimizer-steps
                 optimizerSteps: "u",
               },
             },

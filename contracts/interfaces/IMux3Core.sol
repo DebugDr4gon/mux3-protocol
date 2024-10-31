@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import "../interfaces/ITrade.sol";
+import "../interfaces/IPositionAccount.sol";
 import "../interfaces/IManagement.sol";
 import "../interfaces/IFacetReader.sol";
 

@@ -3,16 +3,6 @@ pragma solidity 0.8.28;
 
 import "../interfaces/IBorrowingRate.sol";
 
-bytes32 constant MCP_SYMBOL = keccak256("MCP_SYMBOL");
-bytes32 constant MCP_LIQUIDITY_FEE_RATE = keccak256("MCP_LIQUIDITY_FEE_RATE");
-bytes32 constant MCP_LIQUIDITY_CAP_USD = keccak256("MCP_LIQUIDITY_CAP_USD");
-bytes32 constant MCP_BORROWING_K = keccak256("MCP_BORROWING_K");
-bytes32 constant MCP_BORROWING_B = keccak256("MCP_BORROWING_B");
-bytes32 constant MCP_IS_HIGH_PRIORITY = keccak256("MCP_IS_HIGH_PRIORITY");
-bytes32 constant MCP_ADL_RESERVE_RATE = keccak256("MCP_ADL_RESERVE_RATE");
-bytes32 constant MCP_ADL_MAX_PNL_RATE = keccak256("MCP_ADL_MAX_PNL_RATE");
-bytes32 constant MCP_ADL_TRIGGER_RATE = keccak256("MCP_ADL_TRIGGER_RATE");
-
 struct MarketState {
     bool isLong;
     uint256 totalSize;
@@ -41,13 +31,13 @@ interface ICollateralPool {
         uint256 shares
     );
     // add liquidity without mint shares. called by fees, loss, swap
-    event SwapLiquidityIn(
+    event LiquidityBalanceIn(
         address tokenAddress,
         uint256 tokenPrice,
         uint256 collateralAmount // 1e18
     );
     // remove liquidity without burn shares. called by swap
-    event SwapLiquidityOut(
+    event LiquidityBalanceOut(
         address tokenAddress,
         uint256 tokenPrice,
         uint256 collateralAmount // 1e18
@@ -59,11 +49,17 @@ interface ICollateralPool {
         uint256 totalSize
     );
     event ClosePosition(bytes32 marketId, uint256 size, uint256 totalSize);
-    event ReceiveFee(address token, uint256 rawAmount);
+    event ReceiveFee(
+        address token,
+        uint256 tokenPrice,
+        uint256 collateralAmount // 1e18
+    );
     event SetConfig(bytes32 key, bytes32 value);
-    event CollectFee(address token, uint256 wad);
-    event RealizeProfit(address token, uint256 wad);
-    event RealizeLoss(address token, uint256 wad);
+    event CollectFee(
+        address token,
+        uint256 tokenPrice,
+        uint256 collateralAmount // 1e18
+    );
     event UpdateMarketBorrowing(
         bytes32 marketId,
         uint256 feeRateApy, // 1e18
@@ -71,6 +67,8 @@ interface ICollateralPool {
     );
 
     function setConfig(bytes32 key, bytes32 value) external;
+
+    function configValue(bytes32 key) external view returns (bytes32);
 
     function collateralToken() external view returns (address);
 
@@ -126,7 +124,7 @@ interface ICollateralPool {
 
     function makeBorrowingContext(
         bytes32 marketId
-    ) external view returns (IBorrowingRate.Pool memory);
+    ) external view returns (IBorrowingRate.AllocatePool memory);
 
     function positionPnl(
         bytes32 marketId,

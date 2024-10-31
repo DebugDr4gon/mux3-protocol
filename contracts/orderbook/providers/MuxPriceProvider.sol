@@ -63,8 +63,11 @@ contract MuxPriceProvider is OwnableUpgradeable {
             IdMismatch(oracleData.priceId, priceId)
         );
         require(
-            block.timestamp >= oracleData.timestamp + priceExpiration,
-            PriceExpired(oracleData.timestamp, block.timestamp)
+            oracleData.timestamp + priceExpiration >= block.timestamp,
+            PriceExpired(
+                oracleData.timestamp + priceExpiration,
+                block.timestamp
+            )
         );
         require(oracleData.price > 0, InvalidPrice(oracleData.price));
         require(oracleData.signature.length > 0, MissingSignature());

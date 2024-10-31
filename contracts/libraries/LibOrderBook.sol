@@ -7,10 +7,8 @@ import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
 // import "../interfaces/IReferralManager.sol"; TODO
 import "../interfaces/IOrderBook.sol";
-import "../interfaces/ITrade.sol";
-import "../interfaces/IMarket.sol";
 import "../interfaces/IMux3Core.sol";
-import "../interfaces/IFacetReader.sol";
+import "../interfaces/IMarket.sol";
 import "../interfaces/ICollateralPool.sol";
 import "../interfaces/IWETH9.sol";
 import "../libraries/LibOrder.sol";
@@ -29,16 +27,22 @@ library LibOrderBook {
         OrderData memory orderData
     ) internal {
         orderBook.orderData[orderData.id] = orderData;
-        orderBook.orders.add(orderData.id);
-        orderBook.userOrders[orderData.account].add(orderData.id);
+        require(
+            orderBook.orders.add(orderData.id) &&
+                orderBook.userOrders[orderData.account].add(orderData.id),
+            "Failed to append order"
+        );
     }
 
     function _removeOrder(
         OrderBookStorage storage orderBook,
         OrderData memory orderData
     ) internal {
-        orderBook.userOrders[orderData.account].remove(orderData.id);
-        orderBook.orders.remove(orderData.id);
+        require(
+            orderBook.userOrders[orderData.account].remove(orderData.id) &&
+                orderBook.orders.remove(orderData.id),
+            "Failed to remove order"
+        );
         delete orderBook.orderData[orderData.id];
     }
 
@@ -131,36 +135,43 @@ library LibOrderBook {
     //     _transferOut(orderBook, configTable, collateralAddress, rawAmount, poolAddress, false);
     //     IDegenPool(orderBook.pool).donateLiquidity(account, assetId, rawAmount);
     // }
+
+    function fillWithdrawalOrder(
+        OrderBookStorage storage orderBook,
+        mapping(bytes32 => bytes32) storage configTable,
+        uint64 orderId,
+        uint256 blockTimestamp
+    ) external {
+        require(orderBook.orders.contains(orderId), "No such orderId");
+        OrderData memory orderData = orderBook.orderData[orderId];
+        _removeOrder(orderBook, orderData);
+        require(
+            orderData.orderType == OrderType.WithdrawalOrder,
+            "Order type mismatch"
+        );
+        WithdrawalOrderParams memory orderParams = LibOrder
+            .decodeWithdrawalOrder(orderData);
+        uint256 deadline = orderData.placeOrderTime +
+            _withdrawalOrderTimeout(configTable);
+        require(blockTimestamp <= deadline, "Order expired");
+        // fill
+        IPositionAccount(orderBook.mux3Facet).withdraw(
+            orderParams.positionId,
+            orderParams.tokenAddress,
+            orderParams.rawAmount
+            // TODO: check isUnwrapWeth
+        );
+
+        emit IOrderBook.FillOrder(orderData.account, orderId, orderData);
+    }
+
     function placePositionOrder(
         OrderBookStorage storage orderBook,
         PositionOrderParams memory orderParams,
         uint256 blockTimestamp
     ) external {
-        require(orderParams.size != 0, "Position order size = 0");
-        require(
-            orderParams.expiration > blockTimestamp,
-            "Expiration is earlier than now"
-        );
-        require(
-            orderParams.limitPrice > 0,
-            "Position order must have limitPrice"
-        );
-        if (orderParams.profitToken != address(0)) {
-            require(
-                !LibOrder.isOpenPosition(orderParams),
-                "profitToken is only used for closing position"
-            );
-        }
-        if (orderParams.initialLeverage != 0) {
-            require(
-                LibOrder.isOpenPosition(orderParams),
-                "initialLeverage is only used for opening position"
-            );
-        }
         _validateMarketId(orderBook, orderParams.marketId);
-        if (orderParams.collateralToken != address(0)) {
-            _validateCollateral(orderBook, orderParams.collateralToken);
-        }
+        require(orderParams.size != 0, "Position order size = 0");
         {
             uint256 lotSize = _lotSize(orderBook, orderParams.marketId);
             require(
@@ -169,6 +180,21 @@ library LibOrderBook {
             );
         }
         require(!LibOrder.isAdl(orderParams), "ADL is not allowed");
+        require(
+            orderParams.limitPrice > 0,
+            "Position order must have limitPrice"
+        );
+        require(
+            orderParams.expiration > blockTimestamp,
+            "Expiration is earlier than now"
+        );
+        if (orderParams.initialLeverage > 0) {
+            IPositionAccount(orderBook.mux3Facet).setInitialLeverage(
+                orderParams.positionId,
+                orderParams.marketId,
+                orderParams.initialLeverage
+            );
+        }
         if (LibOrder.isOpenPosition(orderParams)) {
             _placeOpenPositionOrder(orderBook, orderParams, blockTimestamp);
         } else {
@@ -181,31 +207,62 @@ library LibOrderBook {
         PositionOrderParams memory orderParams,
         uint256 blockTimestamp
     ) private {
+        require(
+            orderParams.withdrawUsd == 0,
+            "WithdrawUsd is not suitable for open-position"
+        );
+        require(
+            orderParams.lastWithdrawToken == address(0),
+            "LastWithdrawToken is not suitable for open-position"
+        );
+        require(
+            orderParams.withdrawSwapToken == address(0),
+            "WithdrawSwapToken is not suitable for open-position"
+        );
+        require(
+            orderParams.withdrawSwapSlippage == 0,
+            "WithdrawSwapSlippage is not suitable for open-position"
+        );
         // fetch collateral
-        if (
-            orderParams.collateralToken != address(0) &&
-            orderParams.collateralAmount > 0
-        ) {
-            // deposit collateral
-            _transferIn(
-                orderBook,
-                orderParams.collateralToken,
-                orderParams.collateralAmount
-            );
+        if (orderParams.collateralToken != address(0)) {
+            _validateCollateral(orderBook, orderParams.collateralToken);
+            if (orderParams.collateralAmount > 0) {
+                // deposit collateral
+                _transferIn(
+                    orderBook,
+                    orderParams.collateralToken,
+                    orderParams.collateralAmount
+                );
+            }
         }
-        if (LibOrder.isTpslStrategy(orderParams)) {
-            // tp/sl strategy
-            require(
-                (orderParams.tpPrice > 0 || orderParams.slPrice > 0),
-                "TP/SL strategy need tpPrice and/or slPrice"
-            );
+        // add order
+        _appendPositionOrder(orderBook, orderParams, blockTimestamp);
+        // tp/sl strategy
+        if (orderParams.tpPriceDiff > 0 || orderParams.slPriceDiff > 0) {
             require(
                 orderParams.tpslExpiration > blockTimestamp,
                 "tpslExpiration is earlier than now"
             );
+            uint256 validFlags = POSITION_WITHDRAW_ALL_IF_EMPTY |
+                POSITION_WITHDRAW_PROFIT |
+                POSITION_UNWRAP_ETH;
+            require(
+                (orderParams.tpslFlags & (~validFlags)) == 0,
+                "Unsupported tpslFlags"
+            );
+            if (orderParams.tpslLastWithdrawToken != address(0)) {
+                _validateCollateral(
+                    orderBook,
+                    orderParams.tpslLastWithdrawToken
+                );
+            }
+            if (orderParams.tpslWithdrawSwapToken != address(0)) {
+                _validateCollateral(
+                    orderBook,
+                    orderParams.tpslWithdrawSwapToken
+                );
+            }
         }
-        // add order
-        _appendPositionOrder(orderBook, orderParams, blockTimestamp);
     }
 
     function _placeClosePositionOrder(
@@ -213,29 +270,29 @@ library LibOrderBook {
         PositionOrderParams memory orderParams,
         uint256 blockTimestamp
     ) private {
-        if (LibOrder.isTpslStrategy(orderParams)) {
-            // tp/sl strategy
-            // TODO: tp/sl strategy
-            // require(orderParams.collateralAmount == 0, "TP/SL strategy only supports POSITION_WITHDRAW_ALL_IF_EMPTY");
-            // require(orderParams.profitTokenId == 0, "use extra.tpProfitTokenId instead");
-            // require(!orderParams.isMarketOrder(), "TP/SL strategy does not support MARKET order
-            // require(orderParams.tpPrice > 0 && orderParams.slPrice > 0, "TP/SL strategy need tpPrice and slPrice"); // otherwise use POSITION_TRIGGER_ORDER instead
-            // require(orderParams.tpslExpiration > blockTimestamp, "Deadline is earlier than now");
-            // _validateCollateral(orderBook, orderParams.tpslProfitToken);
-            // _placeTpslOrders(orderBook, orderParams, blockTimestamp);
-        } else {
-            // normal close-position-order
-            if (
-                orderParams.collateralToken != address(0) &&
-                orderParams.collateralAmount > 0
-            ) {
-                _validateCollateral(orderBook, orderParams.collateralToken);
-            }
-            if (orderParams.profitToken != address(0)) {
-                _validateCollateral(orderBook, orderParams.profitToken);
-            }
-            _appendPositionOrder(orderBook, orderParams, blockTimestamp);
+        require(
+            orderParams.collateralToken == address(0) &&
+                orderParams.collateralAmount == 0,
+            "Use withdraw instead"
+        );
+        if (orderParams.lastWithdrawToken != address(0)) {
+            _validateCollateral(orderBook, orderParams.lastWithdrawToken);
         }
+        if (orderParams.withdrawSwapToken != address(0)) {
+            _validateCollateral(orderBook, orderParams.withdrawSwapToken);
+        }
+        _appendPositionOrder(orderBook, orderParams, blockTimestamp);
+        // tp/sl strategy is not supported
+        require(
+            orderParams.tpPriceDiff == 0 &&
+                orderParams.slPriceDiff == 0 &&
+                orderParams.tpslExpiration == 0 &&
+                orderParams.tpslFlags == 0 &&
+                orderParams.tpslLastWithdrawToken == address(0) &&
+                orderParams.tpslWithdrawSwapToken == address(0) &&
+                orderParams.tpslWithdrawSwapSlippage == 0,
+            "Place multiple close-position orders instead"
+        );
     }
 
     // function cancelActivatedTpslOrders(
@@ -266,10 +323,10 @@ library LibOrderBook {
         bytes32 positionId
     ) external {
         require(
-            _isFullyClosed(orderBook, positionId),
-            "Position is not fully closed"
+            _isPositionAccountFullyClosed(orderBook, positionId),
+            "Position account is not fully closed"
         );
-        ITrade(orderBook.mux3Facet).withdrawAll(positionId);
+        IPositionAccount(orderBook.mux3Facet).withdrawAll(positionId);
     }
 
     function placeWithdrawalOrder(
@@ -368,27 +425,21 @@ library LibOrderBook {
                 orderParams.collateralAmount,
                 false // unwrap eth
             );
-            ITrade(orderBook.mux3Facet).deposit(
+            IPositionAccount(orderBook.mux3Facet).deposit(
                 orderParams.positionId,
                 orderParams.collateralToken,
                 orderParams.collateralAmount
             );
         }
-        // leverage
-        ITrade(orderBook.mux3Facet).setInitialLeverage(
-            orderParams.positionId,
-            orderParams.marketId,
-            orderParams.initialLeverage
-        );
         // open
         tradingPrice = ITrade(orderBook.mux3Facet).openPosition(
-            orderParams.marketId,
             orderParams.positionId,
+            orderParams.marketId,
             orderParams.size
         );
         // tp/sl strategy
-        if (LibOrder.isTpslStrategy(orderParams)) {
-            // TODO: tp/sl strategy
+        if (orderParams.tpPriceDiff > 0 || orderParams.slPriceDiff > 0) {
+            // TODO: tp/sl strategy not implemented yet
             // _placeTpslOrders(orderBook, orderParams, blockTimestamp);
         }
     }
@@ -400,8 +451,8 @@ library LibOrderBook {
     ) internal returns (uint256 tradingPrice) {
         // close
         tradingPrice = ITrade(orderBook.mux3Facet).closePosition(
-            orderParams.marketId,
             orderParams.positionId,
+            orderParams.marketId,
             orderParams.size
         );
         // auto withdraw
@@ -409,30 +460,85 @@ library LibOrderBook {
             orderParams.collateralToken != address(0) &&
             orderParams.collateralAmount > 0
         ) {
-            ITrade(orderBook.mux3Facet).withdraw(
+            IPositionAccount(orderBook.mux3Facet).withdraw(
                 orderParams.positionId,
                 orderParams.collateralToken,
                 orderParams.collateralAmount
+                // TODO: check isUnwrapWeth
             );
         }
         // tp/sl strategy
+        // an order may or may not have associated tp/sl orders. delete them unconditionally
         orderBook.tpslOrders[orderParams.positionId].remove(uint256(orderId));
         // is the position completely closed
-        if (_isFullyClosed(orderBook, orderParams.positionId)) {
-            _afterFullyClosed(orderBook, orderParams);
+        if (_isPositionAccountFullyClosed(orderBook, orderParams.positionId)) {
+            // auto withdraw
+            if (LibOrder.isWithdrawIfEmpty(orderParams)) {
+                IPositionAccount(orderBook.mux3Facet).withdrawAll(
+                    orderParams.positionId
+                );
+            }
+        }
+        if (
+            _isPositionAccountMarketFullyClosed(
+                orderBook,
+                orderParams.positionId,
+                orderParams.marketId
+            )
+        ) {
+            // cancel activated tp/sl orders
+            // TODO
+            // cancelActivatedTpslOrders(orderBook, orderParams.subAccountId);
         }
     }
 
-    function _isFullyClosed(
+    function liquidatePosition(
+        OrderBookStorage storage orderBook,
+        bytes32 positionId,
+        bytes32 marketId
+    ) external returns (uint256 tradingPrice) {
+        // close
+        tradingPrice = ITrade(orderBook.mux3Facet).liquidatePosition(
+            positionId,
+            marketId
+        );
+
+        // about auto withdraw (check closePosition for details):
+        // we really do not know if we need to auto-withdraw or not.
+        // thus we leave the collateral in the subAccount.
+
+        // cancel activated tp/sl orders
+        // TODO
+        // cancelActivatedTpslOrders(orderBook, orderParams.subAccountId);
+    }
+
+    function setInitialLeverage(
+        OrderBookStorage storage orderBook,
+        bytes32 positionId,
+        bytes32 marketId,
+        uint256 initialLeverage
+    ) external {
+        require(initialLeverage > 0, "initialLeverage must be greater than 0");
+        IPositionAccount(orderBook.mux3Facet).setInitialLeverage(
+            positionId,
+            marketId,
+            initialLeverage
+        );
+    }
+
+    /**
+     * @dev check if position account is closed
+     */
+    function _isPositionAccountFullyClosed(
         OrderBookStorage storage orderBook,
         bytes32 positionId
     ) internal view returns (bool) {
         PositionReader[] memory positions = IFacetReader(orderBook.mux3Facet)
             .listAccountPositions(positionId);
         for (uint256 i = 0; i < positions.length; i++) {
-            PositionPoolReader[] memory pools = positions[i].pools;
-            for (uint256 j = 0; j < pools.length; j++) {
-                if (pools[j].size != 0) {
+            PositionPoolReader[] memory positionForPool = positions[i].pools;
+            for (uint256 j = 0; j < positionForPool.length; j++) {
+                if (positionForPool[j].size != 0) {
                     return false;
                 }
             }
@@ -440,17 +546,27 @@ library LibOrderBook {
         return true;
     }
 
-    function _afterFullyClosed(
+    /**
+     * @dev check if sepecific market position is closed in a position account
+     */
+    function _isPositionAccountMarketFullyClosed(
         OrderBookStorage storage orderBook,
-        PositionOrderParams memory orderParams
-    ) internal {
-        // auto withdraw
-        if (LibOrder.isWithdrawIfEmpty(orderParams)) {
-            ITrade(orderBook.mux3Facet).withdrawAll(orderParams.positionId);
+        bytes32 positionId,
+        bytes32 marketId
+    ) internal view returns (bool) {
+        PositionReader[] memory positions = IFacetReader(orderBook.mux3Facet)
+            .listAccountPositions(positionId);
+        for (uint256 i = 0; i < positions.length; i++) {
+            PositionPoolReader[] memory positionForPool = positions[i].pools;
+            for (uint256 j = 0; j < positionForPool.length; j++) {
+                if (positionForPool[j].size != 0) {
+                    if (positions[i].marketId == marketId) {
+                        return false;
+                    }
+                }
+            }
         }
-        // cancel activated tp/sl orders
-        // TODO
-        // cancelActivatedTpslOrders(orderBook, orderParams.subAccountId);
+        return true;
     }
 
     // function fillAdlOrder(
@@ -644,7 +760,7 @@ library LibOrderBook {
             // account owner can cancel order
             require(msgSender == orderData.account, "Not authorized");
         }
-        // return collateral
+        // return deposited collateral for open-position
         if (
             LibOrder.isOpenPosition(orderParams) &&
             orderParams.collateralToken != address(0) &&
@@ -660,6 +776,7 @@ library LibOrderBook {
             );
         }
         // tp/sl strategy
+        // an order may or may not have associated tp/sl orders. delete them unconditionally
         orderBook.tpslOrders[orderParams.positionId].remove(
             uint256(orderData.id)
         );
@@ -753,7 +870,7 @@ library LibOrderBook {
             collateralAmount,
             false
         );
-        ITrade(orderBook.mux3Facet).deposit(
+        IPositionAccount(orderBook.mux3Facet).deposit(
             positionId,
             collateralToken,
             collateralAmount

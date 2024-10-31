@@ -6,17 +6,13 @@ import "../../core/Mux3FacetBase.sol";
 import "../../core/management/FacetManagement.sol";
 import "../../core/reader/FacetReader.sol";
 
-// TestMux3 without FacetTrade
+// TestMux3 without FacetTrade, FacetPositionAccount
 contract MockMux3 is FacetManagement, FacetReader, ITrade {
     mapping(bytes32 => uint256) private _mockCache;
 
-    function initialize() external initializer {
-        __Mux3Store_init(msg.sender);
-    }
-
     function updateBorrowingFee(
-        bytes32 marketId,
-        bytes32 positionId
+        bytes32 positionId,
+        bytes32 marketId
     ) external {}
 
     function setInitialLeverage(
@@ -40,15 +36,20 @@ contract MockMux3 is FacetManagement, FacetReader, ITrade {
     function withdrawAll(bytes32 positionId) external {}
 
     function openPosition(
-        bytes32 marketId,
         bytes32 positionId,
+        bytes32 marketId,
         uint256 size
     ) external returns (uint256 tradingPrice) {}
 
     function closePosition(
-        bytes32 marketId,
         bytes32 positionId,
+        bytes32 marketId,
         uint256 size
+    ) external returns (uint256 tradingPrice) {}
+
+    function liquidatePosition(
+        bytes32 positionId,
+        bytes32 marketId
     ) external returns (uint256 tradingPrice) {}
 
     function _priceOf(
@@ -57,7 +58,7 @@ contract MockMux3 is FacetManagement, FacetReader, ITrade {
         return _mockCache[id];
     }
 
-    function setMockPrice(bytes32 key, uint256 price) external {
+    function setMockPrice(bytes32 key, uint256 price) external override {
         _mockCache[key] = price;
     }
 
@@ -65,7 +66,7 @@ contract MockMux3 is FacetManagement, FacetReader, ITrade {
         bytes32 key,
         address,
         bytes memory oralceCalldata
-    ) external {
+    ) external override {
         uint256 price = abi.decode(oralceCalldata, (uint256));
         _mockCache[key] = price;
     }

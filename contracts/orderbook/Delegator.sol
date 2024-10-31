@@ -22,6 +22,7 @@ contract Delegator is Initializable {
     mapping(address => Delegation) internal _delegators;
 
     function initialize(address orderBook) external initializer {
+        require(orderBook != address(0), "Invalid order book address");
         _orderBook = orderBook;
     }
 
@@ -70,36 +71,75 @@ contract Delegator is Initializable {
         );
     }
 
+    function _consumeDelegation(address expectedOwner) private {
+        address delegator = msg.sender;
+        Delegation storage delegation = _delegators[delegator];
+        require(delegation.owner != address(0), "Not delegated");
+        require(delegation.actionCount > 0, "No action count");
+        delegation.actionCount--;
+        require(delegation.owner == expectedOwner, "Not authorized");
+    }
+
     function placePositionOrder(
         PositionOrderParams memory orderParams,
         bytes32 referralCode
     ) external {
-        address delegator = msg.sender;
-        Delegation storage delegation = _delegators[delegator];
-        require(delegation.owner != address(0), "Not delegated");
-        require(delegation.actionCount > 0, "No action count");
-        delegation.actionCount--;
         (address positionAccount, ) = LibCodec.decodePositionId(
             orderParams.positionId
         );
-        require(positionAccount == delegation.owner, "Not authorized");
+        _consumeDelegation(positionAccount);
         IOrderBook(_orderBook).placePositionOrder(orderParams, referralCode);
     }
 
     function cancelOrder(uint64 orderId) external {
-        address delegator = msg.sender;
-        Delegation storage delegation = _delegators[delegator];
-        require(delegation.owner != address(0), "Not delegated");
-        require(delegation.actionCount > 0, "No action count");
-        delegation.actionCount--;
         (OrderData memory orderData, bool exists) = IOrderBookGetter(_orderBook)
             .getOrder(orderId);
         require(exists, "Order not exists");
-        require(orderData.account == delegation.owner, "Not authorized");
-        require(
-            orderData.orderType == OrderType.PositionOrder,
-            "Invalid order type"
-        );
+        _consumeDelegation(orderData.account);
         IOrderBook(_orderBook).cancelOrder(orderId);
+    }
+
+    function placeWithdrawalOrder(
+        WithdrawalOrderParams memory orderParams
+    ) external {
+        (address positionAccount, ) = LibCodec.decodePositionId(
+            orderParams.positionId
+        );
+        _consumeDelegation(positionAccount);
+        IOrderBook(_orderBook).placeWithdrawalOrder(orderParams);
+    }
+
+    function withdrawAllCollateral(bytes32 positionId) external {
+        (address positionAccount, ) = LibCodec.decodePositionId(positionId);
+        _consumeDelegation(positionAccount);
+        IOrderBook(_orderBook).withdrawAllCollateral(positionId);
+    }
+
+    function depositCollateral(
+        bytes32 positionId,
+        address collateralToken,
+        uint256 collateralAmount // token decimals
+    ) external {
+        (address positionAccount, ) = LibCodec.decodePositionId(positionId);
+        _consumeDelegation(positionAccount);
+        IOrderBook(_orderBook).depositCollateral(
+            positionId,
+            collateralToken,
+            collateralAmount
+        );
+    }
+
+    function setInitialLeverage(
+        bytes32 positionId,
+        bytes32 marketId,
+        uint256 initialLeverage
+    ) external {
+        (address positionAccount, ) = LibCodec.decodePositionId(positionId);
+        _consumeDelegation(positionAccount);
+        IOrderBook(_orderBook).setInitialLeverage(
+            positionId,
+            marketId,
+            initialLeverage
+        );
     }
 }

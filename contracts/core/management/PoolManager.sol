@@ -25,18 +25,19 @@ contract PoolManager is Mux3FacetBase {
     function _createCollateralPool(
         string memory name,
         string memory symbol,
-        address collateralToken,
-        uint8 collateralDecimals
+        address collateralToken
     ) internal returns (address) {
         require(collateralToken != address(0), InvalidAddress(collateralToken));
-        require(collateralDecimals <= 18, InvalidDecimals(collateralDecimals));
-        address pool = _createPoolProxy(
-            name,
-            symbol,
-            collateralToken,
-            collateralDecimals
-        );
+        address pool = _createPoolProxy(name, symbol, collateralToken);
         require(address(pool) != address(0), InvalidAddress(pool));
+        require(
+            _collateralPoolList.length() < MAX_COLLATERAL_POOLS,
+            CapacityExceeded(
+                MAX_COLLATERAL_POOLS,
+                _collateralPoolList.length(),
+                1
+            )
+        );
         require(_collateralPoolList.add(address(pool)), PoolAlreadyExist(pool));
         return address(pool);
     }
@@ -54,32 +55,21 @@ contract PoolManager is Mux3FacetBase {
     function _getProxyId(
         string memory name,
         string memory symbol,
-        address collateralToken,
-        uint8 collateralDecimals
+        address collateralToken
     ) internal pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    name,
-                    symbol,
-                    collateralToken,
-                    collateralDecimals
-                )
-            );
+        return keccak256(abi.encodePacked(name, symbol, collateralToken));
     }
 
     function _getBytesCode(
         string memory name,
         string memory symbol,
-        address collateralToken,
-        uint8 collateralDecimals
+        address collateralToken
     ) internal view returns (bytes memory) {
         bytes memory initCallData = abi.encodeWithSignature(
-            "initialize(string,string,address,uint8)",
+            "initialize(string,string,address)",
             name,
             symbol,
-            collateralToken,
-            collateralDecimals
+            collateralToken
         );
         bytes memory byteCode = abi.encodePacked(
             type(BeaconProxy).creationCode,
@@ -91,21 +81,10 @@ contract PoolManager is Mux3FacetBase {
     function _createPoolProxy(
         string memory name,
         string memory symbol,
-        address collateralToken,
-        uint8 collateralDecimals
+        address collateralToken
     ) internal returns (address) {
-        bytes memory byteCode = _getBytesCode(
-            name,
-            symbol,
-            collateralToken,
-            collateralDecimals
-        );
-        bytes32 salt = _getProxyId(
-            name,
-            symbol,
-            collateralToken,
-            collateralDecimals
-        );
+        bytes memory byteCode = _getBytesCode(name, symbol, collateralToken);
+        bytes32 salt = _getProxyId(name, symbol, collateralToken);
         return _createProxy(byteCode, salt);
     }
 
@@ -116,27 +95,16 @@ contract PoolManager is Mux3FacetBase {
         assembly {
             proxy := create2(0x0, add(0x20, bytecode), mload(bytecode), salt)
         }
-        require(proxy != address(0), "Create proxy failed");
+        require(proxy != address(0), CreateProxyFailed());
     }
 
     function _getPoolAddress(
         string memory name,
         string memory symbol,
-        address collateralToken,
-        uint8 collateralDecimals
+        address collateralToken
     ) internal view returns (address) {
-        bytes memory byteCode = _getBytesCode(
-            name,
-            symbol,
-            collateralToken,
-            collateralDecimals
-        );
-        bytes32 salt = _getProxyId(
-            name,
-            symbol,
-            collateralToken,
-            collateralDecimals
-        );
+        bytes memory byteCode = _getBytesCode(name, symbol, collateralToken);
+        bytes32 salt = _getProxyId(name, symbol, collateralToken);
         return _getAddress(byteCode, salt);
     }
 

@@ -712,7 +712,7 @@ describe("LibExpBorrowingRate", () => {
       { x_total: "3000000", xi: ["1000000", "1000000", "1000000"] },
     ]
     for (const test of cases) {
-      const result = await testLibExpBorrowingRate.allocate(pools, toWei(test.x_total))
+      const result = await testLibExpBorrowingRate.allocateNonPriorityPools(pools, toWei(test.x_total))
       expect(result.length).to.equal(test.xi.length)
       for (let i = 0; i < test.xi.length; i++) {
         const expectedIndex = getIndexByPoolId(result[i].poolId)
@@ -721,7 +721,9 @@ describe("LibExpBorrowingRate", () => {
     }
 
     // insufficient liquidity
-    await expect(testLibExpBorrowingRate.allocate(pools, toWei("3000001"))).to.be.revertedWith("ExpBorrow: full")
+    await expect(testLibExpBorrowingRate.allocateNonPriorityPools(pools, toWei("3000001"))).to.be.revertedWith(
+      "ExpBorrow: full"
+    )
   })
 
   it("full allocate: consume step by step. reserveRate = 100%", async () => {
@@ -2104,7 +2106,7 @@ describe("LibExpBorrowingRate", () => {
       for (let i = 0; i < test.reserved.length; i++) {
         pools[i].reservedUsd = toWei(test.reserved[i])
       }
-      const result = await testLibExpBorrowingRate.allocate(pools, toWei(step.toString()))
+      const result = await testLibExpBorrowingRate.allocateNonPriorityPools(pools, toWei(step.toString()))
       expect(result.length).to.equal(test.xi.length)
       for (let i = 0; i < test.xi.length; i++) {
         const expectedIndex = getIndexByPoolId(result[i].poolId)
@@ -2116,7 +2118,9 @@ describe("LibExpBorrowingRate", () => {
       pools[0].reservedUsd = toWei("1000000")
       pools[1].reservedUsd = toWei("1000000")
       pools[2].reservedUsd = toWei("1000000")
-      await expect(testLibExpBorrowingRate.allocate(pools, toWei("1"))).to.be.revertedWith("ExpBorrow: full")
+      await expect(testLibExpBorrowingRate.allocateNonPriorityPools(pools, toWei("1"))).to.be.revertedWith(
+        "ExpBorrow: full"
+      )
     }
   })
 
@@ -3500,7 +3504,7 @@ describe("LibExpBorrowingRate", () => {
       for (let i = 0; i < test.reserved.length; i++) {
         pools[i].reservedUsd = toWei(test.reserved[i])
       }
-      const result = await testLibExpBorrowingRate.allocate(pools, toWei(step.toString()))
+      const result = await testLibExpBorrowingRate.allocateNonPriorityPools(pools, toWei(step.toString()))
       expect(result.length).to.equal(test.xi.length)
       for (let i = 0; i < test.xi.length; i++) {
         const expectedIndex = getIndexByPoolId(result[i].poolId)
@@ -3512,7 +3516,9 @@ describe("LibExpBorrowingRate", () => {
       pools[0].reservedUsd = toWei("1250000")
       pools[1].reservedUsd = toWei("1000000")
       pools[2].reservedUsd = toWei("800000")
-      await expect(testLibExpBorrowingRate.allocate(pools, toWei("1"))).to.be.revertedWith("ExpBorrow: full")
+      await expect(testLibExpBorrowingRate.allocateNonPriorityPools(pools, toWei("1"))).to.be.revertedWith(
+        "ExpBorrow: full"
+      )
     }
   })
 })

@@ -4,6 +4,8 @@ pragma solidity 0.8.28;
 interface IErrors {
     // general error
     error ArrayAppendFailed();
+    error EssentialConfigNotSet(string key);
+    error CapacityExceeded(uint256 capacity, uint256 old, uint256 appending);
 
     // params
     error InvalidId(bytes32 id);
@@ -16,6 +18,7 @@ interface IErrors {
 
     // price
     error InvalidPriceTimestamp(uint256 timestamp);
+    error MissingPrice(bytes32 oracleId);
 
     // access control
     error NotOwner(bytes32 positionId, address caller, address owner);
@@ -34,11 +37,6 @@ interface IErrors {
     error MarketAlreadyExists(bytes32 marketId);
 
     // pool
-    error LiquidityCapExceeded(
-        uint256 capUsd,
-        uint256 collateralUsd,
-        uint256 aumUsd
-    );
     error InsufficientLiquidity(
         uint256 requiredLiquidity,
         uint256 liquidityBalance
@@ -46,11 +44,13 @@ interface IErrors {
     error DuplicatedAddress(address pool);
     error PoolAlreadyExist(address pool);
     error PoolNotExists(address pool);
+    error CreateProxyFailed();
 
     // account
     error PositionAccountAlreadyExists(bytes32 positionId);
     error PositionAccountNotExists(bytes32 positionId);
-    error UnsafePositionAccount(bytes32 positionId, uint256 unsafeType);
+    error UnsafePositionAccount(bytes32 positionId, uint256 safeType);
+    error SafePositionAccount(bytes32 positionId, uint256 safeType);
     error InsufficientBalance(uint256 balance, uint256 amount);
     error InitialLeverageOutOfRange(uint256 leverage, uint256 leverageLimit);
     error PositionNotClosed(bytes32 positionId);

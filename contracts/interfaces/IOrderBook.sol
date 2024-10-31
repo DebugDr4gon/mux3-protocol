@@ -4,28 +4,6 @@ pragma solidity 0.8.28;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
-bytes32 constant MCO_LIQUIDITY_LOCK_PERIOD = keccak256(
-    "MCO_LIQUIDITY_LOCK_PERIOD"
-);
-bytes32 constant MCO_POSITION_ORDER_PAUSED = keccak256(
-    "MCO_POSITION_ORDER_PAUSED"
-);
-bytes32 constant MCO_LIQUIDITY_ORDER_PAUSED = keccak256(
-    "MCO_LIQUIDITY_ORDER_PAUSED"
-);
-bytes32 constant MCO_WITHDRAWAL_ORDER_PAUSED = keccak256(
-    "MCO_WITHDRAWAL_ORDER_PAUSED"
-);
-bytes32 constant MCO_MARKET_ORDER_TIMEOUT = keccak256(
-    "MCO_MARKET_ORDER_TIMEOUT"
-);
-bytes32 constant MCO_LIMIT_ORDER_TIMEOUT = keccak256("MCO_LIMIT_ORDER_TIMEOUT");
-bytes32 constant MCO_REFERRAL_MANAGER = keccak256("MCO_REFERRAL_MANAGER");
-bytes32 constant MCO_CANCEL_COOL_DOWN = keccak256("MCO_CANCEL_COOL_DOWN");
-bytes32 constant MCO_UNWRAP_WETH_GAS_LIMIT = keccak256(
-    "MCO_UNWRAP_WETH_GAS_LIMIT"
-);
-
 enum OrderType {
     None, // 0
     PositionOrder, // 1
@@ -36,16 +14,14 @@ enum OrderType {
 
 // position order flags
 uint256 constant POSITION_OPEN = 0x80; // this flag means open-position; otherwise close-position
-uint256 constant POSITION_MARKET_ORDER = 0x40; // this flag only affects order expire time and show a better effect on UI
+uint256 constant POSITION_MARKET_ORDER = 0x40; // this flag only affects order expire time and shows a better effect on UI
 uint256 constant POSITION_WITHDRAW_ALL_IF_EMPTY = 0x20; // this flag means auto withdraw all collateral if position.size == 0
 uint256 constant POSITION_TRIGGER_ORDER = 0x10; // this flag means this is a trigger order (ex: stop-loss order). otherwise this is a limit order (ex: take-profit order)
-uint256 constant POSITION_TPSL_STRATEGY = 0x08; // for open-position-order, this flag auto place take-profit and stop-loss orders when open-position-order fills.
-//                                                 for close-position-order, this flag means ignore limitPrice and profitToken, and use tpPrice, slPrice, tpslProfitToken instead.
+// 0x08 was POSITION_TPSL_STRATEGY. not suitable for mux3
 // 0x04 was POSITION_SHOULD_REACH_MIN_PROFIT. not suitable for mux3
 uint256 constant POSITION_AUTO_DELEVERAGE = 0x02; // denotes that this order is an auto-deleverage order
 uint256 constant POSITION_UNWRAP_ETH = 0x100; // unwrap WETH into ETH. only valid when fill close-position, or cancel open-position, or fill liquidity, or cancel liquidity
-
-uint256 constant MAX_TP_SL_ORDERS = 32;
+uint256 constant POSITION_WITHDRAW_PROFIT = 0x200; // withdraw profit - fee. only valid when fill close-position
 
 struct OrderData {
     uint64 id;
@@ -71,20 +47,39 @@ struct OrderBookStorage {
 }
 
 struct PositionOrderParams {
-    bytes32 marketId;
     bytes32 positionId;
+    bytes32 marketId;
     uint256 size;
     uint256 flags; // see "constant POSITION_*"
-    uint256 limitPrice; // 1e18
-    uint256 tpPrice; // take-profit price. decimals = 18. only valid when flags.POSITION_TPSL_STRATEGY.
-    uint256 slPrice; // stop-loss price. decimals = 18. only valid when flags.POSITION_TPSL_STRATEGY.
-    uint256 expiration; // 1e0, timestamp
-    uint256 tpslExpiration; // 1e0, timestamp
-    address profitToken; // only valid when close a position and the trader wants to swap
-    address tpslProfitToken; // only valid when flags.POSITION_TPSL_STRATEGY.
-    address collateralToken; // deposit or withdraw. optional.
-    uint256 collateralAmount; // deposit or withdraw. optional. erc20.decimals
-    uint256 initialLeverage; // only valid when flags.POSITION_OPEN. 1e18
+    uint256 limitPrice; // decimals = 18
+    uint256 expiration; // timestamp. decimals = 0
+    uint256 initialLeverage; // decimals = 18. 0 means skip. this is a shortcut to orderBook.setInitialLeverage(). a trader SHOULD set initial leverage at least once before open-position
+    // when openPosition
+    // * collateralToken == 0 means do not deposit collateral
+    // * collateralToken != 0 means to deposit collateralToken as collateral
+    // * deduct fees
+    // * open positions
+    address collateralToken; // only valid when flags.POSITION_OPEN
+    uint256 collateralAmount; // only valid when flags.POSITION_OPEN. erc20.decimals
+    // when closePosition, pnl and fees
+    // * realize pnl
+    // * deduct fees
+    // * flags.POSITION_WITHDRAW_PROFIT means also withdraw (profit - fee)
+    // * withdrawUsd means to withdraw collateral. this is independent of flags.POSITION_WITHDRAW_PROFIT
+    // * withdraw from the collateral while lastWithdrawToken is the last token to be withdrawn
+    // * flags.POSITION_UNWRAP_ETH means to unwrap WETH into ETH
+    uint256 withdrawUsd; // only valid when close a position
+    address lastWithdrawToken; // only valid when close a position and withdraw (either withdraw profit or withdraw collateral). this token will be the last one to be withdrawn
+    address withdrawSwapToken; // only valid when close a position and withdraw. try to swap to this token
+    uint256 withdrawSwapSlippage; // only valid when close a position and withdraw. slippage tolerance for withdrawSwapToken. if this is impossible, will skip swap
+    // tpsl strategy, only valid when openPosition
+    uint256 tpPriceDiff; // take-profit price will be marketPrice * diff. decimals = 18. only valid when flags.POSITION_TPSL_STRATEGY
+    uint256 slPriceDiff; // stop-loss price will be marketPrice * diff. decimals = 18. only valid when flags.POSITION_TPSL_STRATEGY
+    uint256 tpslExpiration; // timestamp. decimals = 0. only valid when flags.POSITION_TPSL_STRATEGY
+    uint256 tpslFlags; // POSITION_WITHDRAW_ALL_IF_EMPTY, POSITION_WITHDRAW_PROFIT, POSITION_UNWRAP_ETH. only valid when flags.POSITION_TPSL_STRATEGY
+    address tpslLastWithdrawToken; // only valid when flags.POSITION_TPSL_STRATEGY
+    address tpslWithdrawSwapToken; // only valid when flags.POSITION_TPSL_STRATEGY
+    uint256 tpslWithdrawSwapSlippage; // only valid when flags.POSITION_TPSL_STRATEGY
 }
 
 struct LiquidityOrderParams {
@@ -144,12 +139,30 @@ interface IOrderBook {
         uint256 amount
     ) external;
 
+    function cancelOrder(uint64 orderId) external;
+
     function placePositionOrder(
         PositionOrderParams memory orderParams,
         bytes32 referralCode
     ) external;
 
-    function cancelOrder(uint64 orderId) external;
+    function placeWithdrawalOrder(
+        WithdrawalOrderParams memory orderParams
+    ) external;
+
+    function withdrawAllCollateral(bytes32 positionId) external;
+
+    function depositCollateral(
+        bytes32 positionId,
+        address collateralToken,
+        uint256 collateralAmount // token decimals
+    ) external;
+
+    function setInitialLeverage(
+        bytes32 positionId,
+        bytes32 marketId,
+        uint256 initialLeverage
+    ) external;
 }
 
 interface IOrderBookGetter {

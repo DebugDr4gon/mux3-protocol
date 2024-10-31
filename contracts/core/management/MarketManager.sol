@@ -2,7 +2,6 @@
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-import "../../interfaces/IMarket.sol";
 import "../Mux3FacetBase.sol";
 
 contract MarketManager is Mux3FacetBase {
@@ -20,6 +19,10 @@ contract MarketManager is Mux3FacetBase {
         // create market
         _markets[marketId].symbol = symbol;
         _markets[marketId].isLong = isLong;
+        require(
+            _marketList.length() < MAX_MARKETS,
+            CapacityExceeded(MAX_MARKETS, _marketList.length(), 1)
+        );
         require(_marketList.add(marketId), ArrayAppendFailed());
     }
 
@@ -34,6 +37,14 @@ contract MarketManager is Mux3FacetBase {
         );
         uint256 count = backedPools.length;
         MarketInfo storage market = _markets[marketId];
+        require(
+            market.pools.length + count <= MAX_MARKET_BACKED_POOLS,
+            CapacityExceeded(
+                MAX_MARKET_BACKED_POOLS,
+                market.pools.length,
+                count
+            )
+        );
         for (uint256 i = 0; i < count; i++) {
             address newBackedPool = backedPools[i];
             require(_isPoolExist(newBackedPool), PoolNotExists(newBackedPool));

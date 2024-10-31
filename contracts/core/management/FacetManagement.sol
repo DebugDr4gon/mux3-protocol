@@ -3,25 +3,30 @@ pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 
-import "../../interfaces/IManagement.sol";
-import "../../interfaces/IConstants.sol";
-
 import "../Mux3FacetBase.sol";
 import "./PoolManager.sol";
 import "./MarketManager.sol";
 import "./CollateralManager.sol";
 import "./PricingManager.sol";
+import "./Pricing.sol";
 
 contract FacetManagement is
     Mux3FacetBase,
+    Mux3RolesAdmin,
     PoolManager,
     MarketManager,
     CollateralManager,
     PricingManager,
+    Pricing,
     IManagement,
     IBeacon
 {
     using LibConfigMap for mapping(bytes32 => bytes32);
+
+    function initialize() external initializer {
+        __LibMux3Roles_init_unchained();
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    }
 
     function implementation() public view virtual override returns (address) {
         return _collateralPoolImplementation;
@@ -61,24 +66,18 @@ contract FacetManagement is
     function createCollateralPool(
         string memory name,
         string memory symbol,
-        address collateralToken,
-        uint8 collateralDecimals
+        address collateralToken
     ) external onlyRole(DEFAULT_ADMIN_ROLE) returns (address) {
         require(
             _isCollateralExists(collateralToken),
             CollateralNotExists(collateralToken)
         );
-        address pool = _createCollateralPool(
-            name,
-            symbol,
-            collateralToken,
-            collateralDecimals
-        );
+        address pool = _createCollateralPool(name, symbol, collateralToken);
         emit CreateCollateralPool(
             name,
             symbol,
             collateralToken,
-            collateralDecimals,
+            _collateralTokens[collateralToken].decimals,
             pool
         );
         return pool;
@@ -128,5 +127,18 @@ contract FacetManagement is
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setPoolConfigs(pool, key, value);
         emit SetCollateralPoolConfig(pool, key, value);
+    }
+
+    function setPrice(
+        bytes32 priceId,
+        address provider,
+        bytes memory oracleCalldata
+    ) external virtual onlyRole(ORDER_BOOK_ROLE) {
+        (uint256 price, uint256 timestamp) = _setPrice(
+            priceId,
+            provider,
+            oracleCalldata
+        );
+        emit SetPrice(priceId, provider, oracleCalldata, price, timestamp);
     }
 }

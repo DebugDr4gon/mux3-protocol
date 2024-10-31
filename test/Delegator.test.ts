@@ -13,6 +13,7 @@ import {
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { CollateralPool, OrderBook, TestMux3, MockERC20, Delegator, WETH9 } from "../typechain"
 import { time } from "@nomicfoundation/hardhat-network-helpers"
+import { BigNumber } from "ethers"
 
 const a2b = (a) => {
   return a + "000000000000000000000000"
@@ -59,14 +60,23 @@ describe("Delegator", () => {
 
     // core
     core = (await createContract("TestMux3", [])) as TestMux3
-    imp = (await createContract("CollateralPool", [])) as CollateralPool
     await core.initialize()
-    await core.setCollateralPoolImplementation(imp.address)
     await core.addCollateralToken(usdc.address, 6)
     await core.setCollateralTokenStatus(usdc.address, true)
 
+    // orderBook
+    const libOrderBook = await createContract("LibOrderBook")
+    orderBook = (await createContract("OrderBook", [], {
+      "contracts/libraries/LibOrderBook.sol:LibOrderBook": libOrderBook,
+    })) as OrderBook
+    await orderBook.initialize(core.address, weth.address)
+
+    // collateral pool
+    imp = (await createContract("CollateralPool", [core.address, orderBook.address])) as CollateralPool
+    await core.setCollateralPoolImplementation(imp.address)
+
     // pool 1
-    await core.createCollateralPool("TN1", "TS1", usdc.address, 6)
+    await core.createCollateralPool("TN1", "TS1", usdc.address)
     const pool1Addr = (await core.listCollateralPool())[0]
     pool1 = (await ethers.getContractAt("CollateralPool", pool1Addr)) as CollateralPool
 
@@ -78,13 +88,8 @@ describe("Delegator", () => {
       [pool1.address]
     )
     await core.setMarketConfig(long1, ethers.utils.id("MM_LOT_SIZE"), u2b(toWei("0.1")))
-
-    // orderBook
-    const libOrderBook = await createContract("LibOrderBook")
-    orderBook = (await createContract("OrderBook", [], {
-      "contracts/libraries/LibOrderBook.sol:LibOrderBook": libOrderBook,
-    })) as OrderBook
-    await orderBook.initialize(core.address, weth.address)
+    await core.setMarketConfig(long1, ethers.utils.id("MM_ORACLE_ID"), a2b(weth.address))
+    await core.setMarketConfig(long1, ethers.utils.id("MM_INITIAL_MARGIN_RATE"), u2b(toWei("0.006")))
 
     // delegator
     delegator = (await createContract("Delegator", [])) as Delegator
@@ -95,8 +100,35 @@ describe("Delegator", () => {
     await core.grantRole(ethers.utils.id("ORDER_BOOK_ROLE"), orderBook.address)
 
     // prices
-    await core.setMockPrice(long1, toWei("1000"))
+    await core.setMockPrice(a2b(weth.address), toWei("1000"))
     await core.setMockPrice(a2b(usdc.address), toWei("1"))
+  })
+
+  it("setDelegation, getDelegation", async () => {
+    // set delegate
+    await delegator.connect(trader1).delegate(trader2.address, 0, { value: toWei("1") })
+    expect(await delegator.getDelegation(trader2.address)).to.deep.equal([trader1.address, toWei("0")])
+
+    await delegator.connect(trader1).delegate(trader2.address, 100, { value: toWei("1") })
+    expect(await delegator.getDelegation(trader2.address)).to.deep.equal([trader1.address, BigNumber.from("100")])
+
+    await delegator.connect(trader1).delegate(trader3.address, 200, { value: toWei("1") })
+    expect(await delegator.getDelegation(trader2.address)).to.deep.equal([trader1.address, BigNumber.from("100")])
+    expect(await delegator.getDelegation(trader3.address)).to.deep.equal([trader1.address, BigNumber.from("200")])
+
+    await delegator.connect(trader1).delegate(trader3.address, 0, { value: toWei("1") })
+    expect(await delegator.getDelegation(trader2.address)).to.deep.equal([trader1.address, BigNumber.from("100")])
+    expect(await delegator.getDelegation(trader3.address)).to.deep.equal([trader1.address, BigNumber.from("0")])
+  })
+
+  it("setInitialLeverage", async () => {
+    await delegator.connect(trader1).delegate(trader2.address, 100, { value: toWei("1") })
+    expect(await delegator.getDelegation(trader2.address)).to.deep.equal([trader1.address, BigNumber.from("100")])
+
+    const positionId = encodePositionId(trader1.address, 0)
+    await delegator.connect(trader2).setInitialLeverage(positionId, long1, toWei("20"))
+    expect(await core.getInitialLeverage(positionId, long1)).to.equal(toWei("20"))
+    expect(await delegator.getDelegation(trader2.address)).to.deep.equal([trader1.address, BigNumber.from("99")])
   })
 
   it("place, cancel", async () => {
@@ -115,17 +147,21 @@ describe("Delegator", () => {
       size: toWei("1"),
       flags: PositionOrderFlags.OpenPosition,
       limitPrice: toWei("1000"),
-      tpPrice: "0",
-      slPrice: "0",
       expiration: timestampOfTest + 86400 * 2 + 905 + 300,
-      tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 300,
-      profitTokenId: 0,
-      tpslProfitTokenId: 0,
       initialLeverage: toWei("100"),
       collateralToken: usdc.address,
       collateralAmount: toUnit("1000", 6),
-      profitToken: zeroAddress,
-      tpslProfitToken: zeroAddress,
+      withdrawUsd: toWei("0"),
+      lastWithdrawToken: zeroAddress,
+      withdrawSwapToken: zeroAddress,
+      withdrawSwapSlippage: toWei("0"),
+      tpPriceDiff: toWei("0"),
+      slPriceDiff: toWei("0"),
+      tpslExpiration: 0,
+      tpslFlags: 0,
+      tpslLastWithdrawToken: zeroAddress,
+      tpslWithdrawSwapToken: zeroAddress,
+      tpslWithdrawSwapSlippage: toWei("0"),
     }
     {
       await expect(delegator.connect(trader3).placePositionOrder(args, refCode)).to.revertedWith("Not delegated")
@@ -140,20 +176,26 @@ describe("Delegator", () => {
       await expect(tx1)
         .to.emit(orderBook, "NewPositionOrder")
         .withArgs(trader1.address, 0, [
-          args.marketId,
           args.positionId,
+          args.marketId,
           args.size,
           args.flags,
           args.limitPrice,
-          args.tpPrice,
-          args.slPrice,
           args.expiration,
-          args.tpslExpiration,
-          args.profitToken,
-          args.tpslProfitToken,
+          args.initialLeverage,
           args.collateralToken,
           args.collateralAmount,
-          args.initialLeverage,
+          args.withdrawUsd,
+          args.lastWithdrawToken,
+          args.withdrawSwapToken,
+          args.withdrawSwapSlippage,
+          args.tpPriceDiff,
+          args.slPriceDiff,
+          args.tpslExpiration,
+          args.tpslFlags,
+          args.tpslLastWithdrawToken,
+          args.tpslWithdrawSwapToken,
+          args.tpslWithdrawSwapSlippage,
         ])
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("99000", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("1000", 6))
@@ -167,6 +209,56 @@ describe("Delegator", () => {
       await delegator.connect(trader2).cancelOrder(0)
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("100000", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("0", 6))
+    }
+  })
+
+  it("deposit, withdraw", async () => {
+    // set delegate
+    const balance1 = await ethers.provider.getBalance(trader2.address)
+    await delegator.connect(trader1).delegate(trader2.address, 0, { value: toWei("1") })
+    const balance2 = await ethers.provider.getBalance(trader2.address)
+    expect(balance2.sub(balance1)).to.equal(toWei("1"))
+
+    const positionId = encodePositionId(trader1.address, 0)
+    await usdc.connect(trader1).approve(orderBook.address, toUnit("1000", 6))
+    // deposit
+    {
+      await expect(
+        delegator.connect(trader3).depositCollateral(positionId, usdc.address, toUnit("1000", 6))
+      ).to.revertedWith("Not delegated")
+      await expect(
+        delegator.connect(trader2).depositCollateral(positionId, usdc.address, toUnit("1000", 6))
+      ).to.revertedWith("No action count")
+      await delegator.connect(trader1).delegate(trader2.address, 100)
+      const tx1 = await delegator
+        .connect(trader2)
+        .multicall([
+          (await delegator.populateTransaction.transferToken(usdc.address, toUnit("1000", 6))).data!,
+          (await delegator.populateTransaction.depositCollateral(positionId, usdc.address, toUnit("1000", 6))).data!,
+        ])
+      await expect(tx1).to.emit(core, "Deposit").withArgs(trader1.address, positionId, usdc.address, toUnit("1000", 6))
+      expect(await usdc.balanceOf(core.address)).to.equal(toUnit("1000", 6))
+      expect(await core.listAccountCollaterals(positionId)).to.deep.equal([[usdc.address, toUnit("1000", 18)]])
+      expect(await delegator.getDelegation(trader2.address)).to.deep.equal([trader1.address, BigNumber.from("98")])
+    }
+    // withdraw
+    {
+      const tx1 = await delegator.connect(trader2).multicall([
+        (
+          await delegator.populateTransaction.placeWithdrawalOrder({
+            positionId: positionId,
+            tokenAddress: usdc.address,
+            rawAmount: toUnit("500", 6),
+            isUnwrapWeth: false,
+          })
+        ).data!,
+      ])
+      await expect(tx1)
+        .to.emit(orderBook, "NewWithdrawalOrder")
+        .withArgs(trader1.address, 0, [positionId, usdc.address, toUnit("500", 6), false])
+      expect(await usdc.balanceOf(core.address)).to.equal(toUnit("1000", 6))
+      expect(await core.listAccountCollaterals(positionId)).to.deep.equal([[usdc.address, toUnit("1000", 18)]])
+      expect(await delegator.getDelegation(trader2.address)).to.deep.equal([trader1.address, BigNumber.from("97")])
     }
   })
 })

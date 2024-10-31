@@ -14,8 +14,6 @@ import "../../pool/CollateralPoolToken.sol";
 import "../../pool/CollateralPoolStore.sol";
 import "../../pool/CollateralPoolComputed.sol";
 
-import "hardhat/console.sol";
-
 contract MockCollateralPool is
     CollateralPoolToken,
     CollateralPoolStore,
@@ -29,22 +27,22 @@ contract MockCollateralPool is
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
 
+    constructor(address core, address orderBook) {
+        _core = core;
+        _orderBook = orderBook;
+    }
+
     function initialize(
         string memory name,
         string memory symbol,
-        address collateralToken_,
-        uint8 collateralDecimals_
+        address collateralToken_
     ) external initializer {
         __CollateralPoolToken_init(name, symbol);
-        __CollateralPoolStore_init(
-            msg.sender,
-            collateralToken_,
-            collateralDecimals_
-        );
+        __CollateralPoolStore_init(collateralToken_);
     }
 
     function collateralToken() external view returns (address) {
-        return address(_collateralToken);
+        return _collateralToken;
     }
 
     function markets() external view returns (bytes32[] memory) {}
@@ -75,18 +73,6 @@ contract MockCollateralPool is
         return 0;
     }
 
-    function liquidityFeeRate() public view returns (uint256 feeRate) {
-        feeRate = _liqudityFeeRate();
-    }
-
-    function liquidityCapUsd() public view returns (uint256 capUsd) {
-        capUsd = _liquidityCapUsd();
-    }
-
-    // function setLiquidityCapUsd(uint256 capUsd) external {
-    //     _configTable.setUint256(MCP_LIQUIDITY_CAP_USD, capUsd);
-    // }
-
     function setMarket(bytes32 marketId, bool isLong) external {
         require(!_marketIds.contains(marketId), MarketAlreadyExists(marketId));
         require(_marketIds.add(marketId), ArrayAppendFailed());
@@ -95,6 +81,10 @@ contract MockCollateralPool is
 
     function setConfig(bytes32 key, bytes32 value) external {
         _configTable.setBytes32(key, value);
+    }
+
+    function configValue(bytes32 key) external view returns (bytes32) {
+        return _configTable.getBytes32(key);
     }
 
     function openPosition(bytes32 marketId, uint256 size) external override {}
@@ -141,9 +131,9 @@ contract MockCollateralPool is
 
     function makeBorrowingContext(
         bytes32 marketId
-    ) external view returns (IBorrowingRate.Pool memory) {
+    ) external view returns (IBorrowingRate.AllocatePool memory) {
         marketId;
-        return IBorrowingRate.Pool(0, 0, 0, false, 0, 0, 0);
+        return IBorrowingRate.AllocatePool(0, 0, 0, false, 0, 0, 0);
     }
 
     function positionPnl(

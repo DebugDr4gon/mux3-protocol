@@ -8,7 +8,7 @@ import { LibExpBorrowingRate } from "../../libraries/LibExpBorrowingRate.sol";
 contract TestLibExpBorrowingRate {
     function getBorrowingRates(
         IBorrowingRate.Global memory conf,
-        IBorrowingRate.Pool[] memory pools
+        IBorrowingRate.AllocatePool[] memory pools
     ) public pure returns (int256[] memory fr) {
         fr = new int256[](pools.length);
         for (uint256 i = 0; i < pools.length; i++) {
@@ -29,8 +29,8 @@ contract TestLibExpBorrowingRate {
     }
 
     function testDistributeEquation(
-        IBorrowingRate.Pool[] memory pools,
-        int256 xTotal
+        IBorrowingRate.AllocatePool[] memory pools,
+        int256 xTotalUsd
     ) public pure returns (int256[] memory xi) {
         LibExpBorrowingRate.AllocateMem memory mem;
         mem.poolsN = int256(pools.length);
@@ -42,7 +42,7 @@ contract TestLibExpBorrowingRate {
 
         int256 c;
         for (int256 i = 1; i <= mem.poolsN; i++) {
-            c = LibExpBorrowingRate.calculateC(mem, i, xTotal);
+            c = LibExpBorrowingRate.calculateC(mem, i, xTotalUsd);
         }
         for (int256 i = 0; i < mem.poolsN; i++) {
             xi[uint256(i)] = LibExpBorrowingRate.calculateXi(mem, i, c);
@@ -57,10 +57,20 @@ contract TestLibExpBorrowingRate {
         return pools;
     }
 
-    function allocate(
-        IBorrowingRate.Pool[] memory pools,
-        int256 xTotal
+    function allocateNonPriorityPools(
+        IBorrowingRate.AllocatePool[] memory pools,
+        int256 xTotalUsd
     ) external pure returns (IBorrowingRate.AllocateResult[] memory result) {
-        return LibExpBorrowingRate.allocate2(pools, xTotal);
+        LibExpBorrowingRate.AllocateMem memory mem;
+        mem.pools = new LibExpBorrowingRate.PoolState[](pools.length);
+        mem.xTotal = xTotalUsd;
+        mem.poolCount = int256(pools.length);
+        mem.poolsN = int256(pools.length);
+        mem.bestXi = new int256[](pools.length);
+        mem.candidate = new int256[](pools.length);
+        for (uint256 i = 0; i < pools.length; i++) {
+            mem.pools[i] = LibExpBorrowingRate.initPoolState(pools[i]);
+        }
+        return LibExpBorrowingRate.allocateNonPriorityPools(mem);
     }
 }

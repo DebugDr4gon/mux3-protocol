@@ -25,36 +25,46 @@ contract FeeDistributor is
         _grantRole(MAINTAINER_ROLE, msg.sender);
     }
 
+    /**
+     * @dev MUX3 core collects liquidity fees when fillLiquidityOrder.
+     *
+     *      note: MUX3 core should send fees to this contract before calling this function.
+     */
     function updateLiquidityFees(
         address lp,
         address poolAddress,
         uint256 amount // decimals = 18
-    ) external override {
-        // TODO
+    ) external override onlyRole(FEE_DISTRIBUTOR_USER_ROLE) {
+        // TODO: not implemented
     }
 
-    // note: allocation only represents a proportional relationship.
-    //       the sum of allocations does not necessarily have to be consistent with the total value.
+    /**
+     * @dev MUX3 core collects position fees when closePosition.
+     *
+     *      note: MUX3 core should send fees to this contract before calling this function.
+     * @param allocations only represents a proportional relationship. the sum of allocations does not
+     *                    necessarily have to be consistent with the total value.
+     */
     function updatePositionFees(
         address trader,
-        bytes32 marketId,
         bytes32 positionId,
+        bytes32 marketId,
         address[] memory feeAddresses,
         uint256[] memory feeAmounts, // [amount foreach feeAddresses], decimals = 18
         uint256[] memory allocations // [amount foreach backed pools], decimals = 18
-    ) external override {
-        // TODO
+    ) external override onlyRole(FEE_DISTRIBUTOR_USER_ROLE) {
+        // TODO: not implemented
         // foreach collateral
         //   pool_fee_i = fee * allocation_i / Σallocation_i
         require(
             feeAddresses.length == feeAmounts.length,
             "feeAddresses and feeAmounts mismatched"
         );
-        BackedPoolState[] memory marketPools = IFacetReader(_mux3Facet)
+        BackedPoolState[] memory backedPools = IFacetReader(_mux3Facet)
             .listMarketPools(marketId);
         require(
-            marketPools.length == allocations.length,
-            "marketPools and allocations mismatched"
+            backedPools.length == allocations.length,
+            "backedPools and allocations mismatched"
         );
         uint256 totalAllocation = 0;
         for (uint256 i = 0; i < allocations.length; i++) {
