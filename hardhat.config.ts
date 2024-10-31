@@ -19,12 +19,19 @@ module.exports = {
   solidity: {
     compilers: [
       {
+        // [hardhat docs](https://hardhat.org/hardhat-runner/docs/reference/solidity-support#support-for-ir-based-codegen)
+        // says (since Oct, 2024) that if you use the viaIR option, we recommend you set the optimization step sequence to "u",
+        // to make Hardhat work as well as possible
         version: "0.8.28",
         settings: {
           viaIR: true,
           optimizer: {
             enabled: true,
-            runs: 200,
+            details: {
+              yulDetails: {
+                optimizerSteps: "u",
+              },
+            },
           },
           evmVersion: "cancun",
         },
