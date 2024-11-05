@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "../../interfaces/ITrade.sol";
@@ -10,51 +10,51 @@ import "../../core/reader/FacetReader.sol";
 contract MockMux3 is FacetManagement, FacetReader, ITrade {
     mapping(bytes32 => uint256) private _mockCache;
 
-    function updateBorrowingFee(
-        bytes32 positionId,
-        bytes32 marketId
-    ) external {}
+    // for withdraw
+    receive() external payable {}
 
-    function setInitialLeverage(
-        bytes32 positionId,
-        bytes32 marketId,
-        uint256 leverage
-    ) external {}
+    function setInitialLeverage(bytes32 positionId, bytes32 marketId, uint256 leverage) external {}
 
-    function deposit(
-        bytes32 positionId,
-        address collateralToken,
-        uint256 amount
-    ) external {}
+    function deposit(bytes32 positionId, address collateralToken, uint256 amount) external {}
 
     function withdraw(
         bytes32 positionId,
         address collateralToken,
-        uint256 amount
+        uint256 amount,
+        address lastConsumedToken
     ) external {}
 
     function withdrawAll(bytes32 positionId) external {}
 
+    function updateBorrowingFee(bytes32 positionId, bytes32 marketId, address lastConsumedToken) external {}
+
     function openPosition(
         bytes32 positionId,
         bytes32 marketId,
-        uint256 size
-    ) external returns (uint256 tradingPrice) {}
+        uint256 size,
+        address lastConsumedToken
+    ) external returns (uint256 tradingPrice, uint256 borrowingFeeUsd, uint256 positionFeeUsd) {}
 
     function closePosition(
         bytes32 positionId,
         bytes32 marketId,
-        uint256 size
-    ) external returns (uint256 tradingPrice) {}
+        uint256 size,
+        address lastConsumedToken
+    )
+        external
+        returns (uint256 tradingPrice, int256[] memory poolPnlUsds, uint256 borrowingFeeUsd, uint256 positionFeeUsd)
+    {}
 
     function liquidatePosition(
         bytes32 positionId,
-        bytes32 marketId
-    ) external returns (uint256 tradingPrice) {}
+        bytes32 marketId,
+        address lastConsumedToken
+    )
+        external
+        returns (uint256 tradingPrice, int256[] memory poolPnlUsds, uint256 borrowingFeeUsd, uint256 positionFeeUsd)
+    {}
 
-    function _priceOf(
-        bytes32 id
-    ) internal view virtual override returns (uint256) {
+    function _priceOf(bytes32 id) internal view virtual override returns (uint256) {
         return _mockCache[id];
     }
 
@@ -62,17 +62,10 @@ contract MockMux3 is FacetManagement, FacetReader, ITrade {
         _mockCache[key] = price;
     }
 
-    function setPrice(
-        bytes32 key,
-        address,
-        bytes memory oralceCalldata
-    ) external override {
+    function setPrice(bytes32 key, address, bytes memory oralceCalldata) external override {
         uint256 price = abi.decode(oralceCalldata, (uint256));
         _mockCache[key] = price;
     }
 
-    function setCachedPrices(
-        bytes32[] memory ids,
-        uint256[] memory prices
-    ) external {}
+    function setCachedPrices(bytes32[] memory ids, uint256[] memory prices) external {}
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
@@ -7,11 +7,7 @@ import "../interfaces/IOrderBook.sol";
 import "../libraries/LibCodec.sol";
 
 contract Delegator is Initializable {
-    event SetDeletaor(
-        address indexed owner,
-        address indexed delegator,
-        uint256 actionCount
-    );
+    event SetDeletaor(address indexed owner, address indexed delegator, uint256 actionCount);
 
     struct Delegation {
         address owner;
@@ -26,9 +22,7 @@ contract Delegator is Initializable {
         _orderBook = orderBook;
     }
 
-    function getDelegation(
-        address delegator
-    ) external view returns (Delegation memory) {
+    function getDelegation(address delegator) external view returns (Delegation memory) {
         return _delegators[delegator];
     }
 
@@ -42,18 +36,11 @@ contract Delegator is Initializable {
         }
     }
 
-    function multicall(
-        bytes[] calldata proxyCalls
-    ) external payable returns (bytes[] memory results) {
+    function multicall(bytes[] calldata proxyCalls) external payable returns (bytes[] memory results) {
         results = new bytes[](proxyCalls.length);
         for (uint256 i = 0; i < proxyCalls.length; i++) {
-            (bool success, bytes memory returnData) = address(this)
-                .delegatecall(proxyCalls[i]);
-            AddressUpgradeable.verifyCallResult(
-                success,
-                returnData,
-                "multicallFailed"
-            );
+            (bool success, bytes memory returnData) = address(this).delegatecall(proxyCalls[i]);
+            AddressUpgradeable.verifyCallResult(success, returnData, "multicallFailed");
             results[i] = returnData;
         }
     }
@@ -64,11 +51,7 @@ contract Delegator is Initializable {
         require(delegation.owner != address(0), "Not delegated");
         require(delegation.actionCount > 0, "No action count");
         delegation.actionCount--;
-        IOrderBook(_orderBook).transferTokenFrom(
-            delegation.owner,
-            token,
-            amount
-        );
+        IOrderBook(_orderBook).transferTokenFrom(delegation.owner, token, amount);
     }
 
     function _consumeDelegation(address expectedOwner) private {
@@ -80,39 +63,29 @@ contract Delegator is Initializable {
         require(delegation.owner == expectedOwner, "Not authorized");
     }
 
-    function placePositionOrder(
-        PositionOrderParams memory orderParams,
-        bytes32 referralCode
-    ) external {
-        (address positionAccount, ) = LibCodec.decodePositionId(
-            orderParams.positionId
-        );
+    function placePositionOrder(PositionOrderParams memory orderParams, bytes32 referralCode) external {
+        (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
         _consumeDelegation(positionAccount);
         IOrderBook(_orderBook).placePositionOrder(orderParams, referralCode);
     }
 
     function cancelOrder(uint64 orderId) external {
-        (OrderData memory orderData, bool exists) = IOrderBookGetter(_orderBook)
-            .getOrder(orderId);
+        (OrderData memory orderData, bool exists) = IOrderBookGetter(_orderBook).getOrder(orderId);
         require(exists, "Order not exists");
         _consumeDelegation(orderData.account);
         IOrderBook(_orderBook).cancelOrder(orderId);
     }
 
-    function placeWithdrawalOrder(
-        WithdrawalOrderParams memory orderParams
-    ) external {
-        (address positionAccount, ) = LibCodec.decodePositionId(
-            orderParams.positionId
-        );
+    function placeWithdrawalOrder(WithdrawalOrderParams memory orderParams) external {
+        (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
         _consumeDelegation(positionAccount);
         IOrderBook(_orderBook).placeWithdrawalOrder(orderParams);
     }
 
-    function withdrawAllCollateral(bytes32 positionId) external {
-        (address positionAccount, ) = LibCodec.decodePositionId(positionId);
+    function withdrawAllCollateral(WithdrawAllOrderParams memory orderParams) external {
+        (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
         _consumeDelegation(positionAccount);
-        IOrderBook(_orderBook).withdrawAllCollateral(positionId);
+        IOrderBook(_orderBook).withdrawAllCollateral(orderParams);
     }
 
     function depositCollateral(
@@ -122,24 +95,12 @@ contract Delegator is Initializable {
     ) external {
         (address positionAccount, ) = LibCodec.decodePositionId(positionId);
         _consumeDelegation(positionAccount);
-        IOrderBook(_orderBook).depositCollateral(
-            positionId,
-            collateralToken,
-            collateralAmount
-        );
+        IOrderBook(_orderBook).depositCollateral(positionId, collateralToken, collateralAmount);
     }
 
-    function setInitialLeverage(
-        bytes32 positionId,
-        bytes32 marketId,
-        uint256 initialLeverage
-    ) external {
+    function setInitialLeverage(bytes32 positionId, bytes32 marketId, uint256 initialLeverage) external {
         (address positionAccount, ) = LibCodec.decodePositionId(positionId);
         _consumeDelegation(positionAccount);
-        IOrderBook(_orderBook).setInitialLeverage(
-            positionId,
-            marketId,
-            initialLeverage
-        );
+        IOrderBook(_orderBook).setInitialLeverage(positionId, marketId, initialLeverage);
     }
 }

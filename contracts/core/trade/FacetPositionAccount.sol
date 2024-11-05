@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
@@ -10,46 +10,11 @@ import "../Mux3FacetBase.sol";
 import "./PositionAccount.sol";
 import "./Market.sol";
 
-contract FacetPositionAccount is
-    Mux3FacetBase,
-    PositionAccount,
-    Market,
-    IPositionAccount
-{
+contract FacetPositionAccount is Mux3FacetBase, PositionAccount, Market, IPositionAccount {
     using LibTypeCast for address;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
     using LibConfigMap for mapping(bytes32 => bytes32);
-
-    /**
-     * @dev anyone can updates the borrowing fee for a position and market,
-     *      allowing LPs to collect fees even if the position remains open.
-     */
-    function updateBorrowingFee(bytes32 positionId, bytes32 marketId) external {
-        if (!_isPositionAccountExist(positionId)) {
-            _createPositionAccount(positionId);
-        }
-        PositionAccountInfo storage positionAccount = _positionAccounts[
-            positionId
-        ];
-        // update borrowing fee
-        uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(
-            marketId
-        );
-        uint256 borrowingFeeUsd = _updateAndDispatchBorrowingFeeForAccount(
-            positionAccount.owner,
-            positionId,
-            marketId,
-            cumulatedBorrowingPerUsd,
-            true
-        );
-        emit UpdatePositionBorrowingFee(
-            positionAccount.owner,
-            positionId,
-            marketId,
-            borrowingFeeUsd
-        );
-    }
 
     function setInitialLeverage(
         bytes32 positionId,
@@ -60,17 +25,10 @@ contract FacetPositionAccount is
         if (!_isPositionAccountExist(positionId)) {
             _createPositionAccount(positionId);
         }
-        PositionAccountInfo storage positionAccount = _positionAccounts[
-            positionId
-        ];
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         // set leverage
         _setInitialLeverage(positionId, marketId, leverage);
-        emit SetInitialLeverage(
-            positionAccount.owner,
-            positionId,
-            marketId,
-            leverage
-        );
+        emit SetInitialLeverage(positionAccount.owner, positionId, marketId, leverage);
     }
 
     function deposit(
@@ -82,108 +40,136 @@ contract FacetPositionAccount is
         if (!_isPositionAccountExist(positionId)) {
             _createPositionAccount(positionId);
         }
-        PositionAccountInfo storage positionAccount = _positionAccounts[
-            positionId
-        ];
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         // deposit
         _depositToAccount(positionId, collateralToken, rawAmount);
-        emit Deposit(
-            positionAccount.owner,
+        emit Deposit(positionAccount.owner, positionId, collateralToken, rawAmount);
+        _dumpForDepositWithdrawEvent(
             positionId,
-            collateralToken,
-            rawAmount
+            0 // borrowingFeeUsd
         );
     }
 
     function withdraw(
         bytes32 positionId,
         address collateralToken,
-        uint256 rawAmount // token.decimals
+        uint256 rawAmount, // token.decimals
+        address lastConsumedToken,
+        bool isUnwrapWeth,
+        address withdrawSwapToken, // TODO
+        uint256 withdrawSwapSlippage // TODO
     ) external onlyRole(ORDER_BOOK_ROLE) {
-        require(
-            _isPositionAccountExist(positionId),
-            PositionAccountNotExists(positionId)
-        );
-        PositionAccountInfo storage positionAccount = _positionAccounts[
-            positionId
-        ];
+        require(_isPositionAccountExist(positionId), PositionAccountNotExists(positionId));
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         // update borrowing fee for all markets
-        uint256 allBorrowingFeeUsd;
-        uint256 marketLength = positionAccount.activeMarkets.length();
-        for (uint256 i = 0; i < marketLength; i++) {
-            bytes32 marketId = positionAccount.activeMarkets.at(i);
-            uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(
-                marketId
-            );
-            uint256 borrowingFeeUsd = _updateAndDispatchBorrowingFeeForAccount(
-                positionAccount.owner,
-                positionId,
-                marketId,
-                cumulatedBorrowingPerUsd,
-                true // shouldCollateralSufficient
-            );
-            allBorrowingFeeUsd += borrowingFeeUsd;
-        }
+        uint256 allBorrowingFeeUsd = _updateBorrowingForAllMarkets(positionId, lastConsumedToken);
         // withdraw
         uint256 collateralAmount = _collateralToWad(collateralToken, rawAmount);
-        _withdrawFromAccount(positionId, collateralToken, collateralAmount);
+        _withdrawFromAccount(positionId, collateralToken, collateralAmount, isUnwrapWeth);
         // exceeds leverage set by setInitialLeverage
-        require(
-            _isLeverageSafe(positionId),
-            UnsafePositionAccount(positionId, SAFE_LEVERAGE)
-        );
+        require(_isLeverageSafe(positionId), UnsafePositionAccount(positionId, SAFE_LEVERAGE));
         // exceeds leverage set by MM_INITIAL_MARGIN_RATE
-        require(
-            _isInitialMarginSafe(positionId),
-            UnsafePositionAccount(positionId, SAFE_INITITAL_MARGIN)
-        );
-        emit Withdraw(
-            positionAccount.owner,
-            positionId,
-            collateralToken,
-            rawAmount,
-            allBorrowingFeeUsd
-        );
+        require(_isInitialMarginSafe(positionId), UnsafePositionAccount(positionId, SAFE_INITITAL_MARGIN));
+        emit Withdraw(positionAccount.owner, positionId, collateralToken, rawAmount);
+        _dumpForDepositWithdrawEvent(positionId, allBorrowingFeeUsd);
     }
 
     function withdrawAll(
-        bytes32 positionId
+        bytes32 positionId,
+        bool isUnwrapWeth,
+        address withdrawSwapToken, // TODO
+        uint256 withdrawSwapSlippage // TODO
     ) external onlyRole(ORDER_BOOK_ROLE) {
-        require(
-            _isPositionAccountExist(positionId),
-            PositionAccountNotExists(positionId)
-        );
-        PositionAccountInfo storage positionAccount = _positionAccounts[
-            positionId
-        ];
+        require(_isPositionAccountExist(positionId), PositionAccountNotExists(positionId));
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         // all positions should be closed
-        require(
-            positionAccount.activeMarkets.length() == 0,
-            PositionNotClosed(positionId)
-        );
-        address[] memory collaterals = positionAccount
-            .activeCollaterals
-            .values();
+        require(positionAccount.activeMarkets.length() == 0, PositionNotClosed(positionId));
+        address[] memory collaterals = positionAccount.activeCollaterals.values();
         for (uint256 i = 0; i < collaterals.length; i++) {
             address collateralToken = collaterals[i];
-            uint256 collateralAmount = positionAccount.collaterals[
-                collaterals[i]
-            ];
-            _withdrawFromAccount(positionId, collateralToken, collateralAmount);
+            uint256 collateralAmount = positionAccount.collaterals[collaterals[i]];
+            _withdrawFromAccount(positionId, collateralToken, collateralAmount, isUnwrapWeth);
             emit Withdraw(
                 positionAccount.owner,
                 positionId,
                 collateralToken,
-                _collateralToRaw(collateralToken, collateralAmount),
-                0 // borrowingFee must be 0 because size is 0
+                _collateralToRaw(collateralToken, collateralAmount)
             );
         }
+        _dumpForDepositWithdrawEvent(
+            positionId,
+            0 // borrowingFeeUsd
+        );
     }
 
     function withdrawUsd(
-        bytes32 positionId
+        bytes32 positionId,
+        uint256 collateralUsd, // 1e18
+        address lastConsumedToken,
+        bool isUnwrapWeth, // TODO
+        address withdrawSwapToken, // TODO
+        uint256 withdrawSwapSlippage // TODO
     ) external onlyRole(ORDER_BOOK_ROLE) {
-        // TODO: implement
+        require(_isPositionAccountExist(positionId), PositionAccountNotExists(positionId));
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
+        // update borrowing fee for all markets
+        uint256 allBorrowingFeeUsd = _updateBorrowingForAllMarkets(positionId, lastConsumedToken);
+        // withdraw
+        address[] memory collaterals = _activeCollateralsWithLastWithdraw(positionId, lastConsumedToken);
+        uint256 remainUsd = collateralUsd;
+        for (uint256 i = 0; i < collaterals.length; i++) {
+            address collateral = collaterals[i];
+            if (positionAccount.collaterals[collateral] == 0) {
+                continue;
+            }
+            uint256 tokenPrice = _priceOf(collateral);
+            uint256 balanceUsd = (positionAccount.collaterals[collateral] * tokenPrice) / 1e18;
+            uint256 payingUsd = MathUpgradeable.min(balanceUsd, remainUsd);
+            uint256 payingCollateral = (payingUsd * 1e18) / tokenPrice;
+            _withdrawFromAccount(positionId, collateral, payingCollateral, isUnwrapWeth);
+            emit Withdraw(
+                positionAccount.owner,
+                positionId,
+                collateral,
+                _collateralToRaw(collateral, payingCollateral)
+            );
+            remainUsd -= payingUsd;
+            if (remainUsd == 0) {
+                break;
+            }
+        }
+        require(remainUsd == 0, "Insufficient collaterals");
+        _dumpForDepositWithdrawEvent(positionId, allBorrowingFeeUsd);
+        // exceeds leverage set by setInitialLeverage
+        require(_isLeverageSafe(positionId), UnsafePositionAccount(positionId, SAFE_LEVERAGE));
+        // exceeds leverage set by MM_INITIAL_MARGIN_RATE
+        require(_isInitialMarginSafe(positionId), UnsafePositionAccount(positionId, SAFE_INITITAL_MARGIN));
+    }
+
+    /**
+     * @dev updates the borrowing fee for a position and market,
+     *      allowing LPs to collect fees even if the position remains open.
+     */
+    function updateBorrowingFee(
+        bytes32 positionId,
+        bytes32 marketId,
+        address lastConsumedToken
+    ) external onlyRole(ORDER_BOOK_ROLE) {
+        if (!_isPositionAccountExist(positionId)) {
+            _createPositionAccount(positionId);
+        }
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
+        // update borrowing fee
+        uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(marketId);
+        uint256 borrowingFeeUsd = _updateAndDispatchBorrowingFeeForAccount(
+            positionAccount.owner,
+            positionId,
+            marketId,
+            cumulatedBorrowingPerUsd,
+            true,
+            lastConsumedToken
+        );
+        emit UpdatePositionBorrowingFee(positionAccount.owner, positionId, marketId, borrowingFeeUsd);
     }
 
     // check FacetTrade.sol: _updateAndDispatchBorrowingFeeForTrade
@@ -193,23 +179,20 @@ contract FacetPositionAccount is
         bytes32 positionId,
         bytes32 marketId,
         uint256[] memory cumulatedBorrowingPerUsd,
-        bool shouldCollateralSufficient
+        bool shouldCollateralSufficient,
+        address lastConsumedToken
     ) private returns (uint256 borrowingFeeUsd) {
         uint256[] memory borrowingFeeUsds;
         address[] memory borrowingFeeAddresses;
         uint256[] memory borrowingFeeAmounts;
         // note: if shouldCollateralSufficient = false, borrowingFeeUsd could <= sum(borrowingFeeUsds).
         //       we only use borrowingFeeUsds as allocations
-        (
-            borrowingFeeUsd,
-            borrowingFeeUsds,
-            borrowingFeeAddresses,
-            borrowingFeeAmounts
-        ) = _updateAccountBorrowingFee(
+        (borrowingFeeUsd, borrowingFeeUsds, borrowingFeeAddresses, borrowingFeeAmounts) = _updateAccountBorrowingFee(
             positionId,
             marketId,
             cumulatedBorrowingPerUsd,
-            shouldCollateralSufficient
+            shouldCollateralSufficient,
+            lastConsumedToken
         );
         _dispatchFee(
             trader,
@@ -218,6 +201,43 @@ contract FacetPositionAccount is
             borrowingFeeAddresses,
             borrowingFeeAmounts,
             borrowingFeeUsds // allocations
+        );
+    }
+
+    function _updateBorrowingForAllMarkets(
+        bytes32 positionId,
+        address lastConsumedToken
+    ) private returns (uint256 allBorrowingFeeUsd) {
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
+        uint256 marketLength = positionAccount.activeMarkets.length();
+        for (uint256 i = 0; i < marketLength; i++) {
+            bytes32 marketId = positionAccount.activeMarkets.at(i);
+            uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(marketId);
+            uint256 borrowingFeeUsd = _updateAndDispatchBorrowingFeeForAccount(
+                positionAccount.owner,
+                positionId,
+                marketId,
+                cumulatedBorrowingPerUsd,
+                true, // shouldCollateralSufficient
+                lastConsumedToken
+            );
+            allBorrowingFeeUsd += borrowingFeeUsd;
+        }
+    }
+
+    function _dumpForDepositWithdrawEvent(bytes32 positionId, uint256 borrowingFeeUsd) private {
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
+        address[] memory collateralTokens = positionAccount.activeCollaterals.values();
+        uint256[] memory collateralAmounts = new uint256[](collateralTokens.length);
+        for (uint256 i = 0; i < collateralTokens.length; i++) {
+            collateralAmounts[i] = positionAccount.collaterals[collateralTokens[i]];
+        }
+        emit DepositWithdrawFinish(
+            positionAccount.owner,
+            positionId,
+            borrowingFeeUsd,
+            collateralTokens,
+            collateralAmounts
         );
     }
 }

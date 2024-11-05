@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -26,8 +26,7 @@ contract CollateralPoolComputed is CollateralPoolStore {
     }
 
     function _borrowingBaseApy() internal view returns (int256) {
-        return
-            IFacetReader(_core).configValue(MC_BORROWING_BASE_APY).toInt256();
+        return IFacetReader(_core).configValue(MC_BORROWING_BASE_APY).toInt256();
     }
 
     function _borrowingK() internal view returns (int256) {
@@ -46,30 +45,18 @@ contract CollateralPoolComputed is CollateralPoolStore {
         return IFacetReader(_core).marketConfigValue(marketId, MM_ORACLE_ID);
     }
 
-    function _adlReserveRate(
-        bytes32 marketId
-    ) internal view returns (uint256 rate) {
-        bytes32 key = keccak256(
-            abi.encodePacked(MCP_ADL_RESERVE_RATE, marketId)
-        );
+    function _adlReserveRate(bytes32 marketId) internal view returns (uint256 rate) {
+        bytes32 key = keccak256(abi.encodePacked(MCP_ADL_RESERVE_RATE, marketId));
         rate = _configTable.getUint256(key);
     }
 
-    function _adlMaxPnlRate(
-        bytes32 marketId
-    ) internal view returns (uint256 rate) {
-        bytes32 key = keccak256(
-            abi.encodePacked(MCP_ADL_MAX_PNL_RATE, marketId)
-        );
+    function _adlMaxPnlRate(bytes32 marketId) internal view returns (uint256 rate) {
+        bytes32 key = keccak256(abi.encodePacked(MCP_ADL_MAX_PNL_RATE, marketId));
         rate = _configTable.getUint256(key);
     }
 
-    function _adlTriggerRate(
-        bytes32 marketId
-    ) internal view returns (uint256 rate) {
-        bytes32 key = keccak256(
-            abi.encodePacked(MCP_ADL_TRIGGER_RATE, marketId)
-        );
+    function _adlTriggerRate(bytes32 marketId) internal view returns (uint256 rate) {
+        bytes32 key = keccak256(abi.encodePacked(MCP_ADL_TRIGGER_RATE, marketId));
         rate = _configTable.getUint256(key);
     }
 
@@ -106,23 +93,13 @@ contract CollateralPoolComputed is CollateralPoolStore {
         aum = upnl > 0 ? uint256(upnl) : 0;
     }
 
-    function _traderTotalUpnlUsd(
-        bytes32 marketId
-    ) internal view returns (int256 upnlUsd) {
+    function _traderTotalUpnlUsd(bytes32 marketId) internal view returns (int256 upnlUsd) {
         MarketState storage data = _marketStates[marketId];
-        uint256 marketPrice = IFacetReader(_core).priceOf(
-            _marketOracleId(marketId)
-        );
+        uint256 marketPrice = IFacetReader(_core).priceOf(_marketOracleId(marketId));
         if (data.isLong) {
-            upnlUsd =
-                (int256(data.totalSize) *
-                    (int256(marketPrice) - int256(data.averageEntryPrice))) /
-                1e18;
+            upnlUsd = (int256(data.totalSize) * (int256(marketPrice) - int256(data.averageEntryPrice))) / 1e18;
         } else {
-            upnlUsd =
-                (int256(data.totalSize) *
-                    (int256(data.averageEntryPrice) - int256(marketPrice))) /
-                1e18;
+            upnlUsd = (int256(data.totalSize) * (int256(data.averageEntryPrice) - int256(marketPrice))) / 1e18;
         }
     }
 
@@ -133,19 +110,13 @@ contract CollateralPoolComputed is CollateralPoolStore {
             MarketState storage data = _marketStates[marketId];
             uint256 reserveRatio = _adlReserveRate(marketId);
             require(reserveRatio > 0, "reserveRatio <= 0");
-            uint256 marketPrice = IFacetReader(_core).priceOf(
-                _marketOracleId(marketId)
-            );
+            uint256 marketPrice = IFacetReader(_core).priceOf(_marketOracleId(marketId));
             uint256 sizeUsd = (data.totalSize * marketPrice) / 1e18;
             reservedUsd += (sizeUsd * reserveRatio) / 1e18;
         }
     }
 
-    function _availableLiquidityUsd()
-        internal
-        view
-        returns (uint256 liquidityUsd)
-    {
+    function _availableLiquidityUsd() internal view returns (uint256 liquidityUsd) {
         uint256 aum = _aumUsdWithoutPnl();
         uint256 reserved = _reservedUsd();
         if (aum >= reserved) {
@@ -153,13 +124,8 @@ contract CollateralPoolComputed is CollateralPoolStore {
         }
     }
 
-    function _toWad(
-        address token,
-        uint256 rawAmount
-    ) internal view returns (uint256) {
-        (bool enabled, uint8 decimals) = IFacetReader(_core).getCollateralToken(
-            token
-        );
+    function _toWad(address token, uint256 rawAmount) internal view returns (uint256) {
+        (bool enabled, uint8 decimals) = IFacetReader(_core).getCollateralToken(token);
         require(enabled, "Token not enabled");
         if (decimals <= 18) {
             return rawAmount * (10 ** (18 - decimals));
@@ -168,13 +134,8 @@ contract CollateralPoolComputed is CollateralPoolStore {
         }
     }
 
-    function _toRaw(
-        address token,
-        uint256 wadAmount
-    ) internal view returns (uint256) {
-        (bool enabled, uint8 decimals) = IFacetReader(_core).getCollateralToken(
-            token
-        );
+    function _toRaw(address token, uint256 wadAmount) internal view returns (uint256) {
+        (bool enabled, uint8 decimals) = IFacetReader(_core).getCollateralToken(token);
         require(enabled, "Token not enabled");
         if (decimals <= 18) {
             return wadAmount / 10 ** (18 - decimals);

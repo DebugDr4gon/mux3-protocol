@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "../interfaces/IBorrowingRate.sol";
@@ -42,12 +42,7 @@ interface ICollateralPool {
         uint256 tokenPrice,
         uint256 collateralAmount // 1e18
     );
-    event OpenPosition(
-        bytes32 marketId,
-        uint256 size,
-        uint256 averageEntryPrice,
-        uint256 totalSize
-    );
+    event OpenPosition(bytes32 marketId, uint256 size, uint256 averageEntryPrice, uint256 totalSize);
     event ClosePosition(bytes32 marketId, uint256 size, uint256 totalSize);
     event ReceiveFee(
         address token,
@@ -72,45 +67,40 @@ interface ICollateralPool {
 
     function collateralToken() external view returns (address);
 
-    function borrowingFeeRateApy(
-        bytes32 marketId
-    ) external view returns (uint256 feeRateApy);
+    function borrowingFeeRateApy(bytes32 marketId) external view returns (uint256 feeRateApy);
 
     function markets() external view returns (bytes32[] memory);
 
-    function marketState(
-        bytes32 marketId
-    ) external view returns (MarketState memory);
+    function marketState(bytes32 marketId) external view returns (MarketState memory);
 
-    function marketStates()
-        external
-        view
-        returns (bytes32[] memory marketIds, MarketState[] memory states);
+    function marketStates() external view returns (bytes32[] memory marketIds, MarketState[] memory states);
 
     function setMarket(bytes32 marketId, bool isLong) external;
 
     function openPosition(bytes32 marketId, uint256 size) external;
 
-    function closePosition(
-        bytes32 marketId,
-        uint256 size,
-        uint256 entryPrice
-    ) external;
+    function closePosition(bytes32 marketId, uint256 size, uint256 entryPrice) external;
 
     function realizeProfit(
         uint256 pnlUsd
-    ) external returns (address token, uint256 wad);
+    )
+        external
+        returns (
+            address token,
+            uint256 wad // 1e18
+        );
 
-    function realizeLoss(address token, uint256 rawAmount) external;
+    function realizeLoss(
+        address token,
+        uint256 rawAmount // token decimals
+    ) external;
 
-    function addLiquidity(
-        address account,
-        uint256 collaterals
-    ) external returns (uint256 shares);
+    function addLiquidity(address account, uint256 collaterals) external returns (uint256 shares);
 
     function removeLiquidity(
         address account,
-        uint256 shares
+        uint256 shares,
+        bool isUnwrapWeth
     ) external returns (uint256 collateralAmount);
 
     function receiveFee(
@@ -118,18 +108,14 @@ interface ICollateralPool {
         uint256 rawAmount // token.decimals
     ) external;
 
-    function updateMarketBorrowing(
-        bytes32 marketId
-    ) external returns (uint256 newCumulatedBorrowingPerUsd);
+    function updateMarketBorrowing(bytes32 marketId) external returns (uint256 newCumulatedBorrowingPerUsd);
 
-    function makeBorrowingContext(
-        bytes32 marketId
-    ) external view returns (IBorrowingRate.AllocatePool memory);
+    function makeBorrowingContext(bytes32 marketId) external view returns (IBorrowingRate.AllocatePool memory);
 
     function positionPnl(
         bytes32 marketId,
         uint256 size,
         uint256 entryPrice,
         uint256 marketPrice
-    ) external view returns (bool hasProfit, uint256 cappedPnlUsd);
+    ) external view returns (int256 cappedPnlUsd);
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -13,15 +13,15 @@ contract OrderBookGetter is OrderBookStore, IOrderBookGetter {
     using LibConfigMap for mapping(bytes32 => bytes32);
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
 
-    function nextOrderId() external view returns (uint64) {
+    function nextOrderId() external view override returns (uint64) {
         return _storage.nextOrderId;
     }
 
-    function sequence() external view returns (uint64) {
+    function sequence() external view override returns (uint64) {
         return _storage.sequence;
     }
 
-    function configValue(bytes32 key) external view returns (bytes32) {
+    function configValue(bytes32 key) external view override returns (bytes32) {
         return _configTable.getBytes32(key);
     }
 
@@ -41,9 +41,7 @@ contract OrderBookGetter is OrderBookStore, IOrderBookGetter {
         period = _configTable.getUint256(MCO_LIQUIDITY_LOCK_PERIOD);
     }
 
-    function isOrderPaused(
-        OrderType orderType
-    ) internal view returns (bool paused) {
+    function _isOrderPaused(OrderType orderType) internal view returns (bool paused) {
         if (orderType == OrderType.PositionOrder) {
             paused = _configTable.getBoolean(MCO_POSITION_ORDER_PAUSED);
         } else if (orderType == OrderType.LiquidityOrder) {
@@ -53,45 +51,36 @@ contract OrderBookGetter is OrderBookStore, IOrderBookGetter {
         }
     }
 
-    function marketOrderTimeout() internal view returns (uint256 timeout) {
+    function _marketOrderTimeout() internal view returns (uint256 timeout) {
         timeout = _configTable.getUint256(MCO_MARKET_ORDER_TIMEOUT);
     }
 
-    function maxLimitOrderTimeout() internal view returns (uint256 timeout) {
+    function _maxLimitOrderTimeout() internal view returns (uint256 timeout) {
         timeout = _configTable.getUint256(MCO_LIMIT_ORDER_TIMEOUT);
     }
 
-    function referralManager() internal view returns (address ref) {
+    function _referralManager() internal view returns (address ref) {
         ref = _configTable.getAddress(MCO_REFERRAL_MANAGER);
     }
 
-    function cancelCoolDown() internal view returns (uint256 timeout) {
+    function _cancelCoolDown() internal view returns (uint256 timeout) {
         timeout = _configTable.getUint256(MCO_CANCEL_COOL_DOWN);
     }
 
     /**
-     * @notice Get an Order by orderId.
+     * @notice Get an Order by orderId
      */
-    function getOrder(
-        uint64 orderId
-    ) external view returns (OrderData memory, bool) {
-        return (
-            _storage.orderData[orderId],
-            _storage.orderData[orderId].version > 0
-        );
+    function getOrder(uint64 orderId) external view override returns (OrderData memory, bool) {
+        return (_storage.orderData[orderId], _storage.orderData[orderId].version > 0);
     }
 
     /**
-     * @notice Get Order List for all Traders.
+     * @notice Get Order List for all Traders
      */
     function getOrders(
         uint256 begin,
         uint256 end
-    )
-        external
-        view
-        returns (OrderData[] memory orderDataArray, uint256 totalCount)
-    {
+    ) external view override returns (OrderData[] memory orderDataArray, uint256 totalCount) {
         totalCount = _storage.orders.length();
         if (begin >= end || begin >= totalCount) {
             return (orderDataArray, totalCount);
@@ -106,20 +95,14 @@ contract OrderBookGetter is OrderBookStore, IOrderBookGetter {
     }
 
     /**
-     * @notice Get Order List for a User.
+     * @notice Get Order List for a User
      */
     function getOrdersOf(
         address user,
         uint256 begin,
         uint256 end
-    )
-        external
-        view
-        returns (OrderData[] memory orderDataArray, uint256 totalCount)
-    {
-        EnumerableSetUpgradeable.UintSet storage orders = _storage.userOrders[
-            user
-        ];
+    ) external view override returns (OrderData[] memory orderDataArray, uint256 totalCount) {
+        EnumerableSetUpgradeable.UintSet storage orders = _storage.userOrders[user];
         totalCount = orders.length();
         if (begin >= end || begin >= totalCount) {
             return (orderDataArray, totalCount);

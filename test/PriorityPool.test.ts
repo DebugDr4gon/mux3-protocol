@@ -61,6 +61,7 @@ describe("Priority pool", () => {
 
   beforeEach(async () => {
     timestampOfTest = await time.latest()
+    timestampOfTest = Math.ceil(timestampOfTest / 3600) * 3600 // move to the next hour
 
     // token
     usdc = (await createContract("MockERC20", ["USDC", "USDC", 6])) as MockERC20
@@ -71,7 +72,7 @@ describe("Priority pool", () => {
 
     // core
     core = (await createContract("TestMux3", [])) as TestMux3
-    await core.initialize()
+    await core.initialize(weth.address)
     await core.addCollateralToken(usdc.address, 6)
     await core.setCollateralTokenStatus(usdc.address, true)
     await core.setConfig(ethers.utils.id("MC_BORROWING_BASE_APY"), u2b(toWei("0.10")))
@@ -89,7 +90,7 @@ describe("Priority pool", () => {
     await orderBook.setConfig(ethers.utils.id("MCO_CANCEL_COOL_DOWN"), u2b(ethers.BigNumber.from(5)))
 
     // collateral pool
-    imp = (await createContract("CollateralPool", [core.address, orderBook.address])) as CollateralPool
+    imp = (await createContract("CollateralPool", [core.address, orderBook.address, weth.address])) as CollateralPool
     await core.setCollateralPoolImplementation(imp.address)
 
     // pool 1 (priority)
@@ -246,6 +247,7 @@ describe("Priority pool", () => {
       beforeEach(async () => {
         // open long btc, using usdc
         positionId = encodePositionId(trader1.address, 0)
+        await orderBook.connect(trader1).setInitialLeverage(positionId, long1, toWei("100"))
         await usdc.connect(trader1).transfer(orderBook.address, toUnit("11000", 6))
         const args = {
           positionId,
@@ -254,20 +256,18 @@ describe("Priority pool", () => {
           flags: PositionOrderFlags.OpenPosition,
           limitPrice: toWei("50000"),
           expiration: timestampOfTest + 86400 * 2 + 905 + 300,
-          initialLeverage: toWei("100"),
+          lastConsumedToken: zeroAddress,
           collateralToken: usdc.address,
           collateralAmount: toUnit("11000", 6),
           withdrawUsd: toWei("0"),
-          lastWithdrawToken: zeroAddress,
           withdrawSwapToken: zeroAddress,
           withdrawSwapSlippage: 0,
           tpPriceDiff: 0,
           slPriceDiff: 0,
           tpslExpiration: 0,
           tpslFlags: 0,
-          tpslLastWithdrawToken: zeroAddress,
           tpslWithdrawSwapToken: zeroAddress,
-          tpslWithdrawSwapSlippage: 0
+          tpslWithdrawSwapSlippage: 0,
         }
         await orderBook.connect(trader1).placePositionOrder(args, refCode)
         {
@@ -301,20 +301,18 @@ describe("Priority pool", () => {
           flags: PositionOrderFlags.WithdrawAllIfEmpty,
           limitPrice: toWei("50000"),
           expiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
-          initialLeverage: toWei("0"),
+          lastConsumedToken: zeroAddress,
           collateralToken: zeroAddress,
           collateralAmount: toUnit("0", 6),
           withdrawUsd: toWei("0"),
-          lastWithdrawToken: zeroAddress,
           withdrawSwapToken: zeroAddress,
           withdrawSwapSlippage: toWei("0"),
           tpPriceDiff: toWei("0"),
           slPriceDiff: toWei("0"),
           tpslExpiration: 0,
           tpslFlags: 0,
-          tpslLastWithdrawToken: zeroAddress,
           tpslWithdrawSwapToken: zeroAddress,
-          tpslWithdrawSwapSlippage: toWei("0")
+          tpslWithdrawSwapSlippage: toWei("0"),
         }
         await orderBook.connect(trader1).placePositionOrder(args, refCode)
         {
@@ -332,7 +330,6 @@ describe("Priority pool", () => {
               [toWei("10"), toWei("0"), toWei("0")], // allocations
               [toWei("10"), toWei("0"), toWei("0")], // newSizes
               [toWei("50000"), toWei("0"), toWei("0")], // newEntryPrices
-              [false, false, false], // hasProfits
               [toWei("0"), toWei("0"), toWei("0")], // poolPnlUsds
               toWei("500"), // positionFeeUsd = 50000 * 10 * 0.001
               toWei("0"), // borrowingFeeUsd
@@ -350,20 +347,18 @@ describe("Priority pool", () => {
           flags: PositionOrderFlags.WithdrawAllIfEmpty,
           limitPrice: toWei("50000"),
           expiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
-          initialLeverage: toWei("0"),
+          lastConsumedToken: zeroAddress,
           collateralToken: zeroAddress,
           collateralAmount: toUnit("0", 6),
           withdrawUsd: toWei("0"),
-          lastWithdrawToken: zeroAddress,
           withdrawSwapToken: zeroAddress,
           withdrawSwapSlippage: toWei("0"),
           tpPriceDiff: toWei("0"),
           slPriceDiff: toWei("0"),
           tpslExpiration: 0,
           tpslFlags: 0,
-          tpslLastWithdrawToken: zeroAddress,
           tpslWithdrawSwapToken: zeroAddress,
-          tpslWithdrawSwapSlippage: toWei("0")
+          tpslWithdrawSwapSlippage: toWei("0"),
         }
         await orderBook.connect(trader1).placePositionOrder(args, refCode)
         {
@@ -381,7 +376,6 @@ describe("Priority pool", () => {
               [toWei("20"), toWei("0"), toWei("0")], // allocations
               [toWei("0"), toWei("0"), toWei("0")], // newSizes
               [toWei("0"), toWei("0"), toWei("0")], // newEntryPrices
-              [false, false, false], // hasProfits
               [toWei("0"), toWei("0"), toWei("0")], // poolPnlUsds
               toWei("1000"), // positionFeeUsd = 50000 * 20 * 0.001
               toWei("0"), // borrowingFeeUsd
@@ -398,6 +392,7 @@ describe("Priority pool", () => {
       beforeEach(async () => {
         // open long btc, using usdc
         positionId = encodePositionId(trader1.address, 0)
+        await orderBook.connect(trader1).setInitialLeverage(positionId, long1, toWei("100"))
         await usdc.connect(trader1).transfer(orderBook.address, toUnit("22000", 6))
         const args = {
           positionId,
@@ -406,18 +401,16 @@ describe("Priority pool", () => {
           flags: PositionOrderFlags.OpenPosition,
           limitPrice: toWei("50000"),
           expiration: timestampOfTest + 86400 * 2 + 905 + 300,
-          initialLeverage: toWei("100"),
+          lastConsumedToken: zeroAddress,
           collateralToken: usdc.address,
           collateralAmount: toUnit("22000", 6),
           withdrawUsd: toWei("0"),
-          lastWithdrawToken: zeroAddress,
           withdrawSwapToken: zeroAddress,
           withdrawSwapSlippage: toWei("0"),
           tpPriceDiff: toWei("0"),
           slPriceDiff: toWei("0"),
           tpslExpiration: 0,
           tpslFlags: 0,
-          tpslLastWithdrawToken: zeroAddress,
           tpslWithdrawSwapToken: zeroAddress,
           tpslWithdrawSwapSlippage: toWei("0"),
         }
@@ -453,18 +446,16 @@ describe("Priority pool", () => {
           flags: PositionOrderFlags.WithdrawAllIfEmpty,
           limitPrice: toWei("50000"),
           expiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
-          initialLeverage: toWei("0"),
+          lastConsumedToken: zeroAddress,
           collateralToken: zeroAddress,
           collateralAmount: toUnit("0", 6),
           withdrawUsd: toWei("0"),
-          lastWithdrawToken: zeroAddress,
           withdrawSwapToken: zeroAddress,
           withdrawSwapSlippage: toWei("0"),
           tpPriceDiff: toWei("0"),
           slPriceDiff: toWei("0"),
           tpslExpiration: 0,
           tpslFlags: 0,
-          tpslLastWithdrawToken: zeroAddress,
           tpslWithdrawSwapToken: zeroAddress,
           tpslWithdrawSwapSlippage: toWei("0"),
         }
@@ -484,7 +475,6 @@ describe("Priority pool", () => {
               [toWei("0"), toWei("1.5"), toWei("1.5")], // allocations
               [toWei("24.9975"), toWei("6.0013"), toWei("6.0012")], // newSizes
               [toWei("50000"), toWei("50000"), toWei("50000")], // newEntryPrices
-              [false, false, false], // hasProfits
               [toWei("0"), toWei("0"), toWei("0")], // poolPnlUsds
               toWei("150"), // positionFeeUsd = 50000 * 3 * 0.001
               toWei("0"), // borrowingFeeUsd
@@ -502,18 +492,16 @@ describe("Priority pool", () => {
           flags: PositionOrderFlags.WithdrawAllIfEmpty,
           limitPrice: toWei("50000"),
           expiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
-          initialLeverage: toWei("0"),
+          lastConsumedToken: zeroAddress,
           collateralToken: zeroAddress,
           collateralAmount: toUnit("0", 6),
           withdrawUsd: toWei("0"),
-          lastWithdrawToken: zeroAddress,
           withdrawSwapToken: zeroAddress,
           withdrawSwapSlippage: toWei("0"),
           tpPriceDiff: toWei("0"),
           slPriceDiff: toWei("0"),
           tpslExpiration: 0,
           tpslFlags: 0,
-          tpslLastWithdrawToken: zeroAddress,
           tpslWithdrawSwapToken: zeroAddress,
           tpslWithdrawSwapSlippage: toWei("0"),
         }
@@ -533,7 +521,6 @@ describe("Priority pool", () => {
               [toWei("4.9975"), toWei("7.5013"), toWei("7.5012")], // allocations
               [toWei("20"), toWei("0"), toWei("0")], // newSizes
               [toWei("50000"), toWei("0"), toWei("0")], // newEntryPrices
-              [false, false, false], // hasProfits
               [toWei("0"), toWei("0"), toWei("0")], // poolPnlUsds
               toWei("1000"), // positionFeeUsd = 50000 * 20 * 0.001
               toWei("0"), // borrowingFeeUsd
@@ -551,18 +538,16 @@ describe("Priority pool", () => {
           flags: PositionOrderFlags.WithdrawAllIfEmpty,
           limitPrice: toWei("50000"),
           expiration: timestampOfTest + 86400 * 2 + 905 + 86400 * 7 + 30,
-          initialLeverage: toWei("0"),
+          lastConsumedToken: zeroAddress,
           collateralToken: zeroAddress,
           collateralAmount: toUnit("0", 6),
           withdrawUsd: toWei("0"),
-          lastWithdrawToken: zeroAddress,
           withdrawSwapToken: zeroAddress,
           withdrawSwapSlippage: toWei("0"),
           tpPriceDiff: toWei("0"),
           slPriceDiff: toWei("0"),
           tpslExpiration: 0,
           tpslFlags: 0,
-          tpslLastWithdrawToken: zeroAddress,
           tpslWithdrawSwapToken: zeroAddress,
           tpslWithdrawSwapSlippage: toWei("0"),
         }
@@ -582,7 +567,6 @@ describe("Priority pool", () => {
               [toWei("24.9975"), toWei("7.5013"), toWei("7.5012")], // allocations
               [toWei("0"), toWei("0"), toWei("0")], // newSizes
               [toWei("0"), toWei("0"), toWei("0")], // newEntryPrices
-              [false, false, false], // hasProfits
               [toWei("0"), toWei("0"), toWei("0")], // poolPnlUsds
               toWei("2000"), // positionFeeUsd = 50000 * 40 * 0.001
               toWei("0"), // borrowingFeeUsd

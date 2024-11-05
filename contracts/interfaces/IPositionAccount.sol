@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
@@ -40,22 +40,20 @@ interface IPositionAccount {
         address indexed owner,
         bytes32 indexed positionId,
         address collateralToken,
-        uint256 collateralAmount, // token.decimals
-        uint256 borrowingFeeUsd // 1e18
+        uint256 collateralAmount // token.decimals
     );
 
-    event CreatePositionAccount(
-        address indexed owner,
-        uint256 index,
-        bytes32 indexed positionId
-    );
-
-    event SetInitialLeverage(
+    event DepositWithdrawFinish(
         address indexed owner,
         bytes32 indexed positionId,
-        bytes32 marketId,
-        uint256 leverage
+        uint256 borrowingFeeUsd, // 1e18
+        address[] newCollateralTokens,
+        uint256[] newCollateralAmounts
     );
+
+    event CreatePositionAccount(address indexed owner, uint256 index, bytes32 indexed positionId);
+
+    event SetInitialLeverage(address indexed owner, bytes32 indexed positionId, bytes32 marketId, uint256 leverage);
 
     event UpdatePositionBorrowingFee(
         address indexed owner,
@@ -64,25 +62,35 @@ interface IPositionAccount {
         uint256 borrowingFeeUsd
     );
 
-    function setInitialLeverage(
-        bytes32 positionId,
-        bytes32 marketId,
-        uint256 leverage
-    ) external;
+    function setInitialLeverage(bytes32 positionId, bytes32 marketId, uint256 leverage) external;
 
-    function deposit(
-        bytes32 positionId,
-        address collateralToken,
-        uint256 amount
-    ) external;
+    function deposit(bytes32 positionId, address collateralToken, uint256 amount) external;
 
     function withdraw(
         bytes32 positionId,
         address collateralToken,
-        uint256 amount
+        uint256 amount,
+        address lastConsumedToken,
+        bool isUnwrapWeth,
+        address withdrawSwapToken,
+        uint256 withdrawSwapSlippage
     ) external;
 
-    function withdrawAll(bytes32 positionId) external;
+    function withdrawAll(
+        bytes32 positionId,
+        bool isUnwrapWeth,
+        address withdrawSwapToken,
+        uint256 withdrawSwapSlippage
+    ) external;
 
-    function updateBorrowingFee(bytes32 positionId, bytes32 marketId) external;
+    function withdrawUsd(
+        bytes32 positionId,
+        uint256 collateralUsd, // 1e18
+        address lastConsumedToken,
+        bool isUnwrapWeth,
+        address withdrawSwapToken,
+        uint256 withdrawSwapSlippage
+    ) external;
+
+    function updateBorrowingFee(bytes32 positionId, bytes32 marketId, address lastConsumedToken) external;
 }

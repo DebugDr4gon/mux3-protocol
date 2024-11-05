@@ -6,19 +6,12 @@ import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetMinterPauser.sol"
 contract MockERC20 is ERC20PresetMinterPauser {
     uint8 _decimals;
 
-    constructor(
-        string memory name,
-        string memory symbol,
-        uint8 decimals_
-    ) ERC20PresetMinterPauser(name, symbol) {
+    constructor(string memory name, string memory symbol, uint8 decimals_) ERC20PresetMinterPauser(name, symbol) {
         _decimals = decimals_;
     }
 
     function burn(address account, uint256 amount) external {
-        require(
-            hasRole(MINTER_ROLE, msg.sender),
-            "sender must be minter to burn"
-        );
+        require(hasRole(MINTER_ROLE, msg.sender), "sender must be minter to burn");
         _burn(account, amount);
     }
 

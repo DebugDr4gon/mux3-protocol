@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -23,20 +23,13 @@ contract ChainlinkFeedProvider is Ownable {
         emit SetValidFeeder(feeder, isValid);
     }
 
-    function setPriceExpirationSeconds(
-        uint256 _priceExpiration
-    ) external onlyOwner {
-        require(
-            _priceExpiration <= 86400 && _priceExpiration > 30,
-            InvalidPriceExpiration(_priceExpiration)
-        );
+    function setPriceExpirationSeconds(uint256 _priceExpiration) external onlyOwner {
+        require(_priceExpiration <= 86400 && _priceExpiration > 30, InvalidPriceExpiration(_priceExpiration));
         priceExpiration = _priceExpiration;
         emit SetPriceExpiration(_priceExpiration);
     }
 
-    function getOraclePrice(
-        bytes memory rawData
-    ) external view returns (uint256, uint256) {
+    function getOraclePrice(bytes memory rawData) external view returns (uint256, uint256) {
         address _feeder = abi.decode(rawData, (address));
         require(_feeder != address(0), InvalidFeederAddress());
         require(feeders[_feeder], InvalidFeeder());
@@ -44,10 +37,7 @@ contract ChainlinkFeedProvider is Ownable {
         AggregatorV2V3Interface feeder = AggregatorV2V3Interface(_feeder);
         uint8 decimals = feeder.decimals();
         (, int256 _price, , uint256 timestamp, ) = feeder.latestRoundData();
-        require(
-            timestamp + priceExpiration >= block.timestamp,
-            PriceExpired(timestamp, block.timestamp)
-        );
+        require(timestamp + priceExpiration >= block.timestamp, PriceExpired(timestamp, block.timestamp));
         require(_price > 0, InvalidPrice(_price));
         uint256 price = uint256(_price) * (10 ** (18 - decimals)); // decimals => 18
         return (price, timestamp);

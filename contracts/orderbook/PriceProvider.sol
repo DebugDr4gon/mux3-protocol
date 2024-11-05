@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
@@ -14,16 +14,10 @@ struct PriceRawData {
 contract PriceProvider is OrderBookStore {
     using AddressUpgradeable for address;
 
-    function setPrices(
-        PriceRawData[] memory priceData
-    ) external onlyRole(BROKER_ROLE) {
+    function setPrices(PriceRawData[] memory priceData) external onlyRole(BROKER_ROLE) {
         require(priceData.length > 0, "PriceProvider: priceData is empty");
         for (uint256 i = 0; i < priceData.length; i++) {
-            IManagement(_storage.mux3Facet).setPrice(
-                priceData[i].id,
-                priceData[i].provider,
-                priceData[i].rawData
-            );
+            IManagement(_storage.mux3Facet).setPrice(priceData[i].id, priceData[i].provider, priceData[i].rawData);
         }
     }
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -27,16 +27,13 @@ contract MockCollateralPool is
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
 
-    constructor(address core, address orderBook) {
-        _core = core;
-        _orderBook = orderBook;
+    constructor(address core_, address orderBook_, address weth_) {
+        _core = core_;
+        _orderBook = orderBook_;
+        _weth = weth_;
     }
 
-    function initialize(
-        string memory name,
-        string memory symbol,
-        address collateralToken_
-    ) external initializer {
+    function initialize(string memory name, string memory symbol, address collateralToken_) external initializer {
         __CollateralPoolToken_init(name, symbol);
         __CollateralPoolStore_init(collateralToken_);
     }
@@ -47,17 +44,11 @@ contract MockCollateralPool is
 
     function markets() external view returns (bytes32[] memory) {}
 
-    function marketState(
-        bytes32 marketId
-    ) external view returns (MarketState memory) {
+    function marketState(bytes32 marketId) external view returns (MarketState memory) {
         return _marketStates[marketId];
     }
 
-    function marketStates()
-        external
-        view
-        returns (bytes32[] memory marketIds, MarketState[] memory states)
-    {
+    function marketStates() external view returns (bytes32[] memory marketIds, MarketState[] memory states) {
         marketIds = _marketIds.values();
         states = new MarketState[](marketIds.length);
         for (uint256 i = 0; i < marketIds.length; i++) {
@@ -66,9 +57,7 @@ contract MockCollateralPool is
         }
     }
 
-    function borrowingFeeRateApy(
-        bytes32 marketId
-    ) public pure returns (uint256 feeRateApy) {
+    function borrowingFeeRateApy(bytes32 marketId) public pure returns (uint256 feeRateApy) {
         marketId;
         return 0;
     }
@@ -91,15 +80,9 @@ contract MockCollateralPool is
 
     function receiveFee(address token, uint256 rawAmount) external {}
 
-    function closePosition(
-        bytes32 marketId,
-        uint256 size,
-        uint256 entryPrice
-    ) external override {}
+    function closePosition(bytes32 marketId, uint256 size, uint256 entryPrice) external override {}
 
-    function realizeProfit(
-        uint256 pnlUsd
-    ) external returns (address token, uint256 wad) {
+    function realizeProfit(uint256 pnlUsd) external returns (address token, uint256 wad) {
         pnlUsd;
     }
 
@@ -108,30 +91,24 @@ contract MockCollateralPool is
         rawAmount;
     }
 
-    function addLiquidity(
-        address account,
-        uint256 collateralAmount
-    ) external override returns (uint256 shares) {}
+    function addLiquidity(address account, uint256 collateralAmount) external override returns (uint256 shares) {}
 
     function removeLiquidity(
         address account,
-        uint256 shares
+        uint256 shares,
+        bool isUnwrapWeth
     ) external override returns (uint256 collateralAmount) {}
 
     function mint(address account, uint256 amount) external {
         _mint(account, amount);
     }
 
-    function updateMarketBorrowing(
-        bytes32 marketId
-    ) external returns (uint256 newCumulatedBorrowingPerUsd) {
+    function updateMarketBorrowing(bytes32 marketId) external returns (uint256 newCumulatedBorrowingPerUsd) {
         marketId;
         return 0;
     }
 
-    function makeBorrowingContext(
-        bytes32 marketId
-    ) external view returns (IBorrowingRate.AllocatePool memory) {
+    function makeBorrowingContext(bytes32 marketId) external view returns (IBorrowingRate.AllocatePool memory) {
         marketId;
         return IBorrowingRate.AllocatePool(0, 0, 0, false, 0, 0, 0);
     }
@@ -141,11 +118,11 @@ contract MockCollateralPool is
         uint256 size,
         uint256 entryPrice,
         uint256 marketPrice
-    ) external view returns (bool hasProfit, uint256 cappedPnlUsd) {
+    ) external view returns (int256 cappedPnlUsd) {
         marketId;
         size;
         entryPrice;
         marketPrice;
-        return (false, 0);
+        return 0;
     }
 }

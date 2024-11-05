@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "../interfaces/IPositionAccount.sol";
@@ -37,44 +37,27 @@ interface IFacetReader {
 
     function configValue(bytes32 key) external view returns (bytes32);
 
-    function marketConfigValue(
-        bytes32 marketId,
-        bytes32 key
-    ) external view returns (bytes32);
+    function marketConfigValue(bytes32 marketId, bytes32 key) external view returns (bytes32);
 
-    function marketState(
-        bytes32 marketId
-    ) external view returns (string memory symbol, bool isLong);
+    function marketState(bytes32 marketId) external view returns (string memory symbol, bool isLong);
 
-    function getCollateralToken(
-        address token
-    ) external view returns (bool enabled, uint8 decimals);
+    function getCollateralToken(address token) external view returns (bool enabled, uint8 decimals);
 
     function listCollateralTokens() external view returns (address[] memory);
 
-    function getCollateralPool(
-        address pool
-    ) external view returns (bool enabled);
+    function getCollateralPool(address pool) external view returns (bool enabled);
 
     function listCollateralPool() external view returns (address[] memory);
 
     function listMarkets() external view returns (bytes32[] memory);
 
-    function listMarketPools(
-        bytes32 marketId
-    ) external view returns (BackedPoolState[] memory);
+    function listMarketPools(bytes32 marketId) external view returns (BackedPoolState[] memory);
 
-    function listPositionIdsOf(
-        address trader
-    ) external view returns (bytes32[] memory);
+    function listPositionIdsOf(address trader) external view returns (bytes32[] memory);
 
-    function listAccountCollaterals(
-        bytes32 positionId
-    ) external view returns (CollateralReader[] memory collaterals);
+    function listAccountCollaterals(bytes32 positionId) external view returns (CollateralReader[] memory collaterals);
 
-    function listAccountPositions(
-        bytes32 positionId
-    ) external view returns (PositionReader[] memory positions);
+    function listAccountPositions(bytes32 positionId) external view returns (PositionReader[] memory positions);
 
     function listAccountCollateralsAndPositionsOf(
         address trader

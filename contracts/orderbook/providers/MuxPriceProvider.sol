@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
@@ -33,13 +33,8 @@ contract MuxPriceProvider is OwnableUpgradeable {
         _setOracleSigner(_oracleSigner);
     }
 
-    function setPriceExpirationSeconds(
-        uint256 _priceExpiration
-    ) external onlyOwner {
-        require(
-            _priceExpiration <= 86400 && _priceExpiration > 30,
-            InvalidPriceExpiration(_priceExpiration)
-        );
+    function setPriceExpirationSeconds(uint256 _priceExpiration) external onlyOwner {
+        require(_priceExpiration <= 86400 && _priceExpiration > 30, InvalidPriceExpiration(_priceExpiration));
         priceExpiration = _priceExpiration;
         emit SetPriceExpiration(_priceExpiration);
     }
@@ -53,28 +48,16 @@ contract MuxPriceProvider is OwnableUpgradeable {
         emit SetOracleSigner(_oracleSigner);
     }
 
-    function getOraclePrice(
-        bytes32 priceId,
-        bytes memory rawData
-    ) external returns (uint256, uint256) {
+    function getOraclePrice(bytes32 priceId, bytes memory rawData) external returns (uint256, uint256) {
         OracleData memory oracleData = abi.decode(rawData, (OracleData));
-        require(
-            oracleData.priceId == priceId,
-            IdMismatch(oracleData.priceId, priceId)
-        );
+        require(oracleData.priceId == priceId, IdMismatch(oracleData.priceId, priceId));
         require(
             oracleData.timestamp + priceExpiration >= block.timestamp,
-            PriceExpired(
-                oracleData.timestamp + priceExpiration,
-                block.timestamp
-            )
+            PriceExpired(oracleData.timestamp + priceExpiration, block.timestamp)
         );
         require(oracleData.price > 0, InvalidPrice(oracleData.price));
         require(oracleData.signature.length > 0, MissingSignature());
-        require(
-            oracleData.sequence > sequence,
-            InvalidSequence(oracleData.sequence, sequence)
-        );
+        require(oracleData.sequence > sequence, InvalidSequence(oracleData.sequence, sequence));
         bytes32 message = ECDSAUpgradeable.toEthSignedMessageHash(
             keccak256(
                 abi.encodePacked(
@@ -86,10 +69,7 @@ contract MuxPriceProvider is OwnableUpgradeable {
                 )
             )
         );
-        address signer = ECDSAUpgradeable.recover(
-            message,
-            oracleData.signature
-        );
+        address signer = ECDSAUpgradeable.recover(message, oracleData.signature);
         require(signer == oracleSigner, InvalidSignature(signer, oracleSigner));
         sequence++;
         return (oracleData.price, oracleData.timestamp);

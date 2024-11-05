@@ -18,36 +18,24 @@ contract MockUniswapV3 {
         arb = arb_;
     }
 
-    function exactInput(
-        ISwapRouter.ExactInputParams memory params
-    ) external returns (uint256 amountOut) {
+    function exactInput(ISwapRouter.ExactInputParams memory params) external returns (uint256 amountOut) {
         uint256 amountIn = params.amountIn;
         address tokenIn;
         address tokenOut;
         (tokenIn, tokenOut, amountOut) = _price(params.path, amountIn);
         IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
         IERC20(tokenOut).transfer(params.recipient, amountOut);
-        require(
-            amountOut >= params.amountOutMinimum,
-            "UniswapV3: INSUFFICIENT_OUTPUT_AMOUNT"
-        );
+        require(amountOut >= params.amountOutMinimum, "UniswapV3: INSUFFICIENT_OUTPUT_AMOUNT");
     }
 
-    function quoteExactInput(
-        bytes memory path,
-        uint256 amountIn
-    ) external view returns (uint256 amountOut) {
+    function quoteExactInput(bytes memory path, uint256 amountIn) external view returns (uint256 amountOut) {
         (, , amountOut) = _price(path, amountIn);
     }
 
     function _price(
         bytes memory path,
         uint256 amountIn
-    )
-        internal
-        view
-        returns (address tokenIn, address tokenOut, uint256 amountOut)
-    {
+    ) internal view returns (address tokenIn, address tokenOut, uint256 amountOut) {
         (tokenIn, , ) = Path.decodeFirstPool(path);
         while (Path.hasMultiplePools(path)) {
             path = Path.skipToken(path);

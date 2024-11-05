@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "../interfaces/IOrderBook.sol";
@@ -21,15 +21,9 @@ library LibOrder {
     function decodePositionOrder(
         OrderData memory orderData
     ) internal pure returns (PositionOrderParams memory orderParams) {
-        require(
-            orderData.orderType == OrderType.PositionOrder,
-            "Unexpected order type"
-        );
+        require(orderData.orderType == OrderType.PositionOrder, "Unexpected order type");
         require(orderData.version == 1, "Unexpected order version");
-        require(
-            orderData.payload.length == 20 * 32,
-            "Unexpected order payload length"
-        );
+        require(orderData.payload.length == 18 * 32, "Unexpected order payload length");
         orderParams = abi.decode(orderData.payload, (PositionOrderParams));
     }
 
@@ -50,15 +44,9 @@ library LibOrder {
     function decodeLiquidityOrder(
         OrderData memory orderData
     ) internal pure returns (LiquidityOrderParams memory orderParams) {
-        require(
-            orderData.orderType == OrderType.LiquidityOrder,
-            "Unexpected order type"
-        );
+        require(orderData.orderType == OrderType.LiquidityOrder, "Unexpected order type");
         require(orderData.version == 1, "Unexpected order version");
-        require(
-            orderData.payload.length == 4 * 32,
-            "Unexpected order payload length"
-        );
+        require(orderData.payload.length == 4 * 32, "Unexpected order payload length");
         orderParams = abi.decode(orderData.payload, (LiquidityOrderParams));
     }
 
@@ -79,57 +67,37 @@ library LibOrder {
     function decodeWithdrawalOrder(
         OrderData memory orderData
     ) internal pure returns (WithdrawalOrderParams memory orderParams) {
-        require(
-            orderData.orderType == OrderType.WithdrawalOrder,
-            "Unexpected order type"
-        );
+        require(orderData.orderType == OrderType.WithdrawalOrder, "Unexpected order type");
         require(orderData.version == 1, "Unexpected order version");
-        require(
-            orderData.payload.length == 4 * 32,
-            "Unexpected order payload length"
-        );
+        require(orderData.payload.length == 7 * 32, "Unexpected order payload length");
         orderParams = abi.decode(orderData.payload, (WithdrawalOrderParams));
     }
 
-    function isOpenPosition(
-        PositionOrderParams memory orderParams
-    ) internal pure returns (bool) {
+    function isOpenPosition(PositionOrderParams memory orderParams) internal pure returns (bool) {
         return (orderParams.flags & POSITION_OPEN) != 0;
     }
 
-    function isMarketOrder(
-        PositionOrderParams memory orderParams
-    ) internal pure returns (bool) {
+    function isMarketOrder(PositionOrderParams memory orderParams) internal pure returns (bool) {
         return (orderParams.flags & POSITION_MARKET_ORDER) != 0;
     }
 
-    function isWithdrawIfEmpty(
-        PositionOrderParams memory orderParams
-    ) internal pure returns (bool) {
+    function isWithdrawIfEmpty(PositionOrderParams memory orderParams) internal pure returns (bool) {
         return (orderParams.flags & POSITION_WITHDRAW_ALL_IF_EMPTY) != 0;
     }
 
-    function isTriggerOrder(
-        PositionOrderParams memory orderParams
-    ) internal pure returns (bool) {
+    function isTriggerOrder(PositionOrderParams memory orderParams) internal pure returns (bool) {
         return (orderParams.flags & POSITION_TRIGGER_ORDER) != 0;
     }
 
-    function isAdl(
-        PositionOrderParams memory orderParams
-    ) internal pure returns (bool) {
+    function isAdl(PositionOrderParams memory orderParams) internal pure returns (bool) {
         return (orderParams.flags & POSITION_AUTO_DELEVERAGE) != 0;
     }
 
-    function isUnwrapWeth(
-        PositionOrderParams memory orderParams
-    ) internal pure returns (bool) {
+    function isUnwrapWeth(PositionOrderParams memory orderParams) internal pure returns (bool) {
         return (orderParams.flags & POSITION_UNWRAP_ETH) != 0;
     }
 
-    function isWithdrawProfit(
-        PositionOrderParams memory orderParams
-    ) internal pure returns (bool) {
+    function isWithdrawProfit(PositionOrderParams memory orderParams) internal pure returns (bool) {
         return (orderParams.flags & POSITION_WITHDRAW_PROFIT) != 0;
     }
 }

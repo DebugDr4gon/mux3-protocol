@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol";
@@ -11,11 +11,7 @@ import "../interfaces/IMarket.sol";
 import "../interfaces/IRoles.sol";
 import "../interfaces/IMux3Core.sol";
 
-contract FeeDistributor is
-    Initializable,
-    AccessControlEnumerableUpgradeable,
-    IFeeDistributor
-{
+contract FeeDistributor is Initializable, AccessControlEnumerableUpgradeable, IFeeDistributor {
     address private _mux3Facet;
 
     function initialize(address mux3Facet) external initializer {
@@ -56,16 +52,9 @@ contract FeeDistributor is
         // TODO: not implemented
         // foreach collateral
         //   pool_fee_i = fee * allocation_i / Σallocation_i
-        require(
-            feeAddresses.length == feeAmounts.length,
-            "feeAddresses and feeAmounts mismatched"
-        );
-        BackedPoolState[] memory backedPools = IFacetReader(_mux3Facet)
-            .listMarketPools(marketId);
-        require(
-            backedPools.length == allocations.length,
-            "backedPools and allocations mismatched"
-        );
+        require(feeAddresses.length == feeAmounts.length, "feeAddresses and feeAmounts mismatched");
+        BackedPoolState[] memory backedPools = IFacetReader(_mux3Facet).listMarketPools(marketId);
+        require(backedPools.length == allocations.length, "backedPools and allocations mismatched");
         uint256 totalAllocation = 0;
         for (uint256 i = 0; i < allocations.length; i++) {
             totalAllocation += allocations[i];

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "./IConstants.sol";
@@ -32,8 +32,7 @@ interface ITrade {
         uint256[] allocations,
         uint256[] newSizes,
         uint256[] newEntryPrices,
-        bool[] hasProfits,
-        uint256[] poolPnlUsds,
+        int256[] poolPnlUsds, // 1e18
         uint256 positionFeeUsd, // 1e18
         uint256 borrowingFeeUsd, // 1e18
         address[] newCollateralTokens,
@@ -49,8 +48,7 @@ interface ITrade {
         uint256 tradingPrice,
         address[] backedPools,
         uint256[] allocations,
-        bool[] hasProfits,
-        uint256[] poolPnlUsds,
+        int256[] poolPnlUsds, // 1e18
         uint256 positionFeeUsd, // 1e18
         uint256 borrowingFeeUsd, // 1e18
         address[] newCollateralTokens,
@@ -60,17 +58,24 @@ interface ITrade {
     function openPosition(
         bytes32 positionId,
         bytes32 marketId,
-        uint256 size
-    ) external returns (uint256 tradingPrice);
+        uint256 size,
+        address lastConsumedToken
+    ) external returns (uint256 tradingPrice, uint256 borrowingFeeUsd, uint256 positionFeeUsd);
 
     function closePosition(
         bytes32 positionId,
         bytes32 marketId,
-        uint256 size
-    ) external returns (uint256 tradingPrice);
+        uint256 size,
+        address lastConsumedToken
+    )
+        external
+        returns (uint256 tradingPrice, int256[] memory poolPnlUsds, uint256 borrowingFeeUsd, uint256 positionFeeUsd);
 
     function liquidatePosition(
         bytes32 positionId,
-        bytes32 marketId
-    ) external returns (uint256 tradingPrice);
+        bytes32 marketId,
+        address lastConsumedToken
+    )
+        external
+        returns (uint256 tradingPrice, int256[] memory poolPnlUsds, uint256 borrowingFeeUsd, uint256 positionFeeUsd);
 }

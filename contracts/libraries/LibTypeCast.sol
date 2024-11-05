@@ -2,8 +2,7 @@
 pragma solidity 0.8.28;
 
 library LibTypeCast {
-    bytes32 private constant ADDRESS_GUARD_MASK =
-        0x0000000000000000000000000000000000000000ffffffffffffffffffffffff;
+    bytes32 private constant ADDRESS_GUARD_MASK = 0x0000000000000000000000000000000000000000ffffffffffffffffffffffff;
 
     function toAddress(bytes32 v) internal pure returns (address) {
         require(v & ADDRESS_GUARD_MASK == 0, "LibTypeCast::INVALID");
@@ -58,5 +57,13 @@ library LibTypeCast {
     function toUint32(uint256 n) internal pure returns (uint32) {
         require(n <= uint256(type(uint32).max), "LibTypeCast::OVERFLOW");
         return uint32(n);
+    }
+
+    function negInt256(int256 n) internal pure returns (uint256) {
+        if (n >= 0) {
+            return uint256(n);
+        }
+        require(n != type(int256).min, "LibTypeCast::UNDERFLOW");
+        return uint256(-n);
     }
 }

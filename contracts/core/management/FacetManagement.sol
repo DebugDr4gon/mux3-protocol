@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
@@ -23,42 +23,32 @@ contract FacetManagement is
 {
     using LibConfigMap for mapping(bytes32 => bytes32);
 
-    function initialize() external initializer {
+    function initialize(address weth_) external initializer {
         __LibMux3Roles_init_unchained();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _weth = weth_;
     }
 
     function implementation() public view virtual override returns (address) {
         return _collateralPoolImplementation;
     }
 
-    function setCollateralPoolImplementation(
-        address newImplementation
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setCollateralPoolImplementation(address newImplementation) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setImplementation(newImplementation);
         emit SetCollateralPoolImplementation(newImplementation);
     }
 
-    function addCollateralToken(
-        address token,
-        uint8 decimals
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function addCollateralToken(address token, uint8 decimals) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _addCollateralToken(token, decimals);
         emit AddCollateralToken(token, decimals);
     }
 
-    function setCollateralTokenStatus(
-        address token,
-        bool enabled
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setCollateralTokenStatus(address token, bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setCollateralTokenEnabled(token, enabled);
         emit SetCollateralTokenEnabled(token, enabled);
     }
 
-    function setOracleProvider(
-        address oracleProvider,
-        bool isValid
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setOracleProvider(address oracleProvider, bool isValid) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setOracleProvider(oracleProvider, isValid);
         emit SetOracleProvider(oracleProvider, isValid);
     }
@@ -68,18 +58,9 @@ contract FacetManagement is
         string memory symbol,
         address collateralToken
     ) external onlyRole(DEFAULT_ADMIN_ROLE) returns (address) {
-        require(
-            _isCollateralExists(collateralToken),
-            CollateralNotExists(collateralToken)
-        );
+        require(_isCollateralExists(collateralToken), CollateralNotExists(collateralToken));
         address pool = _createCollateralPool(name, symbol, collateralToken);
-        emit CreateCollateralPool(
-            name,
-            symbol,
-            collateralToken,
-            _collateralTokens[collateralToken].decimals,
-            pool
-        );
+        emit CreateCollateralPool(name, symbol, collateralToken, _collateralTokens[collateralToken].decimals, pool);
         return pool;
     }
 
@@ -103,30 +84,25 @@ contract FacetManagement is
         emit AppendBackedPoolsToMarket(marketId, backedPools);
     }
 
-    function setConfig(
-        bytes32 key,
-        bytes32 value
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setConfig(bytes32 key, bytes32 value) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _configs.setBytes32(key, value);
         emit SetConfig(key, value);
     }
 
-    function setMarketConfig(
-        bytes32 marketId,
-        bytes32 key,
-        bytes32 value
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setMarketConfig(bytes32 marketId, bytes32 key, bytes32 value) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setMarketConfig(marketId, key, value);
         emit SetMarketConfig(marketId, key, value);
     }
 
-    function setPoolConfig(
-        address pool,
-        bytes32 key,
-        bytes32 value
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setPoolConfig(address pool, bytes32 key, bytes32 value) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setPoolConfigs(pool, key, value);
         emit SetCollateralPoolConfig(pool, key, value);
+    }
+
+    // TODO: remove me if oracleProvider is ready
+    // TODO: we MUST remove this function before launch
+    function setMockPrice(bytes32 key, uint256 price) external virtual onlyRole(ORDER_BOOK_ROLE) {
+        _setCachedPrice(key, price);
     }
 
     function setPrice(
@@ -134,11 +110,7 @@ contract FacetManagement is
         address provider,
         bytes memory oracleCalldata
     ) external virtual onlyRole(ORDER_BOOK_ROLE) {
-        (uint256 price, uint256 timestamp) = _setPrice(
-            priceId,
-            provider,
-            oracleCalldata
-        );
+        (uint256 price, uint256 timestamp) = _setPrice(priceId, provider, oracleCalldata);
         emit SetPrice(priceId, provider, oracleCalldata, price, timestamp);
     }
 }

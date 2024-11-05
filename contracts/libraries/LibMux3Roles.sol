@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -14,8 +14,7 @@ contract Mux3RolesStore is Initializable {
 
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
 
-    mapping(bytes32 => EnumerableSetUpgradeable.AddressSet)
-        internal _roleMembers;
+    mapping(bytes32 => EnumerableSetUpgradeable.AddressSet) internal _roleMembers;
     uint256[50] private __gap;
 
     modifier onlyRole(bytes32 role) {
@@ -23,22 +22,11 @@ contract Mux3RolesStore is Initializable {
         _;
     }
 
-    event RoleGranted(
-        bytes32 indexed role,
-        address indexed account,
-        address indexed sender
-    );
+    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
 
-    event RoleRevoked(
-        bytes32 indexed role,
-        address indexed account,
-        address indexed sender
-    );
+    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
 
-    function _hasRole(
-        bytes32 role,
-        address account
-    ) internal view returns (bool) {
+    function _hasRole(bytes32 role, address account) internal view returns (bool) {
         return _roleMembers[role].contains(account);
     }
 
@@ -81,24 +69,15 @@ contract Mux3RolesAdmin is Mux3RolesStore {
 
     function __LibMux3Roles_init_unchained() internal onlyInitializing {}
 
-    function grantRole(
-        bytes32 role,
-        address account
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function grantRole(bytes32 role, address account) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _grantRole(role, account);
     }
 
-    function revokeRole(
-        bytes32 role,
-        address account
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function revokeRole(bytes32 role, address account) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _revokeRole(role, account);
     }
 
-    function hasRole(
-        bytes32 role,
-        address account
-    ) external view returns (bool) {
+    function hasRole(bytes32 role, address account) external view returns (bool) {
         return _hasRole(role, account);
     }
 
@@ -106,10 +85,7 @@ contract Mux3RolesAdmin is Mux3RolesStore {
         return _roleMembers[role].length();
     }
 
-    function getRoleMember(
-        bytes32 role,
-        uint256 index
-    ) external view returns (address) {
+    function getRoleMember(bytes32 role, uint256 index) external view returns (address) {
         return _roleMembers[role].at(index);
     }
 }

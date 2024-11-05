@@ -38,18 +38,16 @@ function parsePositionOrder(orderData: string) {
     flags,
     limitPrice,
     expiration,
-    initialLeverage,
+    lastConsumedToken,
     collateralToken,
     collateralAmount,
     withdrawUsd,
-    lastWithdrawToken,
     withdrawSwapToken,
     withdrawSwapSlippage,
     tpPriceDiff,
     slPriceDiff,
     tpslExpiration,
     tpslFlags,
-    tpslLastWithdrawToken,
     tpslWithdrawSwapToken,
     tpslWithdrawSwapSlippage,
   ] = ethers.utils.defaultAbiCoder.decode(
@@ -60,18 +58,16 @@ function parsePositionOrder(orderData: string) {
       "uint256", // flags
       "uint256", // limitPrice
       "uint256", // expiration
-      "uint256", // initialLeverage
+      "address", // lastConsumedToken
       "address", // collateralToken
       "uint256", // collateralAmount
       "uint256", // withdrawUsd
-      "address", // lastWithdrawToken
       "address", // withdrawSwapToken
       "uint256", // withdrawSwapSlippage
       "uint256", // tpPriceDiff
       "uint256", // slPriceDiff
       "uint256", // tpslExpiration
       "uint256", // tpslFlags
-      "address", // tpslLastWithdrawToken
       "address", // tpslWithdrawSwapToken
       "uint256", // tpslWithdrawSwapSlippage
     ],
@@ -84,18 +80,16 @@ function parsePositionOrder(orderData: string) {
     flags,
     limitPrice,
     expiration,
-    initialLeverage,
+    lastConsumedToken,
     collateralToken,
     collateralAmount,
     withdrawUsd,
-    lastWithdrawToken,
     withdrawSwapToken,
     withdrawSwapSlippage,
     tpPriceDiff,
     slPriceDiff,
     tpslExpiration,
     tpslFlags,
-    tpslLastWithdrawToken,
     tpslWithdrawSwapToken,
     tpslWithdrawSwapSlippage,
   }
@@ -120,12 +114,23 @@ function parseLiquidityOrder(orderData: string) {
 }
 
 function parseWithdrawalOrder(orderData: string) {
-  const [positionId, tokenAddress, rawAmount, isUnwrapWeth] = ethers.utils.defaultAbiCoder.decode(
+  const [
+    positionId,
+    tokenAddress,
+    rawAmount,
+    isUnwrapWeth,
+    lastConsumedToken,
+    withdrawSwapToken,
+    withdrawSwapSlippage,
+  ] = ethers.utils.defaultAbiCoder.decode(
     [
       "bytes32", // positionId
       "address", // tokenAddress
       "uint256", // rawAmount
       "bool", // isUnwrapWeth
+      "address", // lastConsumedToken
+      "address", // withdrawSwapToken
+      "uint256", // withdrawSwapSlippage
     ],
     orderData
   )
@@ -134,6 +139,9 @@ function parseWithdrawalOrder(orderData: string) {
     tokenAddress,
     rawAmount,
     isUnwrapWeth,
+    lastConsumedToken,
+    withdrawSwapToken,
+    withdrawSwapSlippage,
   }
 }
 
@@ -165,6 +173,7 @@ describe("Order", () => {
 
   beforeEach(async () => {
     timestampOfTest = await time.latest()
+    timestampOfTest = Math.ceil(timestampOfTest / 3600) * 3600 // move to the next hour
 
     token0 = (await createContract("ERC20PresetMinterPauser", ["TK0", "TK0"])) as ERC20PresetMinterPauser
     token1 = (await createContract("ERC20PresetMinterPauser", ["TK1", "TK1"])) as ERC20PresetMinterPauser
@@ -172,7 +181,7 @@ describe("Order", () => {
 
     // core
     core = (await createContract("MockMux3", [])) as MockMux3
-    await core.initialize()
+    await core.initialize(weth.address)
     await core.addCollateralToken(token0.address, 18)
     await core.setCollateralTokenStatus(token0.address, true)
     await core.setConfig(ethers.utils.id("MC_BORROWING_BASE_APY"), u2b(toWei("0.10")))
@@ -191,7 +200,11 @@ describe("Order", () => {
     await orderBook.setConfig(ethers.utils.id("MCO_CANCEL_COOL_DOWN"), u2b(ethers.BigNumber.from(5)))
 
     // collateral pool
-    imp = (await createContract("MockCollateralPool", [core.address, orderBook.address])) as MockCollateralPool
+    imp = (await createContract("MockCollateralPool", [
+      core.address,
+      orderBook.address,
+      weth.address,
+    ])) as MockCollateralPool
     await core.setCollateralPoolImplementation(imp.address)
 
     // pool 1
@@ -215,19 +228,20 @@ describe("Order", () => {
     {
       await token0.mint(user0.address, toWei("1"))
       await token0.transfer(orderBook.address, toWei("1"))
+      const positionId = encodePositionId(user0.address, 0)
+      await orderBook.connect(user0).setInitialLeverage(positionId, mid0, toWei("10"))
       await orderBook.placePositionOrder(
         {
-          positionId: encodePositionId(user0.address, 0),
+          positionId,
           marketId: mid0,
           size: toWei("1"),
           flags: PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder,
           limitPrice: toWei("3000"),
           expiration: timestampOfTest + 1000 + 86400 * 3,
-          initialLeverage: toWei("10"),
+          lastConsumedToken: zeroAddress,
           collateralToken: token0.address,
           collateralAmount: toWei("1"),
           withdrawUsd: toWei("0"),
-          lastWithdrawToken: zeroAddress,
           withdrawSwapToken: zeroAddress,
           withdrawSwapSlippage: toWei("0"),
           tpPriceDiff: toWei("1.005"),
@@ -235,7 +249,6 @@ describe("Order", () => {
           tpslExpiration: timestampOfTest + 2000 + 86400 * 3,
           tpslFlags:
             PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.WithdrawProfit + PositionOrderFlags.UnwrapEth,
-          tpslLastWithdrawToken: token0.address,
           tpslWithdrawSwapToken: token0.address,
           tpslWithdrawSwapSlippage: toWei("0"),
         },
@@ -263,11 +276,10 @@ describe("Order", () => {
       expect(order.flags).to.equal(PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder)
       expect(order.limitPrice).to.equal(toWei("3000"))
       expect(order.expiration).to.equal(timestampOfTest + 1000 + 86400 * 3)
-      expect(order.initialLeverage).to.equal(toWei("10"))
+      expect(order.lastConsumedToken).to.equal(zeroAddress)
       expect(order.collateralToken).to.equal(token0.address)
       expect(order.collateralAmount).to.equal(toWei("1"))
       expect(order.withdrawUsd).to.equal(toWei("0"))
-      expect(order.lastWithdrawToken).to.equal(zeroAddress)
       expect(order.withdrawSwapToken).to.equal(zeroAddress)
       expect(order.withdrawSwapSlippage).to.equal(toWei("0"))
       expect(order.tpPriceDiff).to.equal(toWei("1.005"))
@@ -276,7 +288,6 @@ describe("Order", () => {
       expect(order.tpslFlags).to.equal(
         PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.WithdrawProfit + PositionOrderFlags.UnwrapEth
       )
-      expect(order.tpslLastWithdrawToken).to.equal(token0.address)
       expect(order.tpslWithdrawSwapToken).to.equal(token0.address)
       expect(order.tpslWithdrawSwapSlippage).to.equal(toWei("0"))
     }
@@ -316,6 +327,9 @@ describe("Order", () => {
         tokenAddress: token0.address,
         rawAmount: toWei("500"),
         isUnwrapWeth: false,
+        lastConsumedToken: zeroAddress,
+        withdrawSwapToken: zeroAddress,
+        withdrawSwapSlippage: toWei("0"),
       })
       const orders = await orderBook.getOrders(0, 100)
       expect(orders.totalCount).to.equal(3)
@@ -336,6 +350,9 @@ describe("Order", () => {
       expect(order.tokenAddress).to.equal(token0.address)
       expect(order.rawAmount).to.equal(toWei("500"))
       expect(order.isUnwrapWeth).to.equal(false)
+      expect(order.lastConsumedToken).to.equal(zeroAddress)
+      expect(order.withdrawSwapToken).to.equal(zeroAddress)
+      expect(order.withdrawSwapSlippage).to.equal(toWei("0"))
     }
   })
 
@@ -349,11 +366,10 @@ describe("Order", () => {
           flags: PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder,
           limitPrice: toWei("3000"),
           expiration: timestampOfTest + 1000 + 86400 * 3,
-          initialLeverage: toWei("10"),
+          lastConsumedToken: zeroAddress,
           collateralToken: token0.address,
           collateralAmount: toWei("1"),
           withdrawUsd: toWei("0"),
-          lastWithdrawToken: zeroAddress,
           withdrawSwapToken: zeroAddress,
           withdrawSwapSlippage: toWei("0"),
           tpPriceDiff: toWei("1.005"),
@@ -361,7 +377,6 @@ describe("Order", () => {
           tpslExpiration: timestampOfTest + 2000 + 86400 * 3,
           tpslFlags:
             PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.WithdrawProfit + PositionOrderFlags.UnwrapEth,
-          tpslLastWithdrawToken: token0.address,
           tpslWithdrawSwapToken: token0.address,
           tpslWithdrawSwapSlippage: toWei("0"),
         },
@@ -380,11 +395,10 @@ describe("Order", () => {
           flags: PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder,
           limitPrice: toWei("3000"),
           expiration: timestampOfTest + 1000 + 86400 * 3,
-          initialLeverage: toWei("10"),
+          lastConsumedToken: zeroAddress,
           collateralToken: token0.address,
           collateralAmount: toWei("1"),
           withdrawUsd: toWei("0"),
-          lastWithdrawToken: zeroAddress,
           withdrawSwapToken: zeroAddress,
           withdrawSwapSlippage: toWei("0"),
           tpPriceDiff: toWei("1.005"),
@@ -392,7 +406,6 @@ describe("Order", () => {
           tpslExpiration: timestampOfTest + 2000 + 86400 * 3,
           tpslFlags:
             PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.WithdrawProfit + PositionOrderFlags.UnwrapEth,
-          tpslLastWithdrawToken: token0.address,
           tpslWithdrawSwapToken: token0.address,
           tpslWithdrawSwapSlippage: toWei("0"),
         },
@@ -411,11 +424,10 @@ describe("Order", () => {
           flags: PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder,
           limitPrice: toWei("3000"),
           expiration: timestampOfTest + 1000 + 86400 * 3,
-          initialLeverage: toWei("10"),
+          lastConsumedToken: zeroAddress,
           collateralToken: user0.address,
           collateralAmount: toWei("1"),
           withdrawUsd: toWei("0"),
-          lastWithdrawToken: zeroAddress,
           withdrawSwapToken: zeroAddress,
           withdrawSwapSlippage: toWei("0"),
           tpPriceDiff: toWei("1.005"),
@@ -423,7 +435,6 @@ describe("Order", () => {
           tpslExpiration: timestampOfTest + 2000 + 86400 * 3,
           tpslFlags:
             PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.WithdrawProfit + PositionOrderFlags.UnwrapEth,
-          tpslLastWithdrawToken: token0.address,
           tpslWithdrawSwapToken: token0.address,
           tpslWithdrawSwapSlippage: toWei("0"),
         },
@@ -450,27 +461,27 @@ describe("Order", () => {
     await token0.transfer(orderBook.address, toWei("100"))
     // no1
     await time.increaseTo(timestampOfTest + 86400)
+    const positionId = encodePositionId(user0.address, 0)
+    await orderBook.connect(user0).setInitialLeverage(positionId, mid0, toWei("10"))
     {
       await orderBook.placePositionOrder(
         {
-          positionId: encodePositionId(user0.address, 0),
+          positionId,
           marketId: mid0,
           size: toWei("0.1"),
           flags: PositionOrderFlags.OpenPosition,
           limitPrice: toWei("1000"),
           expiration: timestampOfTest + 1000 + 86400 * 3,
-          initialLeverage: toWei("10"),
+          lastConsumedToken: zeroAddress,
           collateralToken: token0.address,
           collateralAmount: toWei("100"),
           withdrawUsd: toWei("0"),
-          lastWithdrawToken: zeroAddress,
           withdrawSwapToken: zeroAddress,
           withdrawSwapSlippage: toWei("0"),
           tpPriceDiff: toWei("0"),
           slPriceDiff: toWei("0"),
           tpslExpiration: timestampOfTest + 2000 + 86400 * 3,
           tpslFlags: 0,
-          tpslLastWithdrawToken: zeroAddress,
           tpslWithdrawSwapToken: zeroAddress,
           tpslWithdrawSwapSlippage: toWei("0"),
         },
@@ -507,18 +518,16 @@ describe("Order", () => {
           flags: PositionOrderFlags.OpenPosition,
           limitPrice: toWei("1000"),
           expiration: timestampOfTest + 1000 + 86400 * 3,
-          initialLeverage: toWei("10"),
+          lastConsumedToken: zeroAddress,
           collateralToken: token0.address,
           collateralAmount: toWei("100"),
           withdrawUsd: toWei("0"),
-          lastWithdrawToken: zeroAddress,
           withdrawSwapToken: zeroAddress,
           withdrawSwapSlippage: toWei("0"),
           tpPriceDiff: toWei("0"),
           slPriceDiff: toWei("0"),
           tpslExpiration: timestampOfTest + 2000 + 86400 * 3,
           tpslFlags: 0,
-          tpslLastWithdrawToken: zeroAddress,
           tpslWithdrawSwapToken: zeroAddress,
           tpslWithdrawSwapSlippage: toWei("0"),
         },
@@ -531,6 +540,8 @@ describe("Order", () => {
         expect(orders.totalCount).to.equal(1)
         expect(orders.orderDataArray.length).to.equal(1)
       }
+      await expect(orderBook.connect(broker).fillLiquidityOrder(1)).to.revertedWith("Order type")
+      await expect(orderBook.connect(broker).fillWithdrawalOrder(1)).to.revertedWith("Order type")
       await orderBook.connect(broker).fillPositionOrder(1)
       {
         const orders = await orderBook.getOrders(0, 100)
@@ -595,6 +606,8 @@ describe("Order", () => {
       }
       await expect(orderBook.connect(broker).fillLiquidityOrder(1)).to.revertedWith("lock period")
       await time.increaseTo(timestampOfTest + 86400 + 60 * 20)
+      await expect(orderBook.connect(broker).fillPositionOrder(1)).to.revertedWith("Order type")
+      await expect(orderBook.connect(broker).fillWithdrawalOrder(1)).to.revertedWith("Order type")
       await orderBook.connect(broker).fillLiquidityOrder(1)
       {
         const orders = await orderBook.getOrders(0, 100)
@@ -684,95 +697,118 @@ describe("Order", () => {
     }
   })
 
-  it("TODO: broker can cancel orders", async () => {
-    //     await ctk.approve(orderBook.address, toWei("1000000"))
-    //     await ctk.mint(user0.address, toWei("1000"))
-    //     // limit order
-    //     await time.increaseTo(timestampOfTest + 86400 + 0)
-    //     const subAccountId = assembleSubAccountId(user0.address, 0, 1, true)
-    //     {
-    //       await orderBook.placePositionOrder(
-    //         {
-    //           subAccountId,
-    //           collateral: toWei("100"),
-    //           size: toWei("0.1"),
-    //           price: toWei("1000"),
-    //           tpPrice: toWei("0"),
-    //           slPrice: toWei("0"),
-    //           expiration: timestampOfTest + 1000 + 86400,
-    //           tpslExpiration: timestampOfTest + 1000 + 86400,
-    //           profitTokenId: 0,
-    //           tpslProfitTokenId: 0,
-    //           flags: PositionOrderFlags.OpenPosition,
-    // isUnwrapWeth: false,
-    //         },
-    //         refCode
-    //       )
-    //       expect(await ctk.balanceOf(user0.address)).to.equal(toWei("900"))
-    //       expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("100"))
-    //       await time.increaseTo(timestampOfTest + 86400 + 86400 * 365 - 5)
-    //       await expect(orderBook.connect(broker).cancelOrder(0)).revertedWith("EXP")
-    //       await time.increaseTo(timestampOfTest + 86400 + 86400 * 365 + 5)
-    //       await orderBook.connect(broker).cancelOrder(0)
-    //       expect(await ctk.balanceOf(user0.address)).to.equal(toWei("1000"))
-    //       expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("0"))
-    //       {
-    //         const orders = await orderBook.getOrders(0, 100)
-    //         expect(orders.totalCount).to.equal(0)
-    //         expect(orders.orderDataArray.length).to.equal(0)
-    //       }
-    //       const result = await orderBook.getOrder(0)
-    //       expect(result[1]).to.equal(false)
-    //     }
-    //     // withdraw order
-    //     {
-    //       await orderBook.placeWithdrawalOrder({ subAccountId, rawAmount: toWei("500"), profitTokenId: 0, isProfit: true })
-    //       await time.increaseTo(timestampOfTest + 86400 + 86400 * 365 + 5 + 120)
-    //       await expect(orderBook.connect(broker).cancelOrder(1)).revertedWith("EXP")
-    //       await time.increaseTo(timestampOfTest + 86400 + 86400 * 365 + 5 + 120 + 5)
-    //       await orderBook.connect(broker).cancelOrder(1)
-    //       {
-    //         const orders = await orderBook.getOrders(0, 100)
-    //         expect(orders.totalCount).to.equal(0)
-    //         expect(orders.orderDataArray.length).to.equal(0)
-    //       }
-    //       const result = await orderBook.getOrder(0)
-    //       expect(result[1]).to.equal(false)
-    //     }
-    //     // market order
-    //     {
-    //       await orderBook.placePositionOrder(
-    //         {
-    //           subAccountId,
-    //           collateral: toWei("100"),
-    //           size: toWei("0.1"),
-    //           price: toWei("1000"),
-    //           tpPrice: toWei("0"),
-    //           slPrice: toWei("0"),
-    //           expiration: timestampOfTest + 86400 + 86400 * 365 + 5 + 120 + 5 + 86400,
-    //           tpslExpiration: timestampOfTest + 86400 + 86400 * 365 + 5 + 120 + 5 + 86400,
-    //           profitTokenId: 0,
-    //           tpslProfitTokenId: 0,
-    //           flags: PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder,
-    // isUnwrapWeth: false,
-    //         },
-    //         refCode
-    //       )
-    //       expect(await ctk.balanceOf(user0.address)).to.equal(toWei("900"))
-    //       expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("100"))
-    //       await time.increaseTo(timestampOfTest + 86400 + 86400 * 365 + 5 + 120 + 5 + 110)
-    //       await expect(orderBook.connect(broker).cancelOrder(2)).revertedWith("EXP")
-    //       await time.increaseTo(timestampOfTest + 86400 + 86400 * 365 + 5 + 120 + 5 + 130)
-    //       await orderBook.connect(broker).cancelOrder(2)
-    //       expect(await ctk.balanceOf(user0.address)).to.equal(toWei("1000"))
-    //       expect(await ctk.balanceOf(orderBook.address)).to.equal(toWei("0"))
-    //       {
-    //         const orders = await orderBook.getOrders(0, 100)
-    //         expect(orders.totalCount).to.equal(0)
-    //         expect(orders.orderDataArray.length).to.equal(0)
-    //       }
-    //       const result = await orderBook.getOrder(0)
-    //       expect(result[1]).to.equal(false)
-    //     }
+  it("broker can cancel orders", async () => {
+    await token0.mint(orderBook.address, toWei("100"))
+    // limit order
+    await time.increaseTo(timestampOfTest + 1000)
+    const positionId = encodePositionId(user0.address, 0)
+    {
+      await orderBook.placePositionOrder(
+        {
+          positionId,
+          marketId: mid0,
+          size: toWei("1"),
+          flags: PositionOrderFlags.OpenPosition,
+          limitPrice: toWei("3000"),
+          expiration: timestampOfTest + 1000 + 86400 * 365,
+          lastConsumedToken: zeroAddress,
+          collateralToken: token0.address,
+          collateralAmount: toWei("100"),
+          withdrawUsd: toWei("0"),
+          withdrawSwapToken: zeroAddress,
+          withdrawSwapSlippage: toWei("0"),
+          tpPriceDiff: toWei("1.005"),
+          slPriceDiff: toWei("0.995"),
+          tpslExpiration: timestampOfTest + 2000 + 86400 * 365,
+          tpslFlags: 0,
+          tpslWithdrawSwapToken: token0.address,
+          tpslWithdrawSwapSlippage: toWei("0"),
+        },
+        refCode
+      )
+      expect(await token0.balanceOf(user0.address)).to.equal(toWei("0"))
+      expect(await token0.balanceOf(orderBook.address)).to.equal(toWei("100"))
+      await time.increaseTo(timestampOfTest + 1000 + 86400 * 30 - 5)
+      await expect(orderBook.connect(broker).cancelOrder(0)).revertedWith("Not expired")
+      await time.increaseTo(timestampOfTest + 1000 + 86400 * 30 + 5)
+      await orderBook.connect(broker).cancelOrder(0)
+      expect(await token0.balanceOf(user0.address)).to.equal(toWei("100"))
+      expect(await token0.balanceOf(orderBook.address)).to.equal(toWei("0"))
+      {
+        const orders = await orderBook.getOrders(0, 100)
+        expect(orders.totalCount).to.equal(0)
+        expect(orders.orderDataArray.length).to.equal(0)
+      }
+      const result = await orderBook.getOrder(0)
+      expect(result[1]).to.equal(false)
+    }
+    // withdraw order
+    {
+      const args = {
+        positionId,
+        tokenAddress: token0.address,
+        rawAmount: toWei("100"),
+        isUnwrapWeth: false,
+        lastConsumedToken: zeroAddress,
+        withdrawSwapToken: zeroAddress,
+        withdrawSwapSlippage: toWei("0"),
+      }
+      await orderBook.placeWithdrawalOrder(args)
+      await time.increaseTo(timestampOfTest + 1000 + 86400 * 30 + 5 + 110)
+      await expect(orderBook.connect(broker).cancelOrder(1)).revertedWith("Not expired")
+      await time.increaseTo(timestampOfTest + 1000 + 86400 * 30 + 5 + 130)
+      await orderBook.connect(broker).cancelOrder(1)
+      expect(await token0.balanceOf(user0.address)).to.equal(toWei("100"))
+      expect(await token0.balanceOf(orderBook.address)).to.equal(toWei("0"))
+      {
+        const orders = await orderBook.getOrders(0, 100)
+        expect(orders.totalCount).to.equal(0)
+        expect(orders.orderDataArray.length).to.equal(0)
+      }
+      const result = await orderBook.getOrder(0)
+      expect(result[1]).to.equal(false)
+    }
+    // market order
+    {
+      await token0.mint(orderBook.address, toWei("100"))
+      await orderBook.placePositionOrder(
+        {
+          positionId,
+          marketId: mid0,
+          size: toWei("1"),
+          flags: PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder,
+          limitPrice: toWei("3000"),
+          expiration: timestampOfTest + 1000 + 86400 * 365,
+          lastConsumedToken: zeroAddress,
+          collateralToken: token0.address,
+          collateralAmount: toWei("100"),
+          withdrawUsd: toWei("0"),
+          withdrawSwapToken: zeroAddress,
+          withdrawSwapSlippage: toWei("0"),
+          tpPriceDiff: toWei("1.005"),
+          slPriceDiff: toWei("0.995"),
+          tpslExpiration: timestampOfTest + 2000 + 86400 * 365,
+          tpslFlags: 0,
+          tpslWithdrawSwapToken: token0.address,
+          tpslWithdrawSwapSlippage: toWei("0"),
+        },
+        refCode
+      )
+      expect(await token0.balanceOf(user0.address)).to.equal(toWei("100"))
+      expect(await token0.balanceOf(orderBook.address)).to.equal(toWei("100"))
+      await time.increaseTo(timestampOfTest + 1000 + 86400 * 30 + 5 + 130 + 110)
+      await expect(orderBook.connect(broker).cancelOrder(2)).revertedWith("Not expired")
+      await time.increaseTo(timestampOfTest + 1000 + 86400 * 30 + 5 + 130 + 130)
+      await orderBook.connect(broker).cancelOrder(2)
+      expect(await token0.balanceOf(user0.address)).to.equal(toWei("200"))
+      expect(await token0.balanceOf(orderBook.address)).to.equal(toWei("0"))
+      {
+        const orders = await orderBook.getOrders(0, 100)
+        expect(orders.totalCount).to.equal(0)
+        expect(orders.orderDataArray.length).to.equal(0)
+      }
+      const result = await orderBook.getOrder(0)
+      expect(result[1]).to.equal(false)
+    }
   })
 })

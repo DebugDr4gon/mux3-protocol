@@ -53,6 +53,7 @@ describe("Delegator", () => {
 
   beforeEach(async () => {
     timestampOfTest = await time.latest()
+    timestampOfTest = Math.ceil(timestampOfTest / 3600) * 3600 // move to the next hour
 
     // token
     usdc = (await createContract("MockERC20", ["USDC", "USDC", 6])) as MockERC20
@@ -60,7 +61,7 @@ describe("Delegator", () => {
 
     // core
     core = (await createContract("TestMux3", [])) as TestMux3
-    await core.initialize()
+    await core.initialize(weth.address)
     await core.addCollateralToken(usdc.address, 6)
     await core.setCollateralTokenStatus(usdc.address, true)
 
@@ -72,7 +73,7 @@ describe("Delegator", () => {
     await orderBook.initialize(core.address, weth.address)
 
     // collateral pool
-    imp = (await createContract("CollateralPool", [core.address, orderBook.address])) as CollateralPool
+    imp = (await createContract("CollateralPool", [core.address, orderBook.address, weth.address])) as CollateralPool
     await core.setCollateralPoolImplementation(imp.address)
 
     // pool 1
@@ -148,18 +149,16 @@ describe("Delegator", () => {
       flags: PositionOrderFlags.OpenPosition,
       limitPrice: toWei("1000"),
       expiration: timestampOfTest + 86400 * 2 + 905 + 300,
-      initialLeverage: toWei("100"),
+      lastConsumedToken: zeroAddress,
       collateralToken: usdc.address,
       collateralAmount: toUnit("1000", 6),
       withdrawUsd: toWei("0"),
-      lastWithdrawToken: zeroAddress,
       withdrawSwapToken: zeroAddress,
       withdrawSwapSlippage: toWei("0"),
       tpPriceDiff: toWei("0"),
       slPriceDiff: toWei("0"),
       tpslExpiration: 0,
       tpslFlags: 0,
-      tpslLastWithdrawToken: zeroAddress,
       tpslWithdrawSwapToken: zeroAddress,
       tpslWithdrawSwapSlippage: toWei("0"),
     }
@@ -167,6 +166,7 @@ describe("Delegator", () => {
       await expect(delegator.connect(trader3).placePositionOrder(args, refCode)).to.revertedWith("Not delegated")
       await expect(delegator.connect(trader2).placePositionOrder(args, refCode)).to.revertedWith("No action count")
       await delegator.connect(trader1).delegate(trader2.address, 100)
+      await delegator.connect(trader2).setInitialLeverage(positionId, long1, toWei("100"))
       const tx1 = await delegator
         .connect(trader2)
         .multicall([
@@ -182,18 +182,16 @@ describe("Delegator", () => {
           args.flags,
           args.limitPrice,
           args.expiration,
-          args.initialLeverage,
+          args.lastConsumedToken,
           args.collateralToken,
           args.collateralAmount,
           args.withdrawUsd,
-          args.lastWithdrawToken,
           args.withdrawSwapToken,
           args.withdrawSwapSlippage,
           args.tpPriceDiff,
           args.slPriceDiff,
           args.tpslExpiration,
           args.tpslFlags,
-          args.tpslLastWithdrawToken,
           args.tpslWithdrawSwapToken,
           args.tpslWithdrawSwapSlippage,
         ])
@@ -237,6 +235,9 @@ describe("Delegator", () => {
           (await delegator.populateTransaction.depositCollateral(positionId, usdc.address, toUnit("1000", 6))).data!,
         ])
       await expect(tx1).to.emit(core, "Deposit").withArgs(trader1.address, positionId, usdc.address, toUnit("1000", 6))
+      await expect(tx1)
+        .to.emit(core, "DepositWithdrawFinish")
+        .withArgs(trader1.address, positionId, toWei("0"), [usdc.address], [toWei("1000")])
       expect(await usdc.balanceOf(core.address)).to.equal(toUnit("1000", 6))
       expect(await core.listAccountCollaterals(positionId)).to.deep.equal([[usdc.address, toUnit("1000", 18)]])
       expect(await delegator.getDelegation(trader2.address)).to.deep.equal([trader1.address, BigNumber.from("98")])
@@ -250,6 +251,9 @@ describe("Delegator", () => {
             tokenAddress: usdc.address,
             rawAmount: toUnit("500", 6),
             isUnwrapWeth: false,
+            lastConsumedToken: zeroAddress,
+            withdrawSwapToken: zeroAddress,
+            withdrawSwapSlippage: toWei("0"),
           })
         ).data!,
       ])

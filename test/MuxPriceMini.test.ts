@@ -59,6 +59,7 @@ describe("MuxPriceMini", () => {
 
   beforeEach(async () => {
     timestampOfTest = await time.latest()
+    timestampOfTest = Math.ceil(timestampOfTest / 3600) * 3600 // move to the next hour
 
     usdc = (await createContract("MockERC20", ["USDC", "USDC", 6])) as MockERC20
     arb = (await createContract("MockERC20", ["ARB", "ARB", 18])) as MockERC20
@@ -72,7 +73,7 @@ describe("MuxPriceMini", () => {
 
     // core
     core = (await createContract("Mux3", [])) as TestMux3
-    await core.initialize()
+    await core.initialize(weth.address)
     await core.addCollateralToken(usdc.address, 6)
     await core.addCollateralToken(arb.address, 18)
     await core.addCollateralToken(btc.address, 8)
@@ -94,7 +95,7 @@ describe("MuxPriceMini", () => {
     await orderBook.setConfig(ethers.utils.id("MCO_CANCEL_COOL_DOWN"), u2b(ethers.BigNumber.from(5)))
 
     // collateral pool
-    imp = (await createContract("CollateralPool", [core.address, orderBook.address])) as CollateralPool
+    imp = (await createContract("CollateralPool", [core.address, orderBook.address, weth.address])) as CollateralPool
     await core.setCollateralPoolImplementation(imp.address)
 
     // pool 1
@@ -262,6 +263,7 @@ describe("MuxPriceMini", () => {
     }
     // open short, using usdc
     const positionId = encodePositionId(trader1.address, 0)
+    await orderBook.connect(trader1).setInitialLeverage(positionId, short1, toWei("100"))
     await usdc.connect(trader1).transfer(orderBook.address, toUnit("1000", 6))
     {
       const args = {
@@ -271,18 +273,16 @@ describe("MuxPriceMini", () => {
         flags: PositionOrderFlags.OpenPosition,
         limitPrice: toWei("1000"),
         expiration: timestampOfTest + 86400 * 2 + 905 + 300,
-        initialLeverage: toWei("100"),
+        lastConsumedToken: zeroAddress,
         collateralToken: usdc.address,
         collateralAmount: toUnit("1000", 6),
         withdrawUsd: toWei("0"),
-        lastWithdrawToken: zeroAddress,
         withdrawSwapToken: zeroAddress,
         withdrawSwapSlippage: toWei("0"),
         tpPriceDiff: toWei("0"),
         slPriceDiff: toWei("0"),
         tpslExpiration: 0,
         tpslFlags: 0,
-        tpslLastWithdrawToken: zeroAddress,
         tpslWithdrawSwapToken: zeroAddress,
         tpslWithdrawSwapSlippage: toWei("0"),
       }
@@ -298,18 +298,16 @@ describe("MuxPriceMini", () => {
           args.flags,
           args.limitPrice,
           args.expiration,
-          args.initialLeverage,
+          args.lastConsumedToken,
           args.collateralToken,
           args.collateralAmount,
           args.withdrawUsd,
-          args.lastWithdrawToken,
           args.withdrawSwapToken,
           args.withdrawSwapSlippage,
           args.tpPriceDiff,
           args.slPriceDiff,
           args.tpslExpiration,
           args.tpslFlags,
-          args.tpslLastWithdrawToken,
           args.tpslWithdrawSwapToken,
           args.tpslWithdrawSwapSlippage,
         ])

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -47,27 +47,17 @@ contract ChainlinkStreamProvider is OwnableUpgradeable {
         _setChainlinkVerifier(_chainlinkVerifier);
     }
 
-    function setCallerWhitelist(
-        address caller,
-        bool isWhitelisted
-    ) external onlyOwner {
+    function setCallerWhitelist(address caller, bool isWhitelisted) external onlyOwner {
         callerWhitelist[caller] = isWhitelisted;
         emit SetCallerWhitelist(caller, isWhitelisted);
     }
 
-    function setChainlinkVerifier(
-        address _chainlinkVerifier
-    ) external onlyOwner {
+    function setChainlinkVerifier(address _chainlinkVerifier) external onlyOwner {
         _setChainlinkVerifier(_chainlinkVerifier);
     }
 
-    function setPriceExpirationSeconds(
-        uint256 _priceExpiration
-    ) external onlyOwner {
-        require(
-            _priceExpiration <= 86400 && _priceExpiration > 0,
-            InvalidPriceExpiration(_priceExpiration)
-        );
+    function setPriceExpirationSeconds(uint256 _priceExpiration) external onlyOwner {
+        require(_priceExpiration <= 86400 && _priceExpiration > 0, InvalidPriceExpiration(_priceExpiration));
         priceExpiration = _priceExpiration;
         emit SetPriceExpiration(_priceExpiration);
     }
@@ -88,30 +78,19 @@ contract ChainlinkStreamProvider is OwnableUpgradeable {
         IFeeManager feeManager = IFeeManager(verifier.s_feeManager());
         address rewardManager = feeManager.i_rewardManager();
         address feeTokenAddress = feeManager.i_linkAddress();
-        (, /* bytes32[3] reportContextData */ bytes memory reportData) = abi
-            .decode(unverifiedReport, (bytes32[3], bytes));
-        (Asset memory fee, , ) = feeManager.getFeeAndReward(
-            address(this),
-            reportData,
-            feeTokenAddress
+        (, /* bytes32[3] reportContextData */ bytes memory reportData) = abi.decode(
+            unverifiedReport,
+            (bytes32[3], bytes)
         );
+        (Asset memory fee, , ) = feeManager.getFeeAndReward(address(this), reportData, feeTokenAddress);
         // Approve rewardManager to spend this contract's balance in fees
         IERC20Upgradeable(feeTokenAddress).approve(rewardManager, fee.amount);
         // Verify the report
-        bytes memory verifiedReportData = verifier.verify(
-            unverifiedReport,
-            abi.encode(feeTokenAddress)
-        );
+        bytes memory verifiedReportData = verifier.verify(unverifiedReport, abi.encode(feeTokenAddress));
         Report memory verifiedReport = abi.decode(verifiedReportData, (Report));
-        require(
-            verifiedReport.feedId == feedIds[priceId],
-            IdMismatch(verifiedReport.feedId, feedIds[priceId])
-        );
+        require(verifiedReport.feedId == feedIds[priceId], IdMismatch(verifiedReport.feedId, feedIds[priceId]));
         require(verifiedReport.price > 0, InvalidPrice(verifiedReport.price));
-        require(
-            verifiedReport.expiresAt >= block.timestamp,
-            PriceExpired(verifiedReport.expiresAt, block.timestamp)
-        );
+        require(verifiedReport.expiresAt >= block.timestamp, PriceExpired(verifiedReport.expiresAt, block.timestamp));
 
         price = uint256(uint192(verifiedReport.price));
         timestamp = uint256(verifiedReport.observationsTimestamp);

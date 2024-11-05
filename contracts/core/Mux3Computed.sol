@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
@@ -19,9 +19,7 @@ contract Mux3Computed is Mux3Store, IErrors {
         return _priceOf(bytes32(bytes20(token)));
     }
 
-    function _priceOf(
-        bytes32 oracleId
-    ) internal view virtual returns (uint256) {
+    function _priceOf(bytes32 oracleId) internal view virtual returns (uint256) {
         uint256 price = uint256(_readCacheUint256(oracleId));
         require(price > 0, MissingPrice(oracleId));
         return price;
@@ -31,9 +29,7 @@ contract Mux3Computed is Mux3Store, IErrors {
         return _collateralPoolList.contains(pool);
     }
 
-    function _isOracleProvider(
-        address oracleProvider
-    ) internal view returns (bool) {
+    function _isOracleProvider(address oracleProvider) internal view returns (bool) {
         return _oracleProviders[oracleProvider];
     }
 
@@ -49,10 +45,7 @@ contract Mux3Computed is Mux3Store, IErrors {
         return _marketList.contains(marketId);
     }
 
-    function _collateralToWad(
-        address collateralToken,
-        uint256 rawAmount
-    ) internal view returns (uint256) {
+    function _collateralToWad(address collateralToken, uint256 rawAmount) internal view returns (uint256) {
         uint8 decimals = _collateralTokens[collateralToken].decimals;
         if (decimals <= 18) {
             return rawAmount * (10 ** (18 - decimals));
@@ -61,10 +54,7 @@ contract Mux3Computed is Mux3Store, IErrors {
         }
     }
 
-    function _collateralToRaw(
-        address collateralToken,
-        uint256 wadAmount
-    ) internal view returns (uint256) {
+    function _collateralToRaw(address collateralToken, uint256 wadAmount) internal view returns (uint256) {
         uint8 decimals = _collateralTokens[collateralToken].decimals;
         if (decimals <= 18) {
             return wadAmount / 10 ** (18 - decimals);
@@ -72,21 +62,15 @@ contract Mux3Computed is Mux3Store, IErrors {
             return wadAmount * 10 ** (decimals - 18);
         }
     }
-    function _marketPositionFeeRate(
-        bytes32 marketId
-    ) internal view returns (uint256) {
+    function _marketPositionFeeRate(bytes32 marketId) internal view returns (uint256) {
         return _markets[marketId].configs.getUint256(MM_POSITION_FEE_RATE);
     }
 
-    function _marketLiquidationFeeRate(
-        bytes32 marketId
-    ) internal view returns (uint256) {
+    function _marketLiquidationFeeRate(bytes32 marketId) internal view returns (uint256) {
         return _markets[marketId].configs.getUint256(MM_LIQUIDATION_FEE_RATE);
     }
 
-    function _marketInitialMarginRate(
-        bytes32 marketId
-    ) internal view returns (uint256) {
+    function _marketInitialMarginRate(bytes32 marketId) internal view returns (uint256) {
         return _markets[marketId].configs.getUint256(MM_INITIAL_MARGIN_RATE);
     }
 
@@ -94,11 +78,8 @@ contract Mux3Computed is Mux3Store, IErrors {
         return _markets[marketId].configs.getBytes32(MM_ORACLE_ID);
     }
 
-    function _marketMaintenanceMarginRate(
-        bytes32 marketId
-    ) internal view returns (uint256) {
-        return
-            _markets[marketId].configs.getUint256(MM_MAINTENANCE_MARGIN_RATE);
+    function _marketMaintenanceMarginRate(bytes32 marketId) internal view returns (uint256) {
+        return _markets[marketId].configs.getUint256(MM_MAINTENANCE_MARGIN_RATE);
     }
 
     function _marketLotSize(bytes32 marketId) internal view returns (uint256) {
@@ -118,23 +99,24 @@ contract Mux3Computed is Mux3Store, IErrors {
     }
 
     /**
-     * @dev get activating collaterals of a trader. lastWithdrawToken will be moved to
-     *      the last item in the returned array so that it can be used as the last withdraw token.
+     * @dev get active collaterals of a trader
+     *
+     * @param lastConsumedToken optional. try to avoid consuming this token if possible.
      */
     function _activeCollateralsWithLastWithdraw(
         bytes32 positionId,
-        address lastWithdrawToken
+        address lastConsumedToken
     ) internal view returns (address[] memory collaterals) {
         collaterals = _positionAccounts[positionId].activeCollaterals.values();
-        if (lastWithdrawToken == address(0)) {
+        if (lastConsumedToken == address(0)) {
             return collaterals;
         }
-        // swap lastWithdrawCollateral to the end
+        // swap lastConsumedToken to the end
         uint256 length = collaterals.length;
         for (uint256 i = 0; i < length - 1; i++) {
-            if (collaterals[i] == lastWithdrawToken) {
+            if (collaterals[i] == lastConsumedToken) {
                 collaterals[i] = collaterals[length - 1];
-                collaterals[length - 1] = lastWithdrawToken;
+                collaterals[length - 1] = lastConsumedToken;
                 break;
             }
         }

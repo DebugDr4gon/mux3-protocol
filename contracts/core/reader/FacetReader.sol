@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "../../interfaces/IFacetReader.sol";
@@ -23,23 +23,16 @@ contract FacetReader is Mux3FacetBase, IFacetReader {
         return _configs.getBytes32(key);
     }
 
-    function marketConfigValue(
-        bytes32 marketId,
-        bytes32 key
-    ) external view returns (bytes32) {
+    function marketConfigValue(bytes32 marketId, bytes32 key) external view returns (bytes32) {
         return _markets[marketId].configs.getBytes32(key);
     }
 
-    function marketState(
-        bytes32 marketId
-    ) external view returns (string memory symbol, bool isLong) {
+    function marketState(bytes32 marketId) external view returns (string memory symbol, bool isLong) {
         MarketInfo storage market = _markets[marketId];
         return (market.symbol, market.isLong);
     }
 
-    function getCollateralToken(
-        address token
-    ) external view returns (bool enabled, uint8 decimals) {
+    function getCollateralToken(address token) external view returns (bool enabled, uint8 decimals) {
         CollateralTokenInfo storage collateralToken = _collateralTokens[token];
         enabled = collateralToken.enabled == Enabled.Enabled;
         decimals = collateralToken.decimals;
@@ -49,9 +42,7 @@ contract FacetReader is Mux3FacetBase, IFacetReader {
         return _collateralTokenList;
     }
 
-    function getCollateralPool(
-        address pool
-    ) public view returns (bool enabled) {
+    function getCollateralPool(address pool) public view returns (bool enabled) {
         enabled = _isPoolExist(pool);
     }
 
@@ -67,41 +58,27 @@ contract FacetReader is Mux3FacetBase, IFacetReader {
         return _marketList.values();
     }
 
-    function listMarketPools(
-        bytes32 marketId
-    ) external view returns (BackedPoolState[] memory) {
+    function listMarketPools(bytes32 marketId) external view returns (BackedPoolState[] memory) {
         return _markets[marketId].pools;
     }
 
-    function listPositionIdsOf(
-        address trader
-    ) external view returns (bytes32[] memory) {
+    function listPositionIdsOf(address trader) external view returns (bytes32[] memory) {
         return _positionAccountLists[trader].values();
     }
 
-    function listAccountCollaterals(
-        bytes32 positionId
-    ) public view returns (CollateralReader[] memory collaterals) {
-        PositionAccountInfo storage positionAccount = _positionAccounts[
-            positionId
-        ];
+    function listAccountCollaterals(bytes32 positionId) public view returns (CollateralReader[] memory collaterals) {
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         uint256 length = positionAccount.activeCollaterals.length();
         collaterals = new CollateralReader[](length);
         for (uint256 i = 0; i < length; i++) {
             address collateralToken = positionAccount.activeCollaterals.at(i);
             collaterals[i].collateralAddress = collateralToken;
-            collaterals[i].collateralAmount = positionAccount.collaterals[
-                collateralToken
-            ];
+            collaterals[i].collateralAmount = positionAccount.collaterals[collateralToken];
         }
     }
 
-    function listAccountPositions(
-        bytes32 positionId
-    ) public view returns (PositionReader[] memory positions) {
-        PositionAccountInfo storage positionAccount = _positionAccounts[
-            positionId
-        ];
+    function listAccountPositions(bytes32 positionId) public view returns (PositionReader[] memory positions) {
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         uint256 length = positionAccount.activeMarkets.length();
         positions = new PositionReader[](length);
         for (uint256 i = 0; i < length; i++) {
@@ -113,8 +90,7 @@ contract FacetReader is Mux3FacetBase, IFacetReader {
     function listAccountCollateralsAndPositionsOf(
         address trader
     ) external view returns (AccountReader[] memory positions) {
-        EnumerableSetUpgradeable.Bytes32Set
-            storage positionIds = _positionAccountLists[trader];
+        EnumerableSetUpgradeable.Bytes32Set storage positionIds = _positionAccountLists[trader];
         uint256 positionIdCount = positionIds.length();
         positions = new AccountReader[](positionIdCount);
         for (uint256 i = 0; i < positionIdCount; i++) {
@@ -129,8 +105,7 @@ contract FacetReader is Mux3FacetBase, IFacetReader {
         bytes32 positionId,
         bytes32 marketId
     ) public view returns (PositionReader memory position) {
-        PositionData storage positionData = _positionAccounts[positionId]
-            .positions[marketId];
+        PositionData storage positionData = _positionAccounts[positionId].positions[marketId];
         position.marketId = marketId;
         position.initialLeverage = positionData.initialLeverage;
         position.lastIncreasedTime = positionData.lastIncreasedTime;

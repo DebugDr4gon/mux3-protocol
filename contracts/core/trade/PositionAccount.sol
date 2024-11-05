@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeab
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
 import "../../libraries/LibCodec.sol";
+import "../../libraries/LibEthUnwrapper.sol";
 import "../Mux3FacetBase.sol";
 
 contract PositionAccount is Mux3FacetBase {
@@ -17,34 +18,17 @@ contract PositionAccount is Mux3FacetBase {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
     using LibConfigMap for mapping(bytes32 => bytes32);
 
-    function _setInitialLeverage(
-        bytes32 positionId,
-        bytes32 marketId,
-        uint256 initialLeverage
-    ) internal {
-        require(
-            initialLeverage > 0,
-            InitialLeverageOutOfRange(initialLeverage, 0)
-        );
+    function _setInitialLeverage(bytes32 positionId, bytes32 marketId, uint256 initialLeverage) internal {
+        require(initialLeverage > 0, InitialLeverageOutOfRange(initialLeverage, 0));
         uint256 imr = _marketInitialMarginRate(marketId);
         require(imr > 0, EssentialConfigNotSet("MM_INITIAL_MARGIN_RATE"));
         uint256 maxLeverage = 1e36 / imr;
-        require(
-            initialLeverage <= maxLeverage,
-            InitialLeverageOutOfRange(initialLeverage, maxLeverage)
-        );
-        _positionAccounts[positionId]
-            .positions[marketId]
-            .initialLeverage = initialLeverage;
+        require(initialLeverage <= maxLeverage, InitialLeverageOutOfRange(initialLeverage, maxLeverage));
+        _positionAccounts[positionId].positions[marketId].initialLeverage = initialLeverage;
     }
 
-    function _traderMaxInitialLeverage(
-        bytes32 positionId,
-        bytes32 marketId
-    ) internal view returns (uint256 leverage) {
-        leverage = _positionAccounts[positionId]
-            .positions[marketId]
-            .initialLeverage;
+    function _traderMaxInitialLeverage(bytes32 positionId, bytes32 marketId) internal view returns (uint256 leverage) {
+        leverage = _positionAccounts[positionId].positions[marketId].initialLeverage;
         require(leverage > 0, EssentialConfigNotSet("setInitialLeverage"));
     }
 
@@ -55,30 +39,16 @@ contract PositionAccount is Mux3FacetBase {
         uint256 rawCollateralAmount // token.decimals
     ) internal {
         require(positionId != bytes32(0), InvalidId(positionId));
-        require(
-            _isCollateralExists(collateralToken),
-            CollateralNotExists(collateralToken)
-        );
+        require(_isCollateralExists(collateralToken), CollateralNotExists(collateralToken));
         require(rawCollateralAmount != 0, InvalidAmount(rawCollateralAmount));
-        PositionAccountInfo storage positionAccount = _positionAccounts[
-            positionId
-        ];
-        uint256 collateralAmount = _collateralToWad(
-            collateralToken,
-            rawCollateralAmount
-        );
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
+        uint256 collateralAmount = _collateralToWad(collateralToken, rawCollateralAmount);
         positionAccount.collaterals[collateralToken] += collateralAmount;
-        EnumerableSetUpgradeable.AddressSet
-            storage activeCollaterals = positionAccount.activeCollaterals;
+        EnumerableSetUpgradeable.AddressSet storage activeCollaterals = positionAccount.activeCollaterals;
         if (!activeCollaterals.contains(collateralToken)) {
             require(
-                activeCollaterals.length() <
-                    MAX_COLLATERALS_PER_POSITION_ACCOUNT,
-                CapacityExceeded(
-                    MAX_COLLATERALS_PER_POSITION_ACCOUNT,
-                    activeCollaterals.length(),
-                    1
-                )
+                activeCollaterals.length() < MAX_COLLATERALS_PER_POSITION_ACCOUNT,
+                CapacityExceeded(MAX_COLLATERALS_PER_POSITION_ACCOUNT, activeCollaterals.length(), 1)
             );
             activeCollaterals.add(collateralToken);
         }
@@ -87,33 +57,24 @@ contract PositionAccount is Mux3FacetBase {
     function _withdrawFromAccount(
         bytes32 positionId,
         address collateralToken,
-        uint256 collateralAmount // 1e18
+        uint256 collateralAmount, // 1e18
+        bool isUnwrapWeth
     ) internal {
         require(positionId != bytes32(0), InvalidId(positionId));
-        require(
-            _isCollateralExists(collateralToken),
-            CollateralNotExists(collateralToken)
-        );
+        require(_isCollateralExists(collateralToken), CollateralNotExists(collateralToken));
         require(collateralAmount != 0, InvalidAmount(collateralAmount));
-        PositionAccountInfo storage positionAccount = _positionAccounts[
-            positionId
-        ];
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         require(
             positionAccount.collaterals[collateralToken] >= collateralAmount,
-            InsufficientBalance(
-                positionAccount.collaterals[collateralToken],
-                collateralAmount
-            )
+            InsufficientBalance(positionAccount.collaterals[collateralToken], collateralAmount)
         );
         positionAccount.collaterals[collateralToken] -= collateralAmount;
-        uint256 rawCollateralAmount = _collateralToRaw(
-            collateralToken,
-            collateralAmount
-        );
-        IERC20Upgradeable(collateralToken).safeTransfer(
-            positionAccount.owner,
-            rawCollateralAmount
-        );
+        uint256 rawCollateralAmount = _collateralToRaw(collateralToken, collateralAmount);
+        if (collateralToken == _weth && isUnwrapWeth) {
+            LibEthUnwrapper.unwrap(_weth, payable(positionAccount.owner), rawCollateralAmount);
+        } else {
+            IERC20Upgradeable(collateralToken).safeTransfer(positionAccount.owner, rawCollateralAmount);
+        }
         // auto clear
         if (positionAccount.collaterals[collateralToken] == 0) {
             positionAccount.activeCollaterals.remove(collateralToken);
@@ -127,8 +88,7 @@ contract PositionAccount is Mux3FacetBase {
         uint256[] memory cumulatedBorrowingPerUsd // the same size as backed pools
     ) internal {
         // record to position
-        PositionData storage positionData = _positionAccounts[positionId]
-            .positions[marketId];
+        PositionData storage positionData = _positionAccounts[positionId].positions[marketId];
         BackedPoolState[] memory backedPools = _markets[marketId].pools;
         for (uint256 i = 0; i < backedPools.length; i++) {
             if (allocations[i] == 0) {
@@ -141,9 +101,7 @@ contract PositionAccount is Mux3FacetBase {
             if (pool.size == 0) {
                 pool.entryPrice = price;
             } else {
-                pool.entryPrice =
-                    (pool.entryPrice * pool.size + price * allocations[i]) /
-                    nextSize;
+                pool.entryPrice = (pool.entryPrice * pool.size + price * allocations[i]) / nextSize;
             }
             pool.size = nextSize;
             pool.entryBorrowing = cumulatedBorrowingPerUsd[i];
@@ -151,8 +109,7 @@ contract PositionAccount is Mux3FacetBase {
         positionData.lastIncreasedTime = block.timestamp;
         if (!_positionAccounts[positionId].activeMarkets.contains(marketId)) {
             require(
-                _positionAccounts[positionId].activeMarkets.length() <
-                    MAX_MARKETS_PER_POSITION_ACCOUNT,
+                _positionAccounts[positionId].activeMarkets.length() < MAX_MARKETS_PER_POSITION_ACCOUNT,
                 CapacityExceeded(
                     MAX_MARKETS_PER_POSITION_ACCOUNT,
                     _positionAccounts[positionId].activeMarkets.length(),
@@ -163,14 +120,9 @@ contract PositionAccount is Mux3FacetBase {
         }
     }
 
-    function _closeAccountPosition(
-        bytes32 positionId,
-        bytes32 marketId,
-        uint256[] memory allocations
-    ) internal {
+    function _closeAccountPosition(bytes32 positionId, bytes32 marketId, uint256[] memory allocations) internal {
         // record to position
-        PositionData storage positionData = _positionAccounts[positionId]
-            .positions[marketId];
+        PositionData storage positionData = _positionAccounts[positionId].positions[marketId];
         BackedPoolState[] memory backedPools = _markets[marketId].pools;
         bool isAllClosed = true;
         for (uint256 i = 0; i < backedPools.length; i++) {
@@ -197,11 +149,14 @@ contract PositionAccount is Mux3FacetBase {
      * @dev deduct collateral until its value equals totalFeeUsd
      *
      *      note: position.collateral[] is updated in this function. but ERC20 token is not transferred yet.
+     *
+     * @param lastConsumedToken optional. try to avoid consuming this token if possible
      */
     function _collectFeeFromCollateral(
         bytes32 positionId,
         uint256 totalFeeUsd,
-        bool shouldCollateralSufficient
+        bool shouldCollateralSufficient,
+        address lastConsumedToken
     )
         internal
         returns (
@@ -210,11 +165,8 @@ contract PositionAccount is Mux3FacetBase {
             uint256[] memory feeAmounts // wad
         )
     {
-        PositionAccountInfo storage positionAccount = _positionAccounts[
-            positionId
-        ];
-        feeAddresses = positionAccount.activeCollaterals.values();
-        // TODO: lastWithdrawToken
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
+        feeAddresses = _activeCollateralsWithLastWithdraw(positionId, lastConsumedToken);
         feeAmounts = new uint256[](feeAddresses.length);
         uint256 remainFeeUsd = totalFeeUsd;
         for (uint256 i = 0; i < feeAddresses.length; i++) {
@@ -223,8 +175,7 @@ contract PositionAccount is Mux3FacetBase {
                 continue;
             }
             uint256 tokenPrice = _priceOf(collateral);
-            uint256 balanceUsd = (positionAccount.collaterals[collateral] *
-                tokenPrice) / 1e18;
+            uint256 balanceUsd = (positionAccount.collaterals[collateral] * tokenPrice) / 1e18;
             uint256 feeUsd = MathUpgradeable.min(balanceUsd, remainFeeUsd);
             uint256 feeCollateral = (feeUsd * 1e18) / tokenPrice;
             positionAccount.collaterals[collateral] -= feeCollateral;
@@ -244,7 +195,8 @@ contract PositionAccount is Mux3FacetBase {
         bytes32 positionId,
         bytes32 marketId,
         uint256[] memory cumulatedBorrowingPerUsd,
-        bool shouldCollateralSufficient
+        bool shouldCollateralSufficient,
+        address lastConsumedToken
     )
         internal
         returns (
@@ -255,20 +207,16 @@ contract PositionAccount is Mux3FacetBase {
         )
     {
         // allocate borrowing fee to collaterals
-        (borrowingFeeUsd, borrowingFeeUsds) = _borrowingFeeUsd(
-            positionId,
-            marketId,
-            cumulatedBorrowingPerUsd
-        );
+        (borrowingFeeUsd, borrowingFeeUsds) = _borrowingFeeUsd(positionId, marketId, cumulatedBorrowingPerUsd);
         (borrowingFeeUsd, feeAddresses, feeAmounts) = _collectFeeFromCollateral(
             positionId,
             borrowingFeeUsd,
-            shouldCollateralSufficient
+            shouldCollateralSufficient,
+            lastConsumedToken
         );
         // update entryBorrowing
         BackedPoolState[] memory backedPools = _markets[marketId].pools;
-        PositionData storage positionData = _positionAccounts[positionId]
-            .positions[marketId];
+        PositionData storage positionData = _positionAccounts[positionId].positions[marketId];
         for (uint256 i = 0; i < backedPools.length; i++) {
             address backedPool = backedPools[i].backedPool;
             PositionPoolData storage pool = positionData.pools[backedPool];
@@ -286,15 +234,9 @@ contract PositionAccount is Mux3FacetBase {
         bytes32 marketId,
         uint256 size,
         bool isLiquidating,
-        bool shouldCollateralSufficient
-    )
-        internal
-        returns (
-            uint256 positionFeeUsd,
-            address[] memory feeAddresses,
-            uint256[] memory feeAmounts
-        )
-    {
+        bool shouldCollateralSufficient,
+        address lastConsumedToken
+    ) internal returns (uint256 positionFeeUsd, address[] memory feeAddresses, uint256[] memory feeAmounts) {
         uint256 feeRate;
         if (isLiquidating) {
             feeRate = _marketLiquidationFeeRate(marketId);
@@ -307,13 +249,12 @@ contract PositionAccount is Mux3FacetBase {
         (positionFeeUsd, feeAddresses, feeAmounts) = _collectFeeFromCollateral(
             positionId,
             positionFeeUsd,
-            shouldCollateralSufficient
+            shouldCollateralSufficient,
+            lastConsumedToken
         );
     }
 
-    function _isPositionAccountExist(
-        bytes32 positionId
-    ) internal view returns (bool) {
+    function _isPositionAccountExist(bytes32 positionId) internal view returns (bool) {
         return _positionAccounts[positionId].owner != address(0);
     }
 
@@ -322,13 +263,8 @@ contract PositionAccount is Mux3FacetBase {
         _positionAccounts[positionId].owner = owner;
         if (!_positionAccountLists[owner].contains(positionId)) {
             require(
-                _positionAccountLists[owner].length() <
-                    MAX_POSITION_ACCOUNT_PER_TRADER,
-                CapacityExceeded(
-                    MAX_POSITION_ACCOUNT_PER_TRADER,
-                    _positionAccountLists[owner].length(),
-                    1
-                )
+                _positionAccountLists[owner].length() < MAX_POSITION_ACCOUNT_PER_TRADER,
+                CapacityExceeded(MAX_POSITION_ACCOUNT_PER_TRADER, _positionAccountLists[owner].length(), 1)
             );
             _positionAccountLists[owner].add(positionId);
         }
@@ -338,15 +274,9 @@ contract PositionAccount is Mux3FacetBase {
         return _positionAccounts[positionId].owner != address(0);
     }
 
-    function _collateralValue(
-        bytes32 positionId
-    ) internal view returns (uint256 value) {
-        PositionAccountInfo storage positionAccount = _positionAccounts[
-            positionId
-        ];
-        address[] memory collaterals = positionAccount
-            .activeCollaterals
-            .values();
+    function _collateralValue(bytes32 positionId) internal view returns (uint256 value) {
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
+        address[] memory collaterals = positionAccount.activeCollaterals.values();
         for (uint256 i = 0; i < collaterals.length; i++) {
             address collateral = collaterals[i];
             uint256 amount = positionAccount.collaterals[collateral];
@@ -364,19 +294,12 @@ contract PositionAccount is Mux3FacetBase {
         ENTRY_LEVERAGE // entryPrice * size / traderLeverage
     }
 
-    function _positionMargin(
-        bytes32 positionId,
-        MarginType marginType
-    ) internal view returns (uint256 marginUsd) {
-        PositionAccountInfo storage positionAccount = _positionAccounts[
-            positionId
-        ];
+    function _positionMargin(bytes32 positionId, MarginType marginType) internal view returns (uint256 marginUsd) {
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         bytes32[] memory markets = positionAccount.activeMarkets.values();
         for (uint256 i = 0; i < markets.length; i++) {
             bytes32 marketId = markets[i];
-            PositionData storage positionData = positionAccount.positions[
-                marketId
-            ];
+            PositionData storage positionData = positionAccount.positions[marketId];
             BackedPoolState[] memory backedPools = _markets[marketId].pools;
             // position size
             uint256 size;
@@ -401,9 +324,7 @@ contract PositionAccount is Mux3FacetBase {
                 value = (size * price) / 1e18;
                 value = (value * _marketMaintenanceMarginRate(marketId)) / 1e18;
             } else if (marginType == MarginType.ENTRY_LEVERAGE) {
-                value =
-                    (entryValue * 1e18) /
-                    _traderMaxInitialLeverage(positionId, marketId);
+                value = (entryValue * 1e18) / _traderMaxInitialLeverage(positionId, marketId);
             }
             marginUsd += value;
         }
@@ -415,13 +336,8 @@ contract PositionAccount is Mux3FacetBase {
      *      note: this function does not calculate borrowing fee. so make sure
      *            to update borrowing fee before calling this function.
      */
-    function _isInitialMarginSafe(
-        bytes32 positionId
-    ) internal view returns (bool) {
-        uint256 positionMargin = _positionMargin(
-            positionId,
-            MarginType.MARKET_IM
-        );
+    function _isInitialMarginSafe(bytes32 positionId) internal view returns (bool) {
+        uint256 positionMargin = _positionMargin(positionId, MarginType.MARKET_IM);
         if (positionMargin == 0) {
             return true;
         }
@@ -439,10 +355,7 @@ contract PositionAccount is Mux3FacetBase {
         bytes32 positionId,
         uint256 pendingBorrowingFeeUsd // if borrowing fee is not deducted from collaterals yet, pass it here
     ) internal view returns (bool) {
-        uint256 positionMargin = _positionMargin(
-            positionId,
-            MarginType.MARKET_MM
-        );
+        uint256 positionMargin = _positionMargin(positionId, MarginType.MARKET_MM);
         positionMargin += pendingBorrowingFeeUsd;
         if (positionMargin == 0) {
             return true;
@@ -461,10 +374,7 @@ contract PositionAccount is Mux3FacetBase {
      *            to update borrowing fee before calling this function.
      */
     function _isLeverageSafe(bytes32 positionId) internal view returns (bool) {
-        uint256 positionMargin = _positionMargin(
-            positionId,
-            MarginType.ENTRY_LEVERAGE
-        );
+        uint256 positionMargin = _positionMargin(positionId, MarginType.ENTRY_LEVERAGE);
         if (positionMargin == 0) {
             return true;
         }
@@ -485,8 +395,7 @@ contract PositionAccount is Mux3FacetBase {
         )
     {
         BackedPoolState[] memory backedPools = _markets[marketId].pools;
-        PositionData storage positionData = _positionAccounts[positionId]
-            .positions[marketId];
+        PositionData storage positionData = _positionAccounts[positionId].positions[marketId];
         borrowingFeeUsds = new uint256[](backedPools.length);
         for (uint256 i = 0; i < backedPools.length; i++) {
             address backedPool = backedPools[i].backedPool;
@@ -496,8 +405,7 @@ contract PositionAccount is Mux3FacetBase {
             }
             uint256 price = _priceOf(_marketOracleId(marketId));
             uint256 positionValue = (pool.size * price) / 1e18;
-            uint256 feePerUsd = cumulatedBorrowingPerUsd[i] -
-                pool.entryBorrowing;
+            uint256 feePerUsd = cumulatedBorrowingPerUsd[i] - pool.entryBorrowing;
             uint256 feeUsd = (positionValue * feePerUsd) / 1e18;
             borrowingFeeUsds[i] = feeUsd;
             borrowingFeeUsd += feeUsd;
@@ -513,13 +421,11 @@ contract PositionAccount is Mux3FacetBase {
         internal
         view
         returns (
-            bool[] memory hasProfit,
-            uint256[] memory poolPnlUsds // the same size as backed pools
+            int256[] memory poolPnlUsds // the same size as backed pools
         )
     {
         MarketInfo storage market = _markets[marketId];
-        hasProfit = new bool[](market.pools.length);
-        poolPnlUsds = new uint256[](market.pools.length);
+        poolPnlUsds = new int256[](market.pools.length);
         {
             // quick return if size = 0
             uint256 size;
@@ -527,26 +433,20 @@ contract PositionAccount is Mux3FacetBase {
                 size += allocations[i];
             }
             if (size == 0) {
-                return (hasProfit, poolPnlUsds);
+                return poolPnlUsds;
             }
         }
-        PositionData storage position = _positionAccounts[positionId].positions[
-            marketId
-        ];
+        PositionData storage position = _positionAccounts[positionId].positions[marketId];
         for (uint256 i = 0; i < market.pools.length; i++) {
             address backedPool = market.pools[i].backedPool;
             PositionPoolData storage pool = position.pools[backedPool];
-            require(
-                allocations[i] <= pool.size,
-                "positionPnl: Invalid allocation"
+            require(allocations[i] <= pool.size, "positionPnl: Invalid allocation");
+            poolPnlUsds[i] = ICollateralPool(backedPool).positionPnl(
+                marketId,
+                allocations[i],
+                pool.entryPrice,
+                marketPrice
             );
-            (hasProfit[i], poolPnlUsds[i]) = ICollateralPool(backedPool)
-                .positionPnl(
-                    marketId,
-                    allocations[i],
-                    pool.entryPrice,
-                    marketPrice
-                );
         }
     }
 
@@ -556,36 +456,27 @@ contract PositionAccount is Mux3FacetBase {
      *      note: this function does not calculate borrowing fee. so make sure
      *            to update borrowing fee before calling this function.
      */
-    function _marginBalance(
-        bytes32 positionId
-    ) internal view returns (int256 marginBalance) {
+    function _marginBalance(bytes32 positionId) internal view returns (int256 marginBalance) {
         marginBalance = _collateralValue(positionId).toInt256();
-        PositionAccountInfo storage positionAccount = _positionAccounts[
-            positionId
-        ];
+        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         uint256 marketLength = positionAccount.activeMarkets.length();
         for (uint256 i = 0; i < marketLength; i++) {
             bytes32 marketId = positionAccount.activeMarkets.at(i);
             BackedPoolState[] memory backedPools = _markets[marketId].pools;
-            PositionData storage positionData = positionAccount.positions[
-                marketId
-            ];
+            PositionData storage positionData = positionAccount.positions[marketId];
             for (uint256 j = 0; j < backedPools.length; j++) {
                 address backedPool = backedPools[j].backedPool;
                 PositionPoolData storage pool = positionData.pools[backedPool];
                 if (pool.size == 0) {
                     continue;
                 }
-                (bool hasProfit, uint256 pnlUsd) = ICollateralPool(backedPool)
-                    .positionPnl(
-                        marketId,
-                        pool.size,
-                        pool.entryPrice,
-                        _priceOf(_marketOracleId(marketId))
-                    );
-                marginBalance += hasProfit
-                    ? pnlUsd.toInt256()
-                    : -(pnlUsd.toInt256());
+                int256 pnlUsd = ICollateralPool(backedPool).positionPnl(
+                    marketId,
+                    pool.size,
+                    pool.entryPrice,
+                    _priceOf(_marketOracleId(marketId))
+                );
+                marginBalance += pnlUsd;
             }
         }
     }

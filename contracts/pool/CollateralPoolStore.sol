@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
@@ -11,6 +11,7 @@ import "./CollateralPoolToken.sol";
 contract CollateralPoolStore is CollateralPoolToken {
     address internal immutable _core;
     address internal immutable _orderBook;
+    address internal immutable _weth;
 
     mapping(bytes32 => bytes32) internal _configTable;
     address internal _unused1; // was _core
@@ -23,9 +24,7 @@ contract CollateralPoolStore is CollateralPoolToken {
 
     bytes32[49] private _gaps;
 
-    function __CollateralPoolStore_init(
-        address collateralToken
-    ) internal onlyInitializing {
+    function __CollateralPoolStore_init(address collateralToken) internal onlyInitializing {
         _collateralToken = collateralToken;
     }
 }

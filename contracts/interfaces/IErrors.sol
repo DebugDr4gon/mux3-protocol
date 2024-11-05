@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 interface IErrors {
@@ -37,10 +37,7 @@ interface IErrors {
     error MarketAlreadyExists(bytes32 marketId);
 
     // pool
-    error InsufficientLiquidity(
-        uint256 requiredLiquidity,
-        uint256 liquidityBalance
-    );
+    error InsufficientLiquidity(uint256 requiredLiquidity, uint256 liquidityBalance);
     error DuplicatedAddress(address pool);
     error PoolAlreadyExist(address pool);
     error PoolNotExists(address pool);

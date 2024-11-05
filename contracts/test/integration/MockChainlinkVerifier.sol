@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "../../interfaces/chainlink/IVerifyProxy.sol";
@@ -47,12 +47,7 @@ contract MockChainlinkVerifier is IVerifyProxy {
         feeManager = _feeManager;
     }
 
-    function setMockReport(
-        bytes32 feedId,
-        uint32 expiresAt,
-        uint32 observationsTimestamp,
-        int192 price
-    ) external {
+    function setMockReport(bytes32 feedId, uint32 expiresAt, uint32 observationsTimestamp, int192 price) external {
         mockReport = Report({
             feedId: feedId,
             validFromTimestamp: 0,

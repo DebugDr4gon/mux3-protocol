@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "../../interfaces/IPriceProvider.sol";
@@ -12,10 +12,7 @@ contract Pricing is Mux3FacetBase {
     ) internal returns (uint256 price, uint256 timestamp) {
         require(priceId != bytes32(0), InvalidId(priceId));
         require(provider != address(0), InvalidAddress(provider));
-        (price, timestamp) = IPriceProvider(provider).getOraclePrice(
-            priceId,
-            oracleCallData
-        );
+        (price, timestamp) = IPriceProvider(provider).getOraclePrice(priceId, oracleCallData);
         _setCachedPrice(priceId, price);
     }
 

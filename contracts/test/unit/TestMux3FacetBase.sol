@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
 import "../MockERC20.sol";
@@ -12,7 +12,8 @@ contract TestMux3FacetBase is FacetManagement, TestSuit {
     function setup() external {
         ERC20 fakeCore = new MockERC20("fakeCore", "fakeCore", 18);
         ERC20 fakeBook = new MockERC20("fakeBook", "fakeBook", 18);
-        pool = address(new CollateralPool(address(fakeCore), address(fakeBook)));
+        ERC20 fakeEth = new MockERC20("fakeEth", "fakeEth", 18);
+        pool = address(new CollateralPool(address(fakeCore), address(fakeBook), address(fakeEth)));
         _setImplementation(pool);
     }
 
