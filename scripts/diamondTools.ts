@@ -4,8 +4,14 @@ import { DiamondCutFacet } from "../typechain"
 import { Contract } from "ethers"
 import { FacetCutAction, ensureFinished, getSelectors, zeroAddress } from "./deployUtils"
 
-export async function deployDiamondOrSkip(deployer: Deployer, alias: string, facets: { [facetName: string]: Contract }): Promise<Contract> {
+export async function deployDiamondOrSkip(
+  deployer: Deployer,
+  alias: string,
+  facets: { [facetName: string]: Contract },
+  diamondInit: Contract
+): Promise<Contract> {
   if (!(alias in deployer.deployedContracts)) {
+    checkForDuplicatedFunction(deployer, alias, facets)
     const admin1 = (await deployer.e.getSigners())[0]
     const dump: { [facetName: string]: { address: string; selectors: string[] } } = {}
     const initialCuts: {
@@ -27,9 +33,13 @@ export async function deployDiamondOrSkip(deployer: Deployer, alias: string, fac
     }
     const initialCutArgs = {
       owner: admin1.address,
-      init: ethers.constants.AddressZero,
-      initCalldata: "0x",
+      init: diamondInit.address,
+      initCalldata: diamondInit.interface.encodeFunctionData("init"),
     }
+    console.log("deploying diamond. save the following args to a file to verify the code:", [
+      initialCuts,
+      initialCutArgs,
+    ])
     await deployer.deploy("Diamond", alias, initialCuts, initialCutArgs)
     deployer.deployedContracts[alias].type = "diamond"
     deployer.deployedContracts[alias].facets = dump
@@ -40,12 +50,11 @@ export async function deployDiamondOrSkip(deployer: Deployer, alias: string, fac
 export async function upgradeFacet(
   deployer: Deployer,
   alias: string,
-  facetName: "adminFacet" | "accountFacet" | "getterFacet" | "liquidityFacet" | "tradeFacet",
+  facetName: "facetManagement" | "facetReader" | "facetOpen" | "facetClose" | "facetPositionAccount",
   deployNewFacet: () => Promise<Contract>
 ) {
   console.log("=====================")
   console.log("upgrading", facetName)
-  const admin1 = (await deployer.e.getSigners())[0]
   const pool = (await deployer.getDeployedInterface("DiamondCutFacet", alias)) as DiamondCutFacet
 
   // backup old signatures
@@ -57,6 +66,7 @@ export async function upgradeFacet(
 
   // deploy new
   const newFacet = await deployNewFacet()
+  checkForDuplicatedFunction(deployer, alias, { [facetName]: newFacet })
   const ops = [
     {
       facetAddress: zeroAddress,
@@ -76,5 +86,34 @@ export async function upgradeFacet(
   deployer.deployedContracts[alias].facets![facetName] = {
     address: newFacet.address,
     selectors: Object.values(getSelectors(newFacet)),
+  }
+}
+
+export async function checkForDuplicatedFunction(
+  deployer: Deployer,
+  alias: string,
+  newFacets: { [facetName: string]: Contract }
+) {
+  const all: { [selector: string]: string } = {}
+
+  // load from deployer
+  const oldRecords = deployer.deployedContracts[alias]
+  if (oldRecords && oldRecords.facets) {
+    for (const facetName in oldRecords.facets) {
+      for (const selector of oldRecords.facets[facetName].selectors) {
+        all[selector] = facetName
+      }
+    }
+  }
+
+  // check new
+  for (const facetName in newFacets) {
+    const selectors = Object.values(getSelectors(newFacets[facetName]))
+    for (const selector of selectors) {
+      if (all[selector] && all[selector] !== facetName) {
+        throw new Error("selector " + selector + " in " + facetName + " was defined in " + all[selector])
+      }
+      all[selector] = facetName
+    }
   }
 }

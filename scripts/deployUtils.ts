@@ -1,11 +1,12 @@
 import { ethers } from "hardhat"
-import { BytesLike } from "ethers"
+import { BytesLike, ethers } from "ethers"
 import { ContractTransaction, Contract, ContractReceipt } from "ethers"
 import { TransactionReceipt } from "@ethersproject/providers"
 import { hexlify, concat, zeroPad, arrayify } from "@ethersproject/bytes"
 import { BigNumber as EthersBigNumber, BigNumberish, parseFixed, formatFixed } from "@ethersproject/bignumber"
 import chalk from "chalk"
 import { BigNumber } from "bignumber.js"
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 
 export const zeroBytes32 = ethers.constants.HashZero
 export const zeroAddress = ethers.constants.AddressZero
@@ -15,17 +16,18 @@ export enum OrderType {
   Position,
   Liquidity,
   Withdrawal,
+  Rebalance,
+  Adl,
 }
 
 export enum PositionOrderFlags {
-  OpenPosition = 0x80, // this flag means openPosition; otherwise closePosition
-  MarketOrder = 0x40, // this flag only affects order expire time and show a better effect on UI
+  OpenPosition = 0x80, // this flag means open-position; otherwise close-position
+  MarketOrder = 0x40, // this flag only affects order expire time and shows a better effect on UI
   WithdrawAllIfEmpty = 0x20, // this flag means auto withdraw all collateral if position.size == 0
   TriggerOrder = 0x10, // this flag means this is a trigger order (ex: stop-loss order). otherwise this is a limit order (ex: take-profit order)
-  TpSlStrategy = 0x08, // for open-position-order, this flag auto place take-profit and stop-loss orders when open-position-order fills.
-  //                      for close-position-order, this flag means ignore limitPrice and profitTokenId, and use extra.tpPrice, extra.slPrice, extra.tpslProfitTokenId instead.
-  ShouldReachMinProfit = 0x04, // this flag is used to ensure that either the minProfitTime is met or the minProfitRate ratio is reached when close a position. only available when minProfitTime > 0.
   AutoDeleverage = 0x02, // denotes that this order is an auto-deleverage order
+  UnwrapEth = 0x100, // unwrap WETH into ETH. only valid when fill close-position, or cancel open-position, or fill liquidity, or cancel liquidity
+  WithdrawProfit = 0x200, // withdraw profit - fee. only valid when fill close-position
 }
 
 export enum ReferenceOracleType {
@@ -135,71 +137,176 @@ export async function ensureFinished(
   return receipt
 }
 
-//  |----- 160 -----|------ 8 -------|-- 88 --|
-//  | user address  | position index | unused |
-export function encodePositionId(account: string, index: number): string {
-  return hexlify(concat([arrayify(account), [arrayify(EthersBigNumber.from(index))[0]], zeroPad([], 11)]))
-}
-
-export type Mux3Price = {
-  oracleId: number
-  price: BigNumber // human readable price
-}
-
-// |---- 7 ----|- 5 -|- 20 -|
-// | oracle id | exp | mant |
-export function encodeMux3Price(p: Mux3Price): number {
-  if (p.oracleId <= 0 || p.oracleId > 127) {
-    throw new Error(`invalid OracleID: ${p.oracleId}`)
-  }
-  const wad = p.price.shiftedBy(18)
-  let exp = 0
-  let mantissa = wad
-  const maxMantissa = new BigNumber("1000000")
-  while (mantissa.gte(maxMantissa)) {
-    mantissa = mantissa.div(10)
-    exp++
-  }
-  const minMantissa = new BigNumber("100000")
-  while (mantissa.lt(minMantissa) && exp > 0) {
-    mantissa = mantissa.times(10)
-    exp--
-  }
-  if (exp > 31) {
-    throw new Error(`price out of range: ${p.price.toFixed()}`)
-  }
-  mantissa = mantissa.dp(0, BigNumber.ROUND_DOWN)
-  const bId = ethers.BigNumber.from(p.oracleId).shl(25)
-  const bExp = ethers.BigNumber.from(exp).shl(20)
-  const bMant = ethers.BigNumber.from(mantissa.toNumber())
-  const encoded = bId.or(bExp).or(bMant)
-  return encoded.toNumber()
-}
-
-// convert [
-//   <price1>, <price2>, ... <price16>
-// ] into [
-//  0x<price1><price2>...<price8>,
-//  0x<price9><price10>...<price16>
-// ]
-export function encodeMux3Prices(prices: Mux3Price[]): string[] {
-  let uint32Array = prices.map((p) => {
-    const encoded = encodeMux3Price(p)
-    const padding = ethers.utils.hexZeroPad(ethers.utils.hexlify(encoded), 4)
-    return padding
-  })
-  // convert uint32[] into uint256[]
-  const uint256Array: string[] = []
-  for (let i = 0; i < uint32Array.length; i += 8) {
-    let uint256Hex = ethers.utils.hexConcat(uint32Array.slice(i, i + 8))
-    uint256Hex = uint256Hex.padEnd(66, "0")
-    uint256Array.push(uint256Hex)
-  }
-  return uint256Array
+//  |----- 160 -----|------ 96 ------|
+//  | user address  | position index |
+export function encodePositionId(account: string, index: number | ethers.BigNumber): string {
+  return hexlify(ethers.utils.solidityPack(["address", "uint96"], [account, index]))
 }
 
 export function encodePoolMarketKey(prefix: string, marketId: string) {
   return ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32"], [ethers.utils.id(prefix), marketId])
   )
+}
+
+export function getSelectors(contract: Contract): { [method: string]: string } {
+  const selectors = {}
+  for (const name in contract.interface.functions) {
+    const signature = contract.interface.getSighash(contract.interface.functions[name])
+    selectors[name] = signature
+  }
+  return selectors
+}
+
+export async function getMuxSignature(
+  priceData: { chainid: number; contractAddress: string; seq: number; price: number; timestamp: number },
+  signer: any
+) {
+  const message = ethers.utils.keccak256(
+    ethers.utils.solidityPack(
+      ["uint256", "address", "uint256", "uint256", "uint256"],
+      [priceData.chainid, priceData.contractAddress, priceData.seq, priceData.price, priceData.timestamp]
+    )
+  )
+  console.log("generated message", message)
+  return await signer.signMessage(ethers.utils.arrayify(message))
+}
+
+export async function getMuxPriceData(
+  priceData: {
+    priceId: string
+    chainid: number
+    contractAddress: string
+    seq: number
+    price: number
+    timestamp: number
+  },
+  signer: any
+) {
+  const message = ethers.utils.keccak256(
+    ethers.utils.solidityPack(
+      ["uint256", "address", "uint256", "uint256", "uint256"],
+      [priceData.chainid, priceData.contractAddress, priceData.seq, priceData.price, priceData.timestamp]
+    )
+  )
+  const signature = await signer.signMessage(ethers.utils.arrayify(message))
+  return ethers.utils.defaultAbiCoder.encode(
+    ["(bytes32,uint256,uint256,uint256,bytes)"],
+    [[priceData.priceId, priceData.seq, priceData.price, priceData.timestamp, signature]]
+  )
+}
+
+export function parsePositionOrder(orderData: string) {
+  const [
+    positionId,
+    marketId,
+    size,
+    flags,
+    limitPrice,
+    expiration,
+    lastConsumedToken,
+    collateralToken,
+    collateralAmount,
+    withdrawUsd,
+    withdrawSwapToken,
+    withdrawSwapSlippage,
+    tpPriceDiff,
+    slPriceDiff,
+    tpslExpiration,
+    tpslFlags,
+    tpslWithdrawSwapToken,
+    tpslWithdrawSwapSlippage,
+  ] = ethers.utils.defaultAbiCoder.decode(
+    [
+      "bytes32", // positionId
+      "bytes32", // marketId
+      "uint256", // size
+      "uint256", // flags
+      "uint256", // limitPrice
+      "uint64", // expiration
+      "address", // lastConsumedToken
+      "address", // collateralToken
+      "uint256", // collateralAmount
+      "uint256", // withdrawUsd
+      "address", // withdrawSwapToken
+      "uint256", // withdrawSwapSlippage
+      "uint256", // tpPriceDiff
+      "uint256", // slPriceDiff
+      "uint64", // tpslExpiration
+      "uint256", // tpslFlags
+      "address", // tpslWithdrawSwapToken
+      "uint256", // tpslWithdrawSwapSlippage
+    ],
+    orderData
+  )
+  return {
+    positionId,
+    marketId,
+    size,
+    flags,
+    limitPrice,
+    expiration,
+    lastConsumedToken,
+    collateralToken,
+    collateralAmount,
+    withdrawUsd,
+    withdrawSwapToken,
+    withdrawSwapSlippage,
+    tpPriceDiff,
+    slPriceDiff,
+    tpslExpiration,
+    tpslFlags,
+    tpslWithdrawSwapToken,
+    tpslWithdrawSwapSlippage,
+  }
+}
+
+export function parseLiquidityOrder(orderData: string) {
+  const [poolAddress, rawAmount, isAdding, isUnwrapWeth] = ethers.utils.defaultAbiCoder.decode(
+    [
+      "address", // poolAddress
+      "uint256", // rawAmount
+      "bool", // isAdding
+      "bool", // isUnwrapWeth
+    ],
+    orderData
+  )
+  return {
+    poolAddress,
+    rawAmount,
+    isAdding,
+    isUnwrapWeth,
+  }
+}
+
+export function parseWithdrawalOrder(orderData: string) {
+  const [
+    positionId,
+    tokenAddress,
+    rawAmount,
+    isUnwrapWeth,
+    lastConsumedToken,
+    withdrawSwapToken,
+    withdrawSwapSlippage,
+  ] = ethers.utils.defaultAbiCoder.decode(
+    [
+      "bytes32", // positionId
+      "address", // tokenAddress
+      "uint256", // rawAmount
+      "bool", // isUnwrapWeth
+      "address", // lastConsumedToken
+      "address", // withdrawSwapToken
+      "uint256", // withdrawSwapSlippage
+    ],
+    orderData
+  )
+  return {
+    positionId,
+    tokenAddress,
+    rawAmount,
+    isUnwrapWeth,
+    lastConsumedToken,
+    withdrawSwapToken,
+    withdrawSwapSlippage,
+  }
 }

@@ -35,7 +35,7 @@ export async function parseLinkedLibraries(filePaths: fs.PathLike[]): Promise<{ 
       const jsonContent = JSON.parse(rawContent)
       const contractName = jsonContent.contractName
       const linkReferences = jsonContent.linkReferences
-      let referencesContractNames = []
+      let referencesContractNames: string[] = []
       for (let referencePath in linkReferences) {
         for (let contractName in linkReferences[referencePath]) {
           referencesContractNames.push(contractName)
