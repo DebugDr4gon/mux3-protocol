@@ -16,13 +16,6 @@ describe("LibTypeCast.test", () => {
     await tester.setup()
   })
 
-  after(async () => {
-    // await network.provider.request({
-    //   method: "hardhat_reset",
-    //   params: [],
-    // })
-  })
-
   it("test_typeCast", async () => {
     await tester.test_typeCast()
   })
