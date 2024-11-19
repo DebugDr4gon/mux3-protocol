@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 
 import "../interfaces/IOrderBook.sol";
 import "../interfaces/IWETH9.sol";
+import "../interfaces/IReferralManager.sol";
 import "../libraries/LibConfigMap.sol";
 import "../libraries/LibOrderBook.sol";
 import "../libraries/LibCodec.sol";
@@ -38,8 +39,27 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         _grantRole(MAINTAINER_ROLE, msg.sender);
     }
 
+    receive() external payable {
+        require(msg.sender == _storage.weth, "WETH");
+    }
+
     /**
      * @dev Trader/LP can wrap ETH to OrderBook, transfer ERC20 to OrderBook, placeOrders
+     *
+     *      example for collateral = USDC:
+     *        multicall([
+     *          wrapNative(gas),
+     *          depositGas(gas),
+     *          transferToken(collateral),
+     *          placePositionOrder(positionOrderParams),
+     *        ])
+     *      example for collateral = ETH:
+     *        multicall([
+     *          wrapNative(gas),
+     *          depositGas(gas),
+     *          wrapNative(collateral),
+     *          placePositionOrder(positionOrderParams),
+     *        ])
      */
     function multicall(bytes[] calldata proxyCalls) external payable returns (bytes[] memory results) {
         results = new bytes[](proxyCalls.length);
@@ -53,8 +73,9 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     /**
      * @dev Trader/LP can wrap ETH to OrderBook
      */
-    function wrapNative() external payable nonReentrant {
-        IWETH9(_storage.weth).deposit{ value: msg.value }();
+    function wrapNative(uint256 amount) external payable nonReentrant {
+        require(amount > 0 && amount <= msg.value, "Invalid wrap amount");
+        IWETH9(_storage.weth).deposit{ value: amount }();
     }
 
     /**
@@ -73,7 +94,26 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @notice A trader SHOULD set initial leverage at least once before open-position
+     * @dev Trader/LP should pay for gas for their orders
+     *
+     *      you should pay configValue(MCO_ORDER_GAS_FEE_GWEI) * 1e9 / 1e18 ETH for each order
+     */
+    function depositGas(uint256 amount) external payable nonReentrant {
+        LibOrderBook.depositGas(_storage, amount, msg.sender);
+    }
+
+    /**
+     * @dev Trader/LP can withdraw gas
+     *
+     *      usually your deposited gas should be consumed by your orders immediately,
+     *      but if you want to withdraw it, you can call this function
+     */
+    function withdrawGas(uint256 amount) external nonReentrant {
+        LibOrderBook.withdrawGas(_storage, amount, msg.sender);
+    }
+
+    /**
+     * @notice A trader should set initial leverage at least once before open-position
      */
     function setInitialLeverage(
         bytes32 positionId,
@@ -88,7 +128,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @notice Open/close position. called by Trader
+     * @notice A Trader can open/close position
      *
      *         Market order will expire after marketOrderTimeout seconds.
      *         Limit/Trigger order will expire after deadline.
@@ -96,50 +136,69 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     function placePositionOrder(
         PositionOrderParams memory orderParams,
         bytes32 referralCode
-    ) public nonReentrant whenNotPaused(OrderType.PositionOrder) {
+    ) public payable nonReentrant whenNotPaused(OrderType.PositionOrder) {
         (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
         if (_isDelegator(msg.sender)) {} else {
             require(positionAccount == msg.sender, "Not authorized");
         }
-        // TODO: referral code
-        // address referralManager = _referralManager();
-        // if (referralCode != bytes32(0) && referralManager != address(0)) {
-        //     IReferralManager(referralManager).setReferrerCodeFor(
-        //         positionAccount,
-        //         referralCode
-        //     );
-        // }
+        // referral code
+        address referralManager = _referralManager();
+        if (referralCode != bytes32(0) && referralManager != address(0)) {
+            IReferralManager(referralManager).setReferrerCodeFor(positionAccount, referralCode);
+        }
+        // place
         LibOrderBook.placePositionOrder(_storage, orderParams, _blockTimestamp());
     }
 
     /**
-     * @notice Add/remove liquidity. called by Liquidity Provider
+     * @notice A LP can add/remove liquidity to a CollateralPool
      *
      *         Can be filled after liquidityLockPeriod seconds.
-     * @param  orderParams   order details includes:
-     *         assetId       asset.id that added/removed to.
-     *         rawAmount     asset token amount. decimals = erc20.decimals.
-     *         isAdding      true for add liquidity, false for remove liquidity.
      */
     function placeLiquidityOrder(
         LiquidityOrderParams memory orderParams
-    ) external nonReentrant whenNotPaused(OrderType.LiquidityOrder) {
+    ) external payable nonReentrant whenNotPaused(OrderType.LiquidityOrder) {
         LibOrderBook.placeLiquidityOrder(_storage, orderParams, msg.sender, _blockTimestamp());
     }
 
     /**
-     * @notice Withdraw collateral/profit. called by Trader
+     * @notice A Trader can withdraw collateral
      *
      *         This order will expire after marketOrderTimeout seconds.
      */
     function placeWithdrawalOrder(
         WithdrawalOrderParams memory orderParams
-    ) external nonReentrant whenNotPaused(OrderType.WithdrawalOrder) {
+    ) external payable nonReentrant whenNotPaused(OrderType.WithdrawalOrder) {
         (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
         if (_isDelegator(msg.sender)) {} else {
             require(positionAccount == msg.sender, "Not authorized");
         }
         LibOrderBook.placeWithdrawalOrder(_storage, orderParams, _blockTimestamp());
+    }
+
+    /**
+     * @notice A Trader can withdraw all collateral only when position = 0
+     */
+    function withdrawAllCollateral(
+        WithdrawAllOrderParams memory orderParams
+    ) external updateSequence nonReentrant whenNotPaused(OrderType.WithdrawalOrder) {
+        (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
+        if (_isDelegator(msg.sender)) {} else {
+            require(positionAccount == msg.sender, "Not authorized");
+        }
+        LibOrderBook.withdrawAllCollateral(_storage, orderParams);
+    }
+
+    /**
+     * @notice A Rebalancer can rebalance pool liquidity by swap token0 for pool.collateralToken
+     *
+     *         msg.sender must implement IMux3RebalancerCallback.
+     */
+    function placeRebalanceOrder(
+        RebalanceOrderParams memory orderParams
+    ) external onlyRole(REBALANCER_ROLE) nonReentrant whenNotPaused(OrderType.RebalanceOrder) {
+        address rebalancer = msg.sender;
+        LibOrderBook.placeRebalanceOrder(_storage, rebalancer, orderParams, _blockTimestamp());
     }
 
     /**
@@ -155,7 +214,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         updateSequence
         returns (uint256 tradingPrice)
     {
-        return LibOrderBook.fillPositionOrder(_storage, _configTable, orderId, _blockTimestamp());
+        return LibOrderBook.fillPositionOrder(_storage, orderId, _blockTimestamp());
     }
 
     /**
@@ -171,57 +230,59 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         updateSequence
         returns (uint256 outAmount)
     {
-        return LibOrderBook.fillLiquidityOrder(_storage, _configTable, orderId, _blockTimestamp());
+        return LibOrderBook.fillLiquidityOrder(_storage, orderId, _blockTimestamp());
     }
 
-    // function donateLiquidity(
-    //     uint8 assetId,
-    //     uint96 rawAmount // erc20.decimals
-    // ) external updateSequence {
-    //     _storage.donateLiquidity(msg.sender, assetId, rawAmount);
-    // }
     /**
-     * @dev Withdraw collateral/profit. called by Broker
+     * @dev Similar to fillLiquidityOrder with an add-liquidity order, but no share minted
+     */
+    function donateLiquidity(
+        address poolAddress,
+        address collateralAddress,
+        uint256 rawAmount // token.decimals
+    ) external updateSequence {
+        LibOrderBook.donateLiquidity(_storage, poolAddress, collateralAddress, rawAmount);
+    }
+
+    /**
+     * @dev Withdraw collateral. called by Broker
      */
     function fillWithdrawalOrder(
         uint64 orderId
     ) external onlyRole(BROKER_ROLE) nonReentrant whenNotPaused(OrderType.WithdrawalOrder) updateSequence {
-        LibOrderBook.fillWithdrawalOrder(_storage, _configTable, orderId, _blockTimestamp());
+        LibOrderBook.fillWithdrawalOrder(_storage, orderId, _blockTimestamp());
     }
 
     /**
-     * @notice Cancel an Order by orderId
+     * @dev Swap token0 for pool.collateralToken of a pool. called by Broker
+     */
+    function fillRebalanceOrder(
+        uint64 orderId
+    ) external onlyRole(BROKER_ROLE) nonReentrant whenNotPaused(OrderType.RebalanceOrder) updateSequence {
+        LibOrderBook.fillRebalanceOrder(_storage, orderId);
+    }
+
+    /**
+     * @notice A Trader/LP can cancel an Order by orderId after a cool down period.
+     *         A Broker can also cancel an Order after expiration.
      */
     function cancelOrder(uint64 orderId) external nonReentrant updateSequence {
-        LibOrderBook.cancelOrder(_storage, _configTable, orderId, _blockTimestamp(), msg.sender);
+        LibOrderBook.cancelOrder(_storage, orderId, _blockTimestamp(), msg.sender);
     }
 
     /**
-     * @notice Trader can withdraw all collateral only when position = 0
-     */
-    function withdrawAllCollateral(
-        WithdrawAllOrderParams memory orderParams
-    ) external updateSequence nonReentrant whenNotPaused(OrderType.WithdrawalOrder) {
-        (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
-        if (_isDelegator(msg.sender)) {} else {
-            require(positionAccount == msg.sender, "Not authorized");
-        }
-        LibOrderBook.withdrawAllCollateral(_storage, orderParams);
-    }
-
-    /**
-     * @notice Deposit collateral into a subAccount
+     * @notice A Trader can deposit collateral into a PositionAccount
      */
     function depositCollateral(
         bytes32 positionId,
         address collateralToken,
         uint256 collateralAmount // token decimals
     ) external updateSequence nonReentrant {
-        LibOrderBook.depositCollateral(_storage, _configTable, positionId, collateralToken, collateralAmount);
+        LibOrderBook.depositCollateral(_storage, positionId, collateralToken, collateralAmount);
     }
 
     /**
-     * @dev Open/close a position. called by Broker
+     * @dev Liquidate a position. called by Broker
      */
     function liquidate(
         bytes32 positionId,
@@ -239,29 +300,43 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         return LibOrderBook.liquidatePosition(_storage, positionId, marketId, lastConsumedToken, isWithdrawAll);
     }
 
-    // function fillAdlOrder(
-    //     AdlOrderParams memory orderParams,
-    //     uint96 tradingPrice,
-    //     uint96[] memory markPrices
-    // ) public onlyRole(BROKER_ROLE) nonReentrant updateSequence {
-    //     _storage.fillAdlOrder(orderParams, tradingPrice, markPrices);
-    // }
-
-    // /**
-    //  * @dev Broker can withdraw brokerGasRebate
-    //  */
-    // function claimBrokerGasRebate(
-    //     uint8 assetId
-    // ) external onlyRole(BROKER_ROLE) returns (uint256 rawAmount) nonReentrant updateSequence {
-    //     return
-    //         IDegenPool(_storage.pool).claimBrokerGasRebate(
-    //             msg.sender,
-    //             assetId
-    //         );
-    // }
+    /**
+     * @dev Deleverage a position. called by Broker
+     */
+    function fillAdlOrder(
+        bytes32 positionId,
+        bytes32 marketId,
+        address lastConsumedToken,
+        bool isWithdrawAll,
+        bool isUnwrapWeth
+    )
+        external
+        onlyRole(BROKER_ROLE)
+        nonReentrant
+        whenNotPaused(OrderType.AdlOrder)
+        updateSequence
+        returns (uint256 tradingPrice)
+    {
+        return
+            LibOrderBook.fillAdlOrder(_storage, positionId, marketId, lastConsumedToken, isWithdrawAll, isUnwrapWeth);
+    }
 
     /**
-     * @dev updates the borrowing fee for a position and market,
+     * @dev Reallocate a position from pool0 to pool1. called by Broker
+     */
+    function reallocate(
+        bytes32 positionId,
+        bytes32 marketId,
+        address fromPool,
+        address toPool,
+        uint256 size,
+        address lastConsumedToken
+    ) external onlyRole(BROKER_ROLE) nonReentrant whenNotPaused(OrderType.PositionOrder) updateSequence {
+        LibOrderBook.reallocate(_storage, positionId, marketId, fromPool, toPool, size, lastConsumedToken);
+    }
+
+    /**
+     * @dev Updates the borrowing fee for a position and market,
      *      allowing LPs to collect fees even if the position remains open.
      */
     function updateBorrowingFee(
@@ -272,19 +347,13 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         LibOrderBook.updateBorrowingFee(_storage, positionId, marketId, lastConsumedToken);
     }
 
-    function _blockTimestamp() internal view virtual returns (uint256) {
-        return block.timestamp;
+    function _blockTimestamp() internal view virtual returns (uint64) {
+        uint256 timestamp = block.timestamp;
+        return LibTypeCast.toUint64(timestamp);
     }
 
     function setConfig(bytes32 key, bytes32 value) external nonReentrant updateSequence {
         _checkRole(MAINTAINER_ROLE, msg.sender);
-        // TODO: add test rules for specified key
-        LibConfigMap.setBytes32(_configTable, key, value);
-    }
-
-    // TODO: remove me if oracleProvider is ready
-    // TODO: we MUST remove this function before launch
-    function setMockPrice(bytes32 key, uint256 price) external onlyRole(BROKER_ROLE) nonReentrant updateSequence {
-        IManagement(_storage.mux3Facet).setMockPrice(key, price);
+        LibConfigMap.setBytes32(_storage.configTable, key, value);
     }
 }

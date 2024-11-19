@@ -1,11 +1,7 @@
-import { ethers, network } from "hardhat"
-import { expect } from "chai"
-import { toWei, toUnit, fromUnit, fromWei, createContract, zeroAddress, encodePositionId } from "../scripts/deployUtils"
+import { ethers } from "hardhat"
+import { createContract } from "../scripts/deployUtils"
 
-const U = ethers.utils
-const B = ethers.BigNumber
-
-describe("TestCache", () => {
+describe("Cache", () => {
   let user0
 
   let cache

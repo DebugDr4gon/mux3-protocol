@@ -3,14 +3,11 @@ pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
-import "../../interfaces/ITrade.sol";
+import "../../interfaces/IFacetTrade.sol";
 import "../../libraries/LibTypeCast.sol";
+import "./TradeBase.sol";
 
-import "../Mux3FacetBase.sol";
-import "./PositionAccount.sol";
-import "./Market.sol";
-
-contract FacetPositionAccount is Mux3FacetBase, PositionAccount, Market, IPositionAccount {
+contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
     using LibTypeCast for address;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
@@ -56,8 +53,8 @@ contract FacetPositionAccount is Mux3FacetBase, PositionAccount, Market, IPositi
         uint256 rawAmount, // token.decimals
         address lastConsumedToken,
         bool isUnwrapWeth,
-        address withdrawSwapToken, // TODO
-        uint256 withdrawSwapSlippage // TODO
+        address withdrawSwapToken,
+        uint256 withdrawSwapSlippage
     ) external onlyRole(ORDER_BOOK_ROLE) {
         require(_isPositionAccountExist(positionId), PositionAccountNotExists(positionId));
         PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
@@ -65,20 +62,34 @@ contract FacetPositionAccount is Mux3FacetBase, PositionAccount, Market, IPositi
         uint256 allBorrowingFeeUsd = _updateBorrowingForAllMarkets(positionId, lastConsumedToken);
         // withdraw
         uint256 collateralAmount = _collateralToWad(collateralToken, rawAmount);
-        _withdrawFromAccount(positionId, collateralToken, collateralAmount, isUnwrapWeth);
+        (bool isSwapSuccess, uint256 rawSwapOut) = _withdrawFromAccount(
+            positionId,
+            collateralToken,
+            collateralAmount,
+            withdrawSwapToken,
+            withdrawSwapSlippage,
+            isUnwrapWeth
+        );
+        emit Withdraw(
+            positionAccount.owner,
+            positionId,
+            collateralToken,
+            collateralAmount,
+            isSwapSuccess ? withdrawSwapToken : collateralToken,
+            rawSwapOut
+        );
         // exceeds leverage set by setInitialLeverage
         require(_isLeverageSafe(positionId), UnsafePositionAccount(positionId, SAFE_LEVERAGE));
         // exceeds leverage set by MM_INITIAL_MARGIN_RATE
         require(_isInitialMarginSafe(positionId), UnsafePositionAccount(positionId, SAFE_INITITAL_MARGIN));
-        emit Withdraw(positionAccount.owner, positionId, collateralToken, rawAmount);
         _dumpForDepositWithdrawEvent(positionId, allBorrowingFeeUsd);
     }
 
     function withdrawAll(
         bytes32 positionId,
         bool isUnwrapWeth,
-        address withdrawSwapToken, // TODO
-        uint256 withdrawSwapSlippage // TODO
+        address withdrawSwapToken,
+        uint256 withdrawSwapSlippage
     ) external onlyRole(ORDER_BOOK_ROLE) {
         require(_isPositionAccountExist(positionId), PositionAccountNotExists(positionId));
         PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
@@ -87,15 +98,29 @@ contract FacetPositionAccount is Mux3FacetBase, PositionAccount, Market, IPositi
         address[] memory collaterals = positionAccount.activeCollaterals.values();
         for (uint256 i = 0; i < collaterals.length; i++) {
             address collateralToken = collaterals[i];
-            uint256 collateralAmount = positionAccount.collaterals[collaterals[i]];
-            _withdrawFromAccount(positionId, collateralToken, collateralAmount, isUnwrapWeth);
+            uint256 collateralAmount = positionAccount.collaterals[collateralToken];
+            if (collateralAmount == 0) {
+                // usually we do not protect collateralAmount == 0 and the contract should ensure empty collaterals are removed.
+                // but since this is usually the last step of trading, we allow withdrawing 0 for better fault tolerance
+                continue;
+            }
+            (bool isSwapSuccess, uint256 rawSwapOut) = _withdrawFromAccount(
+                positionId,
+                collateralToken,
+                collateralAmount,
+                withdrawSwapToken,
+                withdrawSwapSlippage,
+                isUnwrapWeth
+            );
             emit Withdraw(
                 positionAccount.owner,
                 positionId,
                 collateralToken,
-                _collateralToRaw(collateralToken, collateralAmount)
+                collateralAmount,
+                isSwapSuccess ? withdrawSwapToken : collateralToken,
+                rawSwapOut
             );
-        }
+        } // emit Withdraw here
         _dumpForDepositWithdrawEvent(
             positionId,
             0 // borrowingFeeUsd
@@ -106,9 +131,9 @@ contract FacetPositionAccount is Mux3FacetBase, PositionAccount, Market, IPositi
         bytes32 positionId,
         uint256 collateralUsd, // 1e18
         address lastConsumedToken,
-        bool isUnwrapWeth, // TODO
-        address withdrawSwapToken, // TODO
-        uint256 withdrawSwapSlippage // TODO
+        bool isUnwrapWeth,
+        address withdrawSwapToken,
+        uint256 withdrawSwapSlippage
     ) external onlyRole(ORDER_BOOK_ROLE) {
         require(_isPositionAccountExist(positionId), PositionAccountNotExists(positionId));
         PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
@@ -118,27 +143,33 @@ contract FacetPositionAccount is Mux3FacetBase, PositionAccount, Market, IPositi
         address[] memory collaterals = _activeCollateralsWithLastWithdraw(positionId, lastConsumedToken);
         uint256 remainUsd = collateralUsd;
         for (uint256 i = 0; i < collaterals.length; i++) {
-            address collateral = collaterals[i];
-            if (positionAccount.collaterals[collateral] == 0) {
-                continue;
-            }
-            uint256 tokenPrice = _priceOf(collateral);
-            uint256 balanceUsd = (positionAccount.collaterals[collateral] * tokenPrice) / 1e18;
+            address collateralToken = collaterals[i];
+            uint256 tokenPrice = _priceOf(collateralToken);
+            uint256 balanceUsd = (positionAccount.collaterals[collateralToken] * tokenPrice) / 1e18;
             uint256 payingUsd = MathUpgradeable.min(balanceUsd, remainUsd);
             uint256 payingCollateral = (payingUsd * 1e18) / tokenPrice;
-            _withdrawFromAccount(positionId, collateral, payingCollateral, isUnwrapWeth);
+            (bool isSwapSuccess, uint256 rawSwapOut) = _withdrawFromAccount(
+                positionId,
+                collateralToken,
+                payingCollateral,
+                withdrawSwapToken,
+                withdrawSwapSlippage,
+                isUnwrapWeth
+            );
             emit Withdraw(
                 positionAccount.owner,
                 positionId,
-                collateral,
-                _collateralToRaw(collateral, payingCollateral)
+                collateralToken,
+                payingCollateral,
+                isSwapSuccess ? withdrawSwapToken : collateralToken,
+                rawSwapOut
             );
             remainUsd -= payingUsd;
             if (remainUsd == 0) {
                 break;
             }
         }
-        require(remainUsd == 0, "Insufficient collaterals");
+        require(remainUsd == 0, InsufficientCollateralUsd(remainUsd));
         _dumpForDepositWithdrawEvent(positionId, allBorrowingFeeUsd);
         // exceeds leverage set by setInitialLeverage
         require(_isLeverageSafe(positionId), UnsafePositionAccount(positionId, SAFE_LEVERAGE));
@@ -147,7 +178,7 @@ contract FacetPositionAccount is Mux3FacetBase, PositionAccount, Market, IPositi
     }
 
     /**
-     * @dev updates the borrowing fee for a position and market,
+     * @dev Updates the borrowing fee for a position and market,
      *      allowing LPs to collect fees even if the position remains open.
      */
     function updateBorrowingFee(
@@ -161,7 +192,7 @@ contract FacetPositionAccount is Mux3FacetBase, PositionAccount, Market, IPositi
         PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         // update borrowing fee
         uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(marketId);
-        uint256 borrowingFeeUsd = _updateAndDispatchBorrowingFeeForAccount(
+        uint256 borrowingFeeUsd = _updateAndDispatchBorrowingFee(
             positionAccount.owner,
             positionId,
             marketId,
@@ -170,38 +201,6 @@ contract FacetPositionAccount is Mux3FacetBase, PositionAccount, Market, IPositi
             lastConsumedToken
         );
         emit UpdatePositionBorrowingFee(positionAccount.owner, positionId, marketId, borrowingFeeUsd);
-    }
-
-    // check FacetTrade.sol: _updateAndDispatchBorrowingFeeForTrade
-    // for which is identical
-    function _updateAndDispatchBorrowingFeeForAccount(
-        address trader,
-        bytes32 positionId,
-        bytes32 marketId,
-        uint256[] memory cumulatedBorrowingPerUsd,
-        bool shouldCollateralSufficient,
-        address lastConsumedToken
-    ) private returns (uint256 borrowingFeeUsd) {
-        uint256[] memory borrowingFeeUsds;
-        address[] memory borrowingFeeAddresses;
-        uint256[] memory borrowingFeeAmounts;
-        // note: if shouldCollateralSufficient = false, borrowingFeeUsd could <= sum(borrowingFeeUsds).
-        //       we only use borrowingFeeUsds as allocations
-        (borrowingFeeUsd, borrowingFeeUsds, borrowingFeeAddresses, borrowingFeeAmounts) = _updateAccountBorrowingFee(
-            positionId,
-            marketId,
-            cumulatedBorrowingPerUsd,
-            shouldCollateralSufficient,
-            lastConsumedToken
-        );
-        _dispatchFee(
-            trader,
-            positionId,
-            marketId,
-            borrowingFeeAddresses,
-            borrowingFeeAmounts,
-            borrowingFeeUsds // allocations
-        );
     }
 
     function _updateBorrowingForAllMarkets(
@@ -213,7 +212,7 @@ contract FacetPositionAccount is Mux3FacetBase, PositionAccount, Market, IPositi
         for (uint256 i = 0; i < marketLength; i++) {
             bytes32 marketId = positionAccount.activeMarkets.at(i);
             uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(marketId);
-            uint256 borrowingFeeUsd = _updateAndDispatchBorrowingFeeForAccount(
+            uint256 borrowingFeeUsd = _updateAndDispatchBorrowingFee(
                 positionAccount.owner,
                 positionId,
                 marketId,

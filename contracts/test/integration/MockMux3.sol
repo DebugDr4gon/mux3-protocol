@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import "../../interfaces/ITrade.sol";
+import "../../interfaces/IFacetTrade.sol";
 import "../../core/Mux3FacetBase.sol";
 import "../../core/management/FacetManagement.sol";
 import "../../core/reader/FacetReader.sol";
 
 // TestMux3 without FacetTrade, FacetPositionAccount
-contract MockMux3 is FacetManagement, FacetReader, ITrade {
+contract MockMux3 is FacetManagement, FacetReader, IFacetOpen, IFacetClose, IFacetPositionAccount {
     mapping(bytes32 => uint256) private _mockCache;
 
     // for withdraw
@@ -20,11 +20,28 @@ contract MockMux3 is FacetManagement, FacetReader, ITrade {
     function withdraw(
         bytes32 positionId,
         address collateralToken,
-        uint256 amount,
-        address lastConsumedToken
+        uint256 rawAmount, // token.decimals
+        address lastConsumedToken,
+        bool isUnwrapWeth,
+        address withdrawSwapToken,
+        uint256 withdrawSwapSlippage
     ) external {}
 
-    function withdrawAll(bytes32 positionId) external {}
+    function withdrawAll(
+        bytes32 positionId,
+        bool isUnwrapWeth,
+        address withdrawSwapToken,
+        uint256 withdrawSwapSlippage
+    ) external {}
+
+    function withdrawUsd(
+        bytes32 positionId,
+        uint256 collateralUsd, // 1e18
+        address lastConsumedToken,
+        bool isUnwrapWeth,
+        address withdrawSwapToken,
+        uint256 withdrawSwapSlippage
+    ) external {}
 
     function updateBorrowingFee(bytes32 positionId, bytes32 marketId, address lastConsumedToken) external {}
 
@@ -54,11 +71,15 @@ contract MockMux3 is FacetManagement, FacetReader, ITrade {
         returns (uint256 tradingPrice, int256[] memory poolPnlUsds, uint256 borrowingFeeUsd, uint256 positionFeeUsd)
     {}
 
+    function reallocatePosition(
+        ReallocatePositionArgs memory args
+    ) external returns (ReallocatePositionResult memory result) {}
+
     function _priceOf(bytes32 id) internal view virtual override returns (uint256) {
         return _mockCache[id];
     }
 
-    function setMockPrice(bytes32 key, uint256 price) external override {
+    function setMockPrice(bytes32 key, uint256 price) external {
         _mockCache[key] = price;
     }
 

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetMinterPauser.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import "./MockUniswapPath.sol";
+import "../../libraries/LibUniswapPath.sol";
 
 contract MockUniswapV3 {
     address usdc;
@@ -52,7 +52,7 @@ contract MockUniswapV3 {
             amountOut = (amountIn * 50000) / 1e10;
         } else if (tokenIn == usdc && tokenOut == wbtc) {
             // assume 1/50000
-            amountOut = (amountIn * 1e10) / 50000;
+            amountOut = (amountIn * 1e2) / 50000;
         } else if (tokenIn == arb && tokenOut == usdc) {
             // assume 1
             amountOut = (amountIn * 1) / 1e12;

@@ -3,12 +3,12 @@ pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 
+import "../../interfaces/IFacetManagement.sol";
 import "../Mux3FacetBase.sol";
 import "./PoolManager.sol";
 import "./MarketManager.sol";
 import "./CollateralManager.sol";
 import "./PricingManager.sol";
-import "./Pricing.sol";
 
 contract FacetManagement is
     Mux3FacetBase,
@@ -17,8 +17,7 @@ contract FacetManagement is
     MarketManager,
     CollateralManager,
     PricingManager,
-    Pricing,
-    IManagement,
+    IFacetManagement,
     IBeacon
 {
     using LibConfigMap for mapping(bytes32 => bytes32);
@@ -43,8 +42,13 @@ contract FacetManagement is
         emit AddCollateralToken(token, decimals);
     }
 
+    function setStrictStableId(bytes32 priceId, bool strictStable) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setStrictStableId(priceId, strictStable);
+        emit SetStrictStableId(priceId, strictStable);
+    }
+
     function setCollateralTokenStatus(address token, bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setCollateralTokenEnabled(token, enabled);
+        _setCollateralTokenEnable(token, enabled);
         emit SetCollateralTokenEnabled(token, enabled);
     }
 
@@ -56,10 +60,11 @@ contract FacetManagement is
     function createCollateralPool(
         string memory name,
         string memory symbol,
-        address collateralToken
+        address collateralToken,
+        uint256 oldPoolCount // expected pools count before creating. this is to prevent from submitting tx twice
     ) external onlyRole(DEFAULT_ADMIN_ROLE) returns (address) {
         require(_isCollateralExists(collateralToken), CollateralNotExists(collateralToken));
-        address pool = _createCollateralPool(name, symbol, collateralToken);
+        address pool = _createCollateralPool(name, symbol, collateralToken, oldPoolCount);
         emit CreateCollateralPool(name, symbol, collateralToken, _collateralTokens[collateralToken].decimals, pool);
         return pool;
     }
@@ -97,12 +102,6 @@ contract FacetManagement is
     function setPoolConfig(address pool, bytes32 key, bytes32 value) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setPoolConfigs(pool, key, value);
         emit SetCollateralPoolConfig(pool, key, value);
-    }
-
-    // TODO: remove me if oracleProvider is ready
-    // TODO: we MUST remove this function before launch
-    function setMockPrice(bytes32 key, uint256 price) external virtual onlyRole(ORDER_BOOK_ROLE) {
-        _setCachedPrice(key, price);
     }
 
     function setPrice(

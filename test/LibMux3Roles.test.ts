@@ -1,10 +1,8 @@
-import { ethers, network } from "hardhat"
+import { ethers } from "hardhat"
 import { expect } from "chai"
-import { toWei, toUnit, fromUnit, fromWei, createContract } from "../scripts/deployUtils"
+import { createContract } from "../scripts/deployUtils"
 import { TestMux3Roles } from "../typechain"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-const U = ethers.utils
-const B = ethers.BigNumber
 
 describe("LibMux3Roles", () => {
   let mock: TestMux3Roles

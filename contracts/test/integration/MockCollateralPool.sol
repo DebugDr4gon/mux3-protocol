@@ -57,10 +57,7 @@ contract MockCollateralPool is
         }
     }
 
-    function borrowingFeeRateApy(bytes32 marketId) public pure returns (uint256 feeRateApy) {
-        marketId;
-        return 0;
-    }
+    function borrowingFeeRateApy(bytes32 marketId) public pure returns (uint256 feeRateApy) {}
 
     function setMarket(bytes32 marketId, bool isLong) external {
         require(!_marketIds.contains(marketId), MarketAlreadyExists(marketId));
@@ -82,14 +79,9 @@ contract MockCollateralPool is
 
     function closePosition(bytes32 marketId, uint256 size, uint256 entryPrice) external override {}
 
-    function realizeProfit(uint256 pnlUsd) external returns (address token, uint256 wad) {
-        pnlUsd;
-    }
+    function realizeProfit(uint256 pnlUsd) external returns (address token, uint256 wad) {}
 
-    function realizeLoss(address token, uint256 rawAmount) external {
-        token;
-        rawAmount;
-    }
+    function realizeLoss(address token, uint256 rawAmount) external {}
 
     function addLiquidity(address account, uint256 collateralAmount) external override returns (uint256 shares) {}
 
@@ -99,30 +91,28 @@ contract MockCollateralPool is
         bool isUnwrapWeth
     ) external override returns (uint256 collateralAmount) {}
 
+    function rebalance(
+        address rebalancer,
+        address token0,
+        uint256 rawAmount0,
+        uint256 maxRawAmount1,
+        bytes memory userData
+    ) external returns (uint256 rawAmount1) {}
+
     function mint(address account, uint256 amount) external {
         _mint(account, amount);
     }
 
-    function updateMarketBorrowing(bytes32 marketId) external returns (uint256 newCumulatedBorrowingPerUsd) {
-        marketId;
-        return 0;
-    }
+    function updateMarketBorrowing(bytes32 marketId) external returns (uint256 newCumulatedBorrowingPerUsd) {}
 
-    function makeBorrowingContext(bytes32 marketId) external view returns (IBorrowingRate.AllocatePool memory) {
-        marketId;
-        return IBorrowingRate.AllocatePool(0, 0, 0, false, 0, 0, 0);
-    }
+    function makeBorrowingContext(bytes32 marketId) external view returns (IBorrowingRate.AllocatePool memory) {}
 
     function positionPnl(
         bytes32 marketId,
         uint256 size,
         uint256 entryPrice,
         uint256 marketPrice
-    ) external view returns (int256 cappedPnlUsd) {
-        marketId;
-        size;
-        entryPrice;
-        marketPrice;
-        return 0;
-    }
+    ) external view returns (int256 pnlUsd, int256 cappedPnlUsd) {}
+
+    function liquidityBalances() external view returns (address[] memory tokens, uint256[] memory balances) {}
 }

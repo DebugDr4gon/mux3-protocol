@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import "../../core/trade/FacetTrade.sol";
+import "../../core/trade/FacetOpen.sol";
+import "../../core/trade/FacetClose.sol";
 import "../../core/trade/FacetPositionAccount.sol";
 import "../../core/management/FacetManagement.sol";
 import "../../core/reader/FacetReader.sol";
 
 // Mux3 with a price setter
-contract TestMux3 is Mux3FacetBase, FacetTrade, FacetPositionAccount, FacetManagement, FacetReader {
+contract TestMux3 is Mux3FacetBase, FacetOpen, FacetClose, FacetPositionAccount, FacetManagement, FacetReader {
     mapping(bytes32 => uint256) private _mockCache;
 
     // for withdraw
@@ -17,7 +18,7 @@ contract TestMux3 is Mux3FacetBase, FacetTrade, FacetPositionAccount, FacetManag
         return _mockCache[id];
     }
 
-    function setMockPrice(bytes32 key, uint256 price) external override {
+    function setMockPrice(bytes32 key, uint256 price) external {
         _mockCache[key] = price;
     }
 

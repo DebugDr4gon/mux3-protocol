@@ -12,6 +12,7 @@ contract CollateralPoolStore is CollateralPoolToken {
     address internal immutable _core;
     address internal immutable _orderBook;
     address internal immutable _weth;
+    address internal immutable _eventEmitter;
 
     mapping(bytes32 => bytes32) internal _configTable;
     address internal _unused1; // was _core

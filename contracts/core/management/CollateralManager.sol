@@ -23,9 +23,13 @@ contract CollateralManager is Mux3FacetBase {
         _collateralTokenList.push(token);
     }
 
-    function _setCollateralTokenEnabled(address token, bool enabled) internal {
+    function _setCollateralTokenEnable(address token, bool enabled) internal {
         require(_isCollateralExists(token), CollateralNotExists(token));
         _collateralTokens[token].enabled = enabled ? Enabled.Enabled : Enabled.Disabled;
+    }
+
+    function _setStrictStableId(bytes32 priceId, bool strictStable) internal {
+        _strictStableIds[priceId] = strictStable;
     }
 
     function _retrieveDecimals(address token, uint8 defaultDecimals) internal view returns (uint8) {

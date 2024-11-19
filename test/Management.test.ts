@@ -1,18 +1,9 @@
 import { ethers } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
 import { expect } from "chai"
-import {
-  toWei,
-  createContract,
-  OrderType,
-  PositionOrderFlags,
-  toBytes32,
-  encodePositionId,
-  toUnit,
-  zeroAddress,
-} from "../scripts/deployUtils"
+import { createContract } from "../scripts/deployUtils"
 
-describe("TestFacetManagement", () => {
+describe("Management", () => {
   let tester: any
   let user0: any
 
@@ -47,5 +38,9 @@ describe("TestFacetManagement", () => {
 
     await tester.addCollateralToken(await tester.d6(), 6)
     await expect(tester.addCollateralToken(await tester.d6(), 6)).to.be.revertedWith("CollateralAlreadyExists")
+  })
+
+  it("test_PricingManager_setPrice", async () => {
+    await tester.test_PricingManager_setPrice()
   })
 })

@@ -9,5 +9,5 @@ interface ISwapper {
         uint256 minAmountOut,
         address receiver,
         bool isUnwrapWeth
-    ) external;
+    ) external returns (bool success, uint256 amountOut);
 }

@@ -1,6 +1,6 @@
-import { ethers, network } from "hardhat"
+import { ethers } from "hardhat"
 import { expect } from "chai"
-import { toWei, toUnit, fromUnit, fromWei, createContract } from "../scripts/deployUtils"
+import { toWei, createContract } from "../scripts/deployUtils"
 import { TestLibLogExp } from "../typechain"
 const U = ethers.utils
 const B = ethers.BigNumber

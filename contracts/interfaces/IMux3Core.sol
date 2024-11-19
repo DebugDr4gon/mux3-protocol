@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import "../interfaces/ITrade.sol";
-import "../interfaces/IPositionAccount.sol";
-import "../interfaces/IManagement.sol";
+import "../interfaces/IFacetTrade.sol";
+import "../interfaces/IFacetManagement.sol";
 import "../interfaces/IFacetReader.sol";
 
 enum Enabled {

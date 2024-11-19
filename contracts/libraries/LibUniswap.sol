@@ -16,11 +16,12 @@ library LibUniswap {
         IQuoter quoter,
         bytes[] memory paths,
         uint256 amountIn
-    ) public returns (uint256 bestPathIndex, uint256 bestOutAmount) {
+    ) internal returns (bool success, uint256 bestPathIndex, uint256 bestOutAmount) {
         require(address(quoter) != address(0), "Swapper::UNISWAP_QUOTER_NOT_SET");
         for (uint256 i = 0; i < paths.length; i++) {
             try quoter.quoteExactInput(paths[i], amountIn) returns (uint256 outAmount) {
                 if (outAmount > bestOutAmount) {
+                    success = true;
                     bestPathIndex = i;
                     bestOutAmount = outAmount;
                 }
@@ -40,35 +41,6 @@ library LibUniswap {
     ) internal returns (uint256 amountOut, bool success) {
         // executes the swap on uniswap pool
         IERC20Upgradeable(tokenIn).approve(address(swapRouter), amountIn);
-        // exact input swap to convert exact amount of tokens into usdc
-        ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams({
-            path: path,
-            recipient: address(this),
-            deadline: block.timestamp,
-            amountIn: amountIn,
-            amountOutMinimum: minAmountOut
-        });
-        // since exact input swap tokens used = token amount passed
-        try swapRouter.exactInput(params) returns (uint256 _amountOut) {
-            amountOut = _amountOut;
-            success = true;
-        } catch {
-            success = false;
-        }
-        emit UniswapCall(tokenIn, tokenOut, amountIn, amountOut);
-    }
-
-    function swapByDefaultPath(
-        ISwapRouter swapRouter,
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn,
-        uint256 minAmountOut
-    ) internal returns (uint256 amountOut, bool success) {
-        // path of the token swap
-        bytes memory path = encodePath(tokenIn, tokenOut, 500);
-        // executes the swap on uniswap pool
-        IERC20Upgradeable(tokenIn).safeTransfer(address(swapRouter), amountIn);
         // exact input swap to convert exact amount of tokens into usdc
         ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams({
             path: path,

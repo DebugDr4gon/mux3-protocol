@@ -6,6 +6,13 @@ library IBorrowingRate {
         int256 baseApy;
     }
 
+    /**
+     * @dev Borrowing config
+     *
+     *      k != 0
+     *      reserveRate > 0
+     *      0e18 < k + b < 10e18
+     */
     struct AllocatePool {
         uint256 poolId; // the allocator does not care what is a poolId, you can use any index or address here
         int256 k;

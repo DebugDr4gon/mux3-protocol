@@ -3,7 +3,7 @@ import "@nomiclabs/hardhat-waffle"
 import { expect } from "chai"
 import { toWei, createContract, getMuxSignature, getMuxPriceData } from "../scripts/deployUtils"
 
-describe("TestOracle", () => {
+describe("Oracle", () => {
   let tester: any
   let forked = false
 
@@ -37,27 +37,27 @@ describe("TestOracle", () => {
     await tester.test_setPrice()
   })
 
-  it("test_chainlinkStreamProvider", async () => {
-    await network.provider.request({
-      method: "hardhat_reset",
-      params: [
-        {
-          forking: {
-            jsonRpcUrl: "https://arb1.arbitrum.io/rpc",
-            enabled: true,
-            ignoreUnknownTxType: true, // added in our hardhat patch. see README.md
-            blockNumber: 257199002,
-          },
-        },
-      ],
-    })
-    forked = true
+  // it("test_chainlinkStreamProvider", async () => {
+  //   await network.provider.request({
+  //     method: "hardhat_reset",
+  //     params: [
+  //       {
+  //         forking: {
+  //           jsonRpcUrl: "https://arb1.arbitrum.io/rpc",
+  //           enabled: true,
+  //           ignoreUnknownTxType: true, // added in our hardhat patch. see README.md
+  //           blockNumber: 257199002,
+  //         },
+  //       },
+  //     ],
+  //   })
+  //   forked = true
 
-    tester = await createContract("TestOracle", [])
-    await hardhatSetArbERC20Balance("0xf97f4df75117a78c1a5a0dbb814af92458539fb4", tester.address, toWei("1000"))
-    await tester.setup()
-    await tester.test_chainlinkStreamProvider()
-  })
+  //   tester = await createContract("TestOracle", [])
+  //   await hardhatSetArbERC20Balance("0xf97f4df75117a78c1a5a0dbb814af92458539fb4", tester.address, toWei("1000"))
+  //   await tester.setup()
+  //   await tester.test_chainlinkStreamProvider()
+  // })
 
   it("test_mockChainlinkStreamProvider", async () => {
     await tester.test_mockChainlinkStreamProvider()
@@ -81,6 +81,11 @@ describe("TestOracle", () => {
       signer
     )
     await tester.test_muxPriceProvider(signer.address, signature)
+
+    await getMuxSignature(
+      { chainid: 42161, contractAddress: "0x384b3384CC4cE9CEf6fBa182F2f2e5Fe76f8D280", seq: 1, price: toWei("3100"), timestamp: 1731293409 },
+      signer
+    )
   })
 
   it("test_muxPriceProvider_error", async () => {

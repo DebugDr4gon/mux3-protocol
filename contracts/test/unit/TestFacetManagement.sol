@@ -5,11 +5,14 @@ import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeab
 
 import "../../core/management/FacetManagement.sol";
 import "../MockERC20.sol";
+import "../SimplePriceProvider.sol";
 
 import "../TestSuit.sol";
 
 contract TestFacetManagement is FacetManagement, TestSuit {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
+    using LibConfigMap for mapping(bytes32 => bytes32);
+    using LibTypeCast for address;
 
     ERC20 public d6;
     ERC20 public d18;
@@ -46,11 +49,11 @@ contract TestFacetManagement is FacetManagement, TestSuit {
         assertEq(_isCollateralExists(address(d18)), true, "E11");
         assertEq(_isCollateralEnabled(address(d18)), true, "E12");
 
-        _setCollateralTokenEnabled(address(d6), false);
+        _setCollateralTokenEnable(address(d6), false);
         assertEq(_isCollateralExists(address(d6)), true, "E13");
         assertEq(_isCollateralEnabled(address(d6)), false, "E14");
 
-        _setCollateralTokenEnabled(address(d6), true);
+        _setCollateralTokenEnable(address(d6), true);
         assertEq(_isCollateralExists(address(d6)), true, "E15");
         assertEq(_isCollateralEnabled(address(d6)), true, "E16");
     }
@@ -119,9 +122,9 @@ contract TestFacetManagement is FacetManagement, TestSuit {
         _createMarket(marketId1, "M1", false);
 
         assertEq(_marketPositionFeeRate(marketId0), 0, "E01");
-        assertEq(_marketInitialMarginRate(marketId0), 0, "E02");
+        // assertEq(_marketInitialMarginRate(marketId0), 0, "E02"); // not allowed
         assertEq(_marketMaintenanceMarginRate(marketId0), 0, "E03");
-        assertEq(_marketLotSize(marketId0), 0, "E04");
+        // assertEq(_marketLotSize(marketId0), 0, "E04"); // not allowed
 
         _setMarketConfig(marketId0, MM_POSITION_FEE_RATE, bytes32(uint256(5e15)));
         _setMarketConfig(marketId0, MM_INITIAL_MARGIN_RATE, bytes32(uint256(6e16)));
@@ -132,6 +135,36 @@ contract TestFacetManagement is FacetManagement, TestSuit {
         assertEq(_marketInitialMarginRate(marketId0), 6e16, "E06");
         assertEq(_marketMaintenanceMarginRate(marketId0), 7e17, "E07");
         assertEq(_marketLotSize(marketId0), 8e18, "E08");
+    }
+
+    function test_PricingManager_setPrice() external {
+        // set price provider
+        SimplePriceProvider spp = new SimplePriceProvider();
+        _setOracleProvider(address(spp), true);
+        // 0.003
+        _configs.setBytes32(MC_STRICT_STABLE_DEVIATION, bytes32(uint256(3e15))); // 0.003000000000000000
+
+        // non-strict-stable token
+        _addCollateralToken(address(d6), 6);
+        bytes32 priceId = address(d6).toBytes32();
+
+        _setStrictStableId(priceId, false);
+        _setPrice(priceId, address(spp), abi.encode(uint256(1004e15)));
+        assertEq(_priceOf(priceId), 1004e15, "E01");
+        _setPrice(priceId, address(spp), abi.encode(uint256(996e15)));
+        assertEq(_priceOf(priceId), 996e15, "E02");
+
+        // strict-stable token
+        _setStrictStableId(priceId, true);
+        _setPrice(priceId, address(spp), abi.encode(uint256(1004e15)));
+        assertEq(_priceOf(priceId), 1004e15, "E01");
+        _setPrice(priceId, address(spp), abi.encode(uint256(996e15)));
+        assertEq(_priceOf(priceId), 996e15, "E02");
+
+        _setPrice(priceId, address(spp), abi.encode(uint256(1003e15)));
+        assertEq(_priceOf(priceId), 1e18, "E03");
+        _setPrice(priceId, address(spp), abi.encode(uint256(997e15)));
+        assertEq(_priceOf(priceId), 1e18, "E04");
     }
 }
 

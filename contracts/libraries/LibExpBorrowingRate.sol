@@ -11,21 +11,8 @@ library LibExpBorrowingRate {
     using LibTypeCast for uint256;
     using LibTypeCast for int256;
 
-    function validatePoolConfig(
-        IBorrowingRate.Global memory global,
-        IBorrowingRate.AllocatePool memory pool
-    ) internal pure {
-        require(pool.k != 0, "ExpBorrow: k = 0");
-        require(pool.reserveRate > 0, "ExpBorrow: reserveRate = 0");
-        int256 fr = pool.k + pool.b;
-        fr = LibLogExp.exp(fr);
-        fr = global.baseApy + fr;
-        require(fr >= 0, "ExpBorrow: negative fr");
-        require(fr < 10e18, "ExpBorrow: fr too large"); // apy 1000%
-    }
-
     /**
-     * @dev get pool borrowing rate
+     * @dev Get pool borrowing rate
      *
      *      fr = globalBase + E^(k * util + b)
      *      util = reservedUsd / poolSizeUsd
@@ -45,7 +32,7 @@ library LibExpBorrowingRate {
     }
 
     /**
-     * @dev round an allocation result to lotSize, so that the sum of allocations = target
+     * @dev Round an allocation result to lotSize, so that the sum of allocations = target
      *
      *      note: the returned allocations may slightly exceed pool capacity (because of rounding),
      *            we consider this is acceptable.
@@ -154,7 +141,7 @@ library LibExpBorrowingRate {
     }
 
     /**
-     * @dev sort pools[0:n] by b
+     * @dev Sort pools[0:n] by b
      *
      *      we assume len(pools) < 10, a quicksort is even worse than insertion sort
      */
@@ -170,7 +157,7 @@ library LibExpBorrowingRate {
         }
     }
 
-    // note: all "x" are usd in allocation series functions
+    // note: All "x" are usd in allocation series functions
     struct AllocateMem {
         // input
         int256 poolCount;
@@ -204,7 +191,7 @@ library LibExpBorrowingRate {
     }
 
     /**
-     * @dev one round of allocation
+     * @dev One round of allocation
      *
      *      in each round, try 1 pool, 2 pools, 3 pools, ... until xi[i] < 0,
      *      save the xi of min cost into mem.bestXi
@@ -250,7 +237,7 @@ library LibExpBorrowingRate {
     }
 
     /**
-     * @dev this is the entry point for allocate xTotalUsd into all pools,
+     * @dev This is the entry point for allocate xTotalUsd into all pools,
      *      considering priority, borrowing rate equalization, and liquidity
      *      capacity.
      *
@@ -309,7 +296,7 @@ library LibExpBorrowingRate {
     }
 
     /**
-     * @dev allocate mem.xTotal into non-priority pools.
+     * @dev Allocate mem.xTotal into non-priority pools.
      *
      *      note: all "x" are usd in allocation series functions
      */
@@ -372,7 +359,7 @@ library LibExpBorrowingRate {
     }
 
     /**
-     * @dev this is the entry point for deallocate xTotal from all pools,
+     * @dev This is the entry point for deallocate xTotal from all pools,
      *      considering priority, borrowing rate equalization, and liquidity
      *      capacity.
      *

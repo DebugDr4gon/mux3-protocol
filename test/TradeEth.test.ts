@@ -4,16 +4,24 @@ import { expect } from "chai"
 import {
   toWei,
   createContract,
-  OrderType,
-  PositionOrderFlags,
   toBytes32,
   encodePositionId,
   toUnit,
   zeroAddress,
   encodePoolMarketKey,
+  PositionOrderFlags,
 } from "../scripts/deployUtils"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { CollateralPool, OrderBook, TestMux3, MockERC20, WETH9, MockFeeDistributor } from "../typechain"
+import {
+  CollateralPool,
+  OrderBook,
+  TestMux3,
+  MockERC20,
+  WETH9,
+  MockMux3FeeDistributor,
+  MockUniswapV3,
+  Swapper,
+} from "../typechain"
 import { time } from "@nomicfoundation/hardhat-network-helpers"
 
 const a2b = (a) => {
@@ -40,7 +48,8 @@ describe("Trade, eth collateral", () => {
   let imp: CollateralPool
   let pool1: CollateralPool
   let orderBook: OrderBook
-  let feeDistributor: MockFeeDistributor
+  let feeDistributor: MockMux3FeeDistributor
+  let uniswap: MockUniswapV3
 
   let timestampOfTest: number
 
@@ -86,11 +95,18 @@ describe("Trade, eth collateral", () => {
     await orderBook.setConfig(ethers.utils.id("MCO_CANCEL_COOL_DOWN"), u2b(ethers.BigNumber.from(5)))
 
     // collateral pool
-    imp = (await createContract("CollateralPool", [core.address, orderBook.address, weth.address])) as CollateralPool
+    const emitter = await createContract("CollateralPoolEventEmitter")
+    await emitter.initialize(core.address)
+    imp = (await createContract("CollateralPool", [
+      core.address,
+      orderBook.address,
+      weth.address,
+      emitter.address,
+    ])) as CollateralPool
     await core.setCollateralPoolImplementation(imp.address)
 
     // pool 1
-    await core.createCollateralPool("TN0", "TS0", weth.address)
+    await core.createCollateralPool("TN0", "TS0", weth.address, 0)
     const poolAddr = (await core.listCollateralPool())[0]
     pool1 = (await ethers.getContractAt("CollateralPool", poolAddr)) as CollateralPool
     await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("10")))
@@ -117,7 +133,7 @@ describe("Trade, eth collateral", () => {
     await core.setMarketConfig(long1, ethers.utils.id("MM_ORACLE_ID"), a2b(weth.address))
 
     // feeDistributor
-    feeDistributor = (await createContract("MockFeeDistributor", [core.address])) as MockFeeDistributor
+    feeDistributor = (await createContract("MockMux3FeeDistributor", [core.address])) as MockMux3FeeDistributor
     await core.setConfig(ethers.utils.id("MC_FEE_DISTRIBUTOR"), a2b(feeDistributor.address))
 
     // role
@@ -127,12 +143,23 @@ describe("Trade, eth collateral", () => {
     // price
     await core.setMockPrice(a2b(usdc.address), toWei("1"))
     await core.setMockPrice(a2b(weth.address), toWei("3000"))
+
+    // swapper
+    uniswap = (await createContract("MockUniswapV3", [
+      usdc.address,
+      weth.address,
+      zeroAddress,
+      zeroAddress,
+    ])) as MockUniswapV3
+    const swapper = (await createContract("Swapper", [])) as Swapper
+    await swapper.initialize(weth.address, uniswap.address, uniswap.address)
+    await core.setConfig(ethers.utils.id("MC_SWAPPER"), a2b(swapper.address))
   })
 
   describe("add liquidity", () => {
     beforeEach(async () => {
       await time.increaseTo(timestampOfTest + 86400 * 2)
-      await orderBook.wrapNative({ value: toWei("100") })
+      await orderBook.wrapNative(toWei("100"), { value: toWei("100") })
       {
         const args = {
           poolAddress: pool1.address,
@@ -143,7 +170,7 @@ describe("Trade, eth collateral", () => {
         await orderBook.connect(lp1).placeLiquidityOrder(args)
       }
       {
-        await time.increaseTo(timestampOfTest + 86400 * 2 + 905)
+        await time.increaseTo(timestampOfTest + 86400 * 2 + 930)
         await orderBook.connect(broker).fillLiquidityOrder(0)
         expect(await weth.balanceOf(feeDistributor.address)).to.equal(toWei("0.01")) // fee = 100 * 0.01%
         expect(await weth.balanceOf(pool1.address)).to.equal(toWei("99.99"))
@@ -165,7 +192,7 @@ describe("Trade, eth collateral", () => {
       }
       {
         const balance1 = await ethers.provider.getBalance(lp1.address)
-        await time.increaseTo(timestampOfTest + 86400 * 2 + 905 + 905)
+        await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 930)
         await orderBook.connect(broker).fillLiquidityOrder(1)
         const balance2 = await ethers.provider.getBalance(lp1.address)
         expect(balance2.sub(balance1).toString()).to.equal(toWei("0.9999")) // return 3000 * (1 - 0.0001) / 3000
@@ -177,7 +204,7 @@ describe("Trade, eth collateral", () => {
 
       beforeEach(async () => {
         positionId = encodePositionId(trader1.address, 0)
-        await orderBook.wrapNative({ value: toWei("1") })
+        await orderBook.wrapNative(toWei("1"), { value: toWei("1") })
         await orderBook.connect(trader1).depositCollateral(positionId, weth.address, toWei("1"))
         {
           const collaterals = await core.listAccountCollaterals(positionId)
@@ -218,5 +245,52 @@ describe("Trade, eth collateral", () => {
         expect(balance2.sub(balance1).toString()).to.equal(toWei("1"))
       })
     })
+
+    it("open but cancel", async () => {
+      const positionId = encodePositionId(trader1.address, 0)
+      await orderBook.connect(trader1).setInitialLeverage(positionId, long1, toWei("100"))
+      await orderBook.connect(trader1).wrapNative(toWei("1"), { value: toWei("1") })
+      {
+        const args = {
+          positionId,
+          marketId: long1,
+          size: toWei("1"),
+          flags: PositionOrderFlags.OpenPosition + PositionOrderFlags.UnwrapEth + PositionOrderFlags.MarketOrder,
+          limitPrice: toWei("50000"),
+          expiration: timestampOfTest + 86400 * 2 + 930 + 300,
+          lastConsumedToken: zeroAddress,
+          collateralToken: weth.address,
+          collateralAmount: toWei("1"),
+          withdrawUsd: toWei("0"),
+          withdrawSwapToken: zeroAddress,
+          withdrawSwapSlippage: toWei("0"),
+          tpPriceDiff: toWei("0"),
+          slPriceDiff: toWei("0"),
+          tpslExpiration: timestampOfTest + 86400 * 2 + 930 + 300,
+          tpslFlags: 0,
+          tpslWithdrawSwapToken: zeroAddress,
+          tpslWithdrawSwapSlippage: toWei("0"),
+        }
+        await orderBook.connect(trader1).placePositionOrder(args, refCode)
+      }
+      {
+        await expect(orderBook.connect(trader1).cancelOrder(1)).to.be.revertedWith("Cool down")
+        await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 150)
+        const balance1 = await ethers.provider.getBalance(trader1.address)
+        await orderBook.connect(broker).cancelOrder(1)
+        const balance2 = await ethers.provider.getBalance(trader1.address)
+        expect(balance2.sub(balance1).toString()).to.equal(toWei("1"))
+      }
+    })
+  })
+
+  it("multicall - depositGas", async () => {
+    await orderBook.multicall(
+      [
+        orderBook.interface.encodeFunctionData("wrapNative", [toWei("0.01")]),
+        orderBook.interface.encodeFunctionData("depositGas", [toWei("0.01")]),
+      ],
+      { value: toWei("0.01") }
+    )
   })
 })

@@ -12,55 +12,6 @@ struct MarketState {
 }
 
 interface ICollateralPool {
-    // add liquidity, mint shares
-    event AddLiquidity(
-        address indexed account,
-        address indexed tokenAddress,
-        uint256 tokenPrice, // 1e18
-        uint256 feeCollateral, // 1e18
-        uint256 lpPrice,
-        uint256 shares
-    );
-    // burn shares, remove liquidity
-    event RemoveLiquidity(
-        address indexed account,
-        address indexed collateralAddress,
-        uint256 tokenPrice, // 1e18
-        uint256 feeCollateral, // 1e18
-        uint256 lpPrice,
-        uint256 shares
-    );
-    // add liquidity without mint shares. called by fees, loss, swap
-    event LiquidityBalanceIn(
-        address tokenAddress,
-        uint256 tokenPrice,
-        uint256 collateralAmount // 1e18
-    );
-    // remove liquidity without burn shares. called by swap
-    event LiquidityBalanceOut(
-        address tokenAddress,
-        uint256 tokenPrice,
-        uint256 collateralAmount // 1e18
-    );
-    event OpenPosition(bytes32 marketId, uint256 size, uint256 averageEntryPrice, uint256 totalSize);
-    event ClosePosition(bytes32 marketId, uint256 size, uint256 totalSize);
-    event ReceiveFee(
-        address token,
-        uint256 tokenPrice,
-        uint256 collateralAmount // 1e18
-    );
-    event SetConfig(bytes32 key, bytes32 value);
-    event CollectFee(
-        address token,
-        uint256 tokenPrice,
-        uint256 collateralAmount // 1e18
-    );
-    event UpdateMarketBorrowing(
-        bytes32 marketId,
-        uint256 feeRateApy, // 1e18
-        uint256 cumulatedBorrowingPerUsd // 1e18
-    );
-
     function setConfig(bytes32 key, bytes32 value) external;
 
     function configValue(bytes32 key) external view returns (bytes32);
@@ -76,6 +27,8 @@ interface ICollateralPool {
     function marketStates() external view returns (bytes32[] memory marketIds, MarketState[] memory states);
 
     function setMarket(bytes32 marketId, bool isLong) external;
+
+    function liquidityBalances() external view returns (address[] memory tokens, uint256[] memory balances);
 
     function openPosition(bytes32 marketId, uint256 size) external;
 
@@ -103,6 +56,14 @@ interface ICollateralPool {
         bool isUnwrapWeth
     ) external returns (uint256 collateralAmount);
 
+    function rebalance(
+        address rebalancer,
+        address token0,
+        uint256 rawAmount0, // token0 decimals
+        uint256 maxRawAmount1, // collateralToken decimals
+        bytes memory userData
+    ) external returns (uint256 rawAmount1);
+
     function receiveFee(
         address token,
         uint256 rawAmount // token.decimals
@@ -117,5 +78,5 @@ interface ICollateralPool {
         uint256 size,
         uint256 entryPrice,
         uint256 marketPrice
-    ) external view returns (int256 cappedPnlUsd);
+    ) external view returns (int256 pnlUsd, int256 cappedPnlUsd);
 }

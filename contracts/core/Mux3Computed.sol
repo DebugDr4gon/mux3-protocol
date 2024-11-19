@@ -15,91 +15,114 @@ contract Mux3Computed is Mux3Store, IErrors {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
 
-    function _priceOf(address token) internal view virtual returns (uint256) {
-        return _priceOf(bytes32(bytes20(token)));
+    function _swapper() internal view returns (address swapper) {
+        swapper = _configs.getAddress(MC_SWAPPER);
+        require(swapper != address(0), EssentialConfigNotSet("MC_SWAPPER"));
     }
 
-    function _priceOf(bytes32 oracleId) internal view virtual returns (uint256) {
-        uint256 price = uint256(_readCacheUint256(oracleId));
+    function _priceOf(address token) internal view virtual returns (uint256 price) {
+        price = _priceOf(bytes32(bytes20(token)));
+    }
+
+    function _priceOf(bytes32 oracleId) internal view virtual returns (uint256 price) {
+        price = uint256(_readCacheUint256(oracleId));
         require(price > 0, MissingPrice(oracleId));
-        return price;
     }
 
-    function _isPoolExist(address pool) internal view returns (bool) {
-        return _collateralPoolList.contains(pool);
+    function _isPoolExist(address pool) internal view returns (bool isExist) {
+        isExist = _collateralPoolList.contains(pool);
     }
 
-    function _isOracleProvider(address oracleProvider) internal view returns (bool) {
-        return _oracleProviders[oracleProvider];
+    function _isOracleProvider(address oracleProvider) internal view returns (bool isProvider) {
+        isProvider = _oracleProviders[oracleProvider];
     }
 
-    function _isCollateralEnabled(address token) internal view returns (bool) {
-        return _collateralTokens[token].enabled == Enabled.Enabled;
+    function _isCollateralEnabled(address token) internal view returns (bool isEnabled) {
+        isEnabled = _collateralTokens[token].enabled == Enabled.Enabled;
     }
 
-    function _isCollateralExists(address token) internal view returns (bool) {
-        return _collateralTokens[token].enabled != Enabled.Invalid;
+    function _isCollateralExists(address token) internal view returns (bool isExists) {
+        isExists = _collateralTokens[token].enabled != Enabled.Invalid;
     }
 
-    function _isMarketExists(bytes32 marketId) internal view returns (bool) {
-        return _marketList.contains(marketId);
+    function _isMarketExists(bytes32 marketId) internal view returns (bool isExists) {
+        isExists = _marketList.contains(marketId);
     }
 
-    function _collateralToWad(address collateralToken, uint256 rawAmount) internal view returns (uint256) {
+    function _collateralToWad(address collateralToken, uint256 rawAmount) internal view returns (uint256 wadAmount) {
         uint8 decimals = _collateralTokens[collateralToken].decimals;
         if (decimals <= 18) {
-            return rawAmount * (10 ** (18 - decimals));
+            wadAmount = rawAmount * (10 ** (18 - decimals));
         } else {
-            return rawAmount / (10 ** (decimals - 18));
+            wadAmount = rawAmount / (10 ** (decimals - 18));
         }
     }
 
-    function _collateralToRaw(address collateralToken, uint256 wadAmount) internal view returns (uint256) {
+    function _collateralToRaw(address collateralToken, uint256 wadAmount) internal view returns (uint256 rawAmount) {
         uint8 decimals = _collateralTokens[collateralToken].decimals;
         if (decimals <= 18) {
-            return wadAmount / 10 ** (18 - decimals);
+            rawAmount = wadAmount / 10 ** (18 - decimals);
         } else {
-            return wadAmount * 10 ** (decimals - 18);
+            rawAmount = wadAmount * 10 ** (decimals - 18);
         }
     }
-    function _marketPositionFeeRate(bytes32 marketId) internal view returns (uint256) {
-        return _markets[marketId].configs.getUint256(MM_POSITION_FEE_RATE);
+
+    function _marketPositionFeeRate(bytes32 marketId) internal view returns (uint256 rate) {
+        rate = _markets[marketId].configs.getUint256(MM_POSITION_FEE_RATE);
+        // 0 is valid
     }
 
-    function _marketLiquidationFeeRate(bytes32 marketId) internal view returns (uint256) {
-        return _markets[marketId].configs.getUint256(MM_LIQUIDATION_FEE_RATE);
+    function _marketLiquidationFeeRate(bytes32 marketId) internal view returns (uint256 rate) {
+        rate = _markets[marketId].configs.getUint256(MM_LIQUIDATION_FEE_RATE);
+        // 0 is valid
     }
 
-    function _marketInitialMarginRate(bytes32 marketId) internal view returns (uint256) {
-        return _markets[marketId].configs.getUint256(MM_INITIAL_MARGIN_RATE);
+    function _marketInitialMarginRate(bytes32 marketId) internal view returns (uint256 rate) {
+        rate = _markets[marketId].configs.getUint256(MM_INITIAL_MARGIN_RATE);
+        require(rate > 0, EssentialConfigNotSet("MM_INITIAL_MARGIN_RATE"));
     }
 
-    function _marketOracleId(bytes32 marketId) internal view returns (bytes32) {
-        return _markets[marketId].configs.getBytes32(MM_ORACLE_ID);
+    function _marketOracleId(bytes32 marketId) internal view returns (bytes32 oracleId) {
+        oracleId = _markets[marketId].configs.getBytes32(MM_ORACLE_ID);
+        require(oracleId != bytes32(0), EssentialConfigNotSet("MM_ORACLE_ID"));
     }
 
-    function _marketMaintenanceMarginRate(bytes32 marketId) internal view returns (uint256) {
-        return _markets[marketId].configs.getUint256(MM_MAINTENANCE_MARGIN_RATE);
+    function _marketDisableTrade(bytes32 marketId) internal view returns (bool isDisabled) {
+        isDisabled = _markets[marketId].configs.getBoolean(MM_DISABLE_TRADE);
     }
 
-    function _marketLotSize(bytes32 marketId) internal view returns (uint256) {
-        return _markets[marketId].configs.getUint256(MM_LOT_SIZE);
+    function _marketDisableOpen(bytes32 marketId) internal view returns (bool isDisabled) {
+        isDisabled = _markets[marketId].configs.getBoolean(MM_DISABLE_OPEN);
     }
 
-    function _feeDistributor() internal view returns (address) {
-        return _configs.getAddress(MC_FEE_DISTRIBUTOR);
+    function _marketMaintenanceMarginRate(bytes32 marketId) internal view returns (uint256 rate) {
+        rate = _markets[marketId].configs.getUint256(MM_MAINTENANCE_MARGIN_RATE);
+        // 0 is valid
     }
 
-    function _readCacheUint256(bytes32 key) internal view returns (bytes32) {
-        bytes32 value;
+    function _marketLotSize(bytes32 marketId) internal view returns (uint256 lotSize) {
+        lotSize = _markets[marketId].configs.getUint256(MM_LOT_SIZE);
+        require(lotSize > 0, EssentialConfigNotSet("MM_LOT_SIZE"));
+    }
+
+    function _feeDistributor() internal view returns (address feeDistributor) {
+        feeDistributor = _configs.getAddress(MC_FEE_DISTRIBUTOR);
+        require(feeDistributor != address(0), EssentialConfigNotSet("MC_FEE_DISTRIBUTOR"));
+    }
+
+    function _readCacheUint256(bytes32 key) internal view returns (bytes32 value) {
         assembly {
             value := tload(key)
         }
-        return value;
+    }
+
+    function _strictStableDeviation() internal view returns (uint256 deviation) {
+        deviation = _configs.getUint256(MC_STRICT_STABLE_DEVIATION);
+        require(deviation > 0, EssentialConfigNotSet("MC_STRICT_STABLE_DEVIATION"));
     }
 
     /**
-     * @dev get active collaterals of a trader
+     * @dev Get active collaterals of a trader
      *
      * @param lastConsumedToken optional. try to avoid consuming this token if possible.
      */
@@ -111,8 +134,11 @@ contract Mux3Computed is Mux3Store, IErrors {
         if (lastConsumedToken == address(0)) {
             return collaterals;
         }
-        // swap lastConsumedToken to the end
         uint256 length = collaterals.length;
+        if (length <= 1) {
+            return collaterals;
+        }
+        // swap lastConsumedToken to the end
         for (uint256 i = 0; i < length - 1; i++) {
             if (collaterals[i] == lastConsumedToken) {
                 collaterals[i] = collaterals[length - 1];

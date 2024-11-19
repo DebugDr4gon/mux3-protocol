@@ -1,18 +1,8 @@
-import { ethers, network } from "hardhat"
+import { ethers } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
-import { expect } from "chai"
-import {
-  toWei,
-  createContract,
-  OrderType,
-  PositionOrderFlags,
-  toBytes32,
-  encodePositionId,
-  toUnit,
-  zeroAddress,
-} from "../scripts/deployUtils"
+import { createContract } from "../scripts/deployUtils"
 
-describe("TestMux3FacetBase", () => {
+describe("Mux3FacetBase", () => {
   let tester: any
   let user0: any
 

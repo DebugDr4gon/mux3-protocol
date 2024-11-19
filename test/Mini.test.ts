@@ -1,20 +1,26 @@
-import { ethers, waffle } from "hardhat"
+import { ethers } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
-import { expect, util } from "chai"
+import { expect } from "chai"
 import {
   toWei,
   createContract,
-  OrderType,
   PositionOrderFlags,
   toBytes32,
   encodePositionId,
   toUnit,
   zeroAddress,
   encodePoolMarketKey,
-  getMuxPriceData,
 } from "../scripts/deployUtils"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { CollateralPool, OrderBook, TestMux3, MockERC20, WETH9, MockFeeDistributor } from "../typechain"
+import {
+  CollateralPool,
+  OrderBook,
+  TestMux3,
+  MockERC20,
+  WETH9,
+  MockMux3FeeDistributor,
+  CollateralPoolEventEmitter,
+} from "../typechain"
 import { time } from "@nomicfoundation/hardhat-network-helpers"
 
 const a2b = (a) => {
@@ -44,7 +50,8 @@ describe("Mini", () => {
   let pool1: CollateralPool
   let pool2: CollateralPool
   let orderBook: OrderBook
-  let feeDistributor: MockFeeDistributor
+  let feeDistributor: MockMux3FeeDistributor
+  let emitter: CollateralPoolEventEmitter
 
   let timestampOfTest: number
 
@@ -95,11 +102,18 @@ describe("Mini", () => {
     await orderBook.setConfig(ethers.utils.id("MCO_CANCEL_COOL_DOWN"), u2b(ethers.BigNumber.from(5)))
 
     // collateral pool
-    imp = (await createContract("CollateralPool", [core.address, orderBook.address, weth.address])) as CollateralPool
+    emitter = (await createContract("CollateralPoolEventEmitter")) as CollateralPoolEventEmitter
+    await emitter.initialize(core.address)
+    imp = (await createContract("CollateralPool", [
+      core.address,
+      orderBook.address,
+      weth.address,
+      emitter.address,
+    ])) as CollateralPool
     await core.setCollateralPoolImplementation(imp.address)
 
     // pool 1
-    await core.createCollateralPool("TN1", "TS1", usdc.address)
+    await core.createCollateralPool("TN1", "TS1", usdc.address, 0)
     const pool1Addr = (await core.listCollateralPool())[0]
     pool1 = (await ethers.getContractAt("CollateralPool", pool1Addr)) as CollateralPool
     await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306")))
@@ -115,7 +129,7 @@ describe("Mini", () => {
     await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short1), u2b(toWei("0.70")))
 
     // pool 2
-    await core.createCollateralPool("TN2", "TS2", arb.address)
+    await core.createCollateralPool("TN2", "TS2", arb.address, 1)
     const pool2Addr = (await core.listCollateralPool())[1]
     pool2 = (await ethers.getContractAt("CollateralPool", pool2Addr)) as CollateralPool
     await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("3.46024")))
@@ -156,7 +170,7 @@ describe("Mini", () => {
     await core.setMarketConfig(short1, ethers.utils.id("MM_ORACLE_ID"), a2b(weth.address))
 
     // feeDistributor
-    feeDistributor = (await createContract("MockFeeDistributor", [core.address])) as MockFeeDistributor
+    feeDistributor = (await createContract("MockMux3FeeDistributor", [core.address])) as MockMux3FeeDistributor
     await core.setConfig(ethers.utils.id("MC_FEE_DISTRIBUTOR"), a2b(feeDistributor.address))
 
     // role
@@ -214,11 +228,12 @@ describe("Mini", () => {
       expect(result[1]).to.equal(true)
     }
     {
-      await time.increaseTo(timestampOfTest + 86400 * 2 + 905)
+      await time.increaseTo(timestampOfTest + 86400 * 2 + 930)
       const tx1 = orderBook.connect(broker).fillLiquidityOrder(0)
       await expect(tx1)
-        .to.emit(pool1, "AddLiquidity")
+        .to.emit(emitter, "AddLiquidity")
         .withArgs(
+          pool1.address,
           lp1.address,
           usdc.address,
           toWei("1") /* collateralPrice */,
@@ -252,7 +267,7 @@ describe("Mini", () => {
         size: toWei("1"),
         flags: PositionOrderFlags.OpenPosition,
         limitPrice: toWei("1000"),
-        expiration: timestampOfTest + 86400 * 2 + 905 + 300,
+        expiration: timestampOfTest + 86400 * 2 + 930 + 300,
         lastConsumedToken: zeroAddress,
         collateralToken: usdc.address,
         collateralAmount: toUnit("1000", 6),
@@ -261,7 +276,7 @@ describe("Mini", () => {
         withdrawSwapSlippage: toWei("0"),
         tpPriceDiff: toWei("0"),
         slPriceDiff: toWei("0"),
-        tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 300,
+        tpslExpiration: timestampOfTest + 86400 * 2 + 930 + 300,
         tpslFlags: 0,
         tpslWithdrawSwapToken: zeroAddress,
         tpslWithdrawSwapSlippage: toWei("0"),
@@ -332,6 +347,9 @@ describe("Mini", () => {
         expect(positions[0].pools[0].size).to.equal(toWei("1"))
         expect(positions[0].pools[0].entryPrice).to.equal(toWei("2000"))
         expect(positions[0].pools[0].entryBorrowing).to.equal(toWei("0"))
+        const activated = await core.listActivePositionIds(0, 10)
+        expect(activated.totalLength).to.equal(1)
+        expect(activated.positionIds[0]).to.equal(positionId)
       }
       {
         const [poolTokens, poolBalances] = await pool1.liquidityBalances()
@@ -369,7 +387,7 @@ describe("Mini", () => {
       await orderBook.connect(lp1).placeLiquidityOrder(args)
     }
     {
-      await time.increaseTo(timestampOfTest + 86400 * 2 + 905)
+      await time.increaseTo(timestampOfTest + 86400 * 2 + 930)
       await orderBook.connect(broker).fillLiquidityOrder(0)
     }
     // append pool2 to market
@@ -404,11 +422,12 @@ describe("Mini", () => {
       expect(result[1]).to.equal(true)
     }
     {
-      await time.increaseTo(timestampOfTest + 86400 * 2 + 905 + 905)
+      await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 930)
       const tx1 = orderBook.connect(broker).fillLiquidityOrder(1)
       await expect(tx1)
-        .to.emit(pool2, "AddLiquidity")
+        .to.emit(emitter, "AddLiquidity")
         .withArgs(
+          pool2.address,
           lp1.address,
           arb.address,
           toWei("2") /* collateralPrice */,
@@ -441,7 +460,7 @@ describe("Mini", () => {
         size: toWei("1"),
         flags: PositionOrderFlags.OpenPosition,
         limitPrice: toWei("1000"),
-        expiration: timestampOfTest + 86400 * 2 + 905 + 905 + 300,
+        expiration: timestampOfTest + 86400 * 2 + 930 + 930 + 300,
         lastConsumedToken: zeroAddress,
         collateralToken: usdc.address,
         collateralAmount: toUnit("1000", 6),
@@ -450,7 +469,7 @@ describe("Mini", () => {
         withdrawSwapSlippage: toWei("0"),
         tpPriceDiff: toWei("0"),
         slPriceDiff: toWei("0"),
-        tpslExpiration: timestampOfTest + 86400 * 2 + 905 + 905 + 300,
+        tpslExpiration: timestampOfTest + 86400 * 2 + 930 + 930 + 300,
         tpslFlags: 0,
         tpslWithdrawSwapToken: zeroAddress,
         tpslWithdrawSwapSlippage: toWei("0"),
@@ -526,6 +545,9 @@ describe("Mini", () => {
         expect(positions[0].pools[1].size).to.equal(toWei("0"))
         expect(positions[0].pools[1].entryPrice).to.equal(toWei("0"))
         expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0"))
+        const activated = await core.listActivePositionIds(0, 10)
+        expect(activated.totalLength).to.equal(1)
+        expect(activated.positionIds[0]).to.equal(positionId)
       }
       {
         const [poolTokens, poolBalances] = await pool1.liquidityBalances()
@@ -546,7 +568,7 @@ describe("Mini", () => {
       }
     }
     {
-      await time.increaseTo(timestampOfTest + 86400 * 2 + 905 + 905 + 3600)
+      await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 930 + 3600)
       await expect(core.updateBorrowingFee(positionId, short1, zeroAddress)).to.revertedWith("AccessControl")
       await orderBook.connect(broker).updateBorrowingFee(positionId, short1, zeroAddress)
       {

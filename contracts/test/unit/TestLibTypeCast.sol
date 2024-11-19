@@ -58,8 +58,8 @@ contract TestLibTypeCast is TestSuit {
         LibTypeCast.toBoolean(0x0000000000000000000000000000000000000000000000000000000000000002);
     }
 
-    function test_typeCast_uint32Overflow() public pure {
-        LibTypeCast.toUint32(uint256(type(uint32).max) + 1);
+    function test_typeCast_uint64Overflow() public pure {
+        LibTypeCast.toUint64(uint256(type(uint64).max) + 1);
     }
 
     function test_typeCast_uint96Overflow() public pure {

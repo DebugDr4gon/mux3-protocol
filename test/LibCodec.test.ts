@@ -1,19 +1,7 @@
 import { ethers, network } from "hardhat"
 import { expect } from "chai"
-import {
-  toWei,
-  toUnit,
-  fromUnit,
-  fromWei,
-  createContract,
-  encodePositionId,
-  encodeMux3Price,
-  encodeMux3Prices,
-} from "../scripts/deployUtils"
-const U = ethers.utils
-const B = ethers.BigNumber
+import { createContract, encodePositionId } from "../scripts/deployUtils"
 import { TestCodec } from "../typechain"
-import BigNumber from "bignumber.js"
 
 describe("LibCodec", () => {
   let testCodec: TestCodec

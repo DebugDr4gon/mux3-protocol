@@ -73,11 +73,13 @@ describe("Delegator", () => {
     await orderBook.initialize(core.address, weth.address)
 
     // collateral pool
-    imp = (await createContract("CollateralPool", [core.address, orderBook.address, weth.address])) as CollateralPool
+    const emitter = await createContract("CollateralPoolEventEmitter")
+    await emitter.initialize(core.address)
+    imp = (await createContract("CollateralPool", [core.address, orderBook.address, weth.address, emitter.address])) as CollateralPool
     await core.setCollateralPoolImplementation(imp.address)
 
     // pool 1
-    await core.createCollateralPool("TN1", "TS1", usdc.address)
+    await core.createCollateralPool("TN1", "TS1", usdc.address, 0)
     const pool1Addr = (await core.listCollateralPool())[0]
     pool1 = (await ethers.getContractAt("CollateralPool", pool1Addr)) as CollateralPool
 
@@ -148,7 +150,7 @@ describe("Delegator", () => {
       size: toWei("1"),
       flags: PositionOrderFlags.OpenPosition,
       limitPrice: toWei("1000"),
-      expiration: timestampOfTest + 86400 * 2 + 905 + 300,
+      expiration: timestampOfTest + 86400 * 2 + 930 + 300,
       lastConsumedToken: zeroAddress,
       collateralToken: usdc.address,
       collateralAmount: toUnit("1000", 6),

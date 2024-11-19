@@ -4,16 +4,24 @@ pragma solidity 0.8.28;
 import "../MockERC20.sol";
 import "../../core/management/FacetManagement.sol";
 import "../../pool/CollateralPool.sol";
+import "../../pool/CollateralPoolEventEmitter.sol";
 import "../TestSuit.sol";
 
 contract TestMux3FacetBase is FacetManagement, TestSuit {
     address pool;
 
+    // mock pool address validater
+    function getCollateralPool(address) public view returns (bool) {
+        return true;
+    }
+
     function setup() external {
+        CollateralPoolEventEmitter emitter = new CollateralPoolEventEmitter();
+        emitter.initialize(address(this));
         ERC20 fakeCore = new MockERC20("fakeCore", "fakeCore", 18);
         ERC20 fakeBook = new MockERC20("fakeBook", "fakeBook", 18);
         ERC20 fakeEth = new MockERC20("fakeEth", "fakeEth", 18);
-        pool = address(new CollateralPool(address(fakeCore), address(fakeBook), address(fakeEth)));
+        pool = address(new CollateralPool(address(fakeCore), address(fakeBook), address(fakeEth), address(emitter)));
         _setImplementation(pool);
     }
 
@@ -22,7 +30,7 @@ contract TestMux3FacetBase is FacetManagement, TestSuit {
 
         address poolAddress = _getPoolAddress("fakePool", "fakePool", address(fakeToken));
         assertEq(_isPoolExist(poolAddress), false, "E01");
-        _createCollateralPool("fakePool", "fakePool", address(fakeToken));
+        _createCollateralPool("fakePool", "fakePool", address(fakeToken), 0);
         assertEq(_isPoolExist(poolAddress), true, "E02");
     }
 

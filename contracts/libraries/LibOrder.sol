@@ -8,13 +8,15 @@ library LibOrder {
         PositionOrderParams memory orderParams,
         uint64 orderId,
         address account,
-        uint256 blockTimestamp
+        uint64 blockTimestamp,
+        uint64 gasFeeGwei
     ) internal pure returns (OrderData memory orderData) {
         orderData.orderType = OrderType.PositionOrder;
         orderData.id = orderId;
         orderData.version = 1;
         orderData.placeOrderTime = blockTimestamp;
         orderData.account = account;
+        orderData.gasFeeGwei = gasFeeGwei;
         orderData.payload = abi.encode(orderParams);
     }
 
@@ -31,13 +33,15 @@ library LibOrder {
         LiquidityOrderParams memory orderParams,
         uint64 orderId,
         address account,
-        uint256 blockTimestamp
+        uint64 blockTimestamp,
+        uint64 gasFeeGwei
     ) internal pure returns (OrderData memory orderData) {
         orderData.orderType = OrderType.LiquidityOrder;
         orderData.id = orderId;
         orderData.version = 1;
         orderData.placeOrderTime = blockTimestamp;
         orderData.account = account;
+        orderData.gasFeeGwei = gasFeeGwei;
         orderData.payload = abi.encode(orderParams);
     }
 
@@ -53,14 +57,16 @@ library LibOrder {
     function encodeWithdrawalOrder(
         WithdrawalOrderParams memory orderParams,
         uint64 orderId,
-        uint256 blockTimestamp,
-        address account
+        uint64 blockTimestamp,
+        address account,
+        uint64 gasFeeGwei
     ) internal pure returns (OrderData memory orderData) {
         orderData.orderType = OrderType.WithdrawalOrder;
         orderData.id = orderId;
         orderData.version = 1;
         orderData.placeOrderTime = blockTimestamp;
         orderData.account = account;
+        orderData.gasFeeGwei = gasFeeGwei;
         orderData.payload = abi.encode(orderParams);
     }
 
@@ -71,6 +77,29 @@ library LibOrder {
         require(orderData.version == 1, "Unexpected order version");
         require(orderData.payload.length == 7 * 32, "Unexpected order payload length");
         orderParams = abi.decode(orderData.payload, (WithdrawalOrderParams));
+    }
+
+    function encodeRebalanceOrder(
+        RebalanceOrderParams memory orderParams,
+        uint64 orderId,
+        uint64 blockTimestamp,
+        address rebalancer
+    ) internal pure returns (OrderData memory orderData) {
+        orderData.orderType = OrderType.RebalanceOrder;
+        orderData.id = orderId;
+        orderData.version = 1;
+        orderData.placeOrderTime = blockTimestamp;
+        orderData.account = rebalancer;
+        orderData.payload = abi.encode(orderParams);
+    }
+
+    function decodeRebalanceOrder(
+        OrderData memory orderData
+    ) internal pure returns (RebalanceOrderParams memory orderParams) {
+        require(orderData.orderType == OrderType.RebalanceOrder, "Unexpected order type");
+        require(orderData.version == 1, "Unexpected order version");
+        require(orderData.payload.length >= 5 * 32, "Unexpected order payload length"); // poolAddress, token0, rawAmount0, maxRawAmount1, userData
+        orderParams = abi.decode(orderData.payload, (RebalanceOrderParams));
     }
 
     function isOpenPosition(PositionOrderParams memory orderParams) internal pure returns (bool) {

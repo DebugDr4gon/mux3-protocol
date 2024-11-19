@@ -9,7 +9,8 @@ enum OrderType {
     PositionOrder, // 1
     LiquidityOrder, // 2
     WithdrawalOrder, // 3
-    AdlOrder // 4
+    RebalanceOrder, // 4
+    AdlOrder // 5
 }
 
 // position order flags
@@ -28,7 +29,8 @@ struct OrderData {
     address account;
     OrderType orderType;
     uint8 version;
-    uint256 placeOrderTime;
+    uint64 placeOrderTime;
+    uint64 gasFeeGwei;
     bytes payload;
 }
 
@@ -38,12 +40,14 @@ struct OrderBookStorage {
     mapping(uint64 => OrderData) orderData;
     EnumerableSetUpgradeable.UintSet orders;
     mapping(address => EnumerableSetUpgradeable.UintSet) userOrders;
-    mapping(bytes32 => EnumerableSetUpgradeable.UintSet) tpslOrders;
+    mapping(bytes32 => mapping(bytes32 => EnumerableSetUpgradeable.UintSet)) tpslOrders; // positionId => marketId => [orderId]
     uint32 sequence; // will be 0 after 0xffffffff
     mapping(address => bool) priceProviders;
     address weth;
     mapping(address => uint256) previousTokenBalance;
-    bytes32[50] __gap;
+    mapping(address => uint256) gasBalances;
+    mapping(bytes32 => bytes32) configTable;
+    bytes32[48] __gap;
 }
 
 struct PositionOrderParams {
@@ -52,7 +56,7 @@ struct PositionOrderParams {
     uint256 size;
     uint256 flags; // see "constant POSITION_*"
     uint256 limitPrice; // decimals = 18
-    uint256 expiration; // timestamp. decimals = 0
+    uint64 expiration; // timestamp. decimals = 0
     address lastConsumedToken; // when paying fees or losses (for both open and close positions), this token will be consumed last. can be 0 if no preference
     // when openPosition
     // * collateralToken == 0 means do not deposit collateral
@@ -73,7 +77,7 @@ struct PositionOrderParams {
     // tpsl strategy, only valid when openPosition
     uint256 tpPriceDiff; // take-profit price will be marketPrice * diff. decimals = 18. only valid when flags.POSITION_TPSL_STRATEGY
     uint256 slPriceDiff; // stop-loss price will be marketPrice * diff. decimals = 18. only valid when flags.POSITION_TPSL_STRATEGY
-    uint256 tpslExpiration; // timestamp. decimals = 0. only valid when flags.POSITION_TPSL_STRATEGY
+    uint64 tpslExpiration; // timestamp. decimals = 0. only valid when flags.POSITION_TPSL_STRATEGY
     uint256 tpslFlags; // POSITION_WITHDRAW_ALL_IF_EMPTY, POSITION_WITHDRAW_PROFIT, POSITION_UNWRAP_ETH. only valid when flags.POSITION_TPSL_STRATEGY
     address tpslWithdrawSwapToken; // only valid when flags.POSITION_TPSL_STRATEGY
     uint256 tpslWithdrawSwapSlippage; // only valid when flags.POSITION_TPSL_STRATEGY
@@ -103,11 +107,19 @@ struct WithdrawAllOrderParams {
     uint256 withdrawSwapSlippage;
 }
 
+struct RebalanceOrderParams {
+    address poolAddress;
+    address token0;
+    uint256 rawAmount0; // erc20.decimals
+    uint256 maxRawAmount1; // erc20.decimals
+    bytes userData;
+}
+
 struct AdlOrderParams {
     bytes32 positionId;
+    bytes32 marketId;
     uint256 size; // 1e18
     uint256 price; // 1e18
-    address profitToken;
     bool isUnwrapWeth;
 }
 
@@ -117,29 +129,108 @@ interface IOrderBook {
     event NewLiquidityOrder(address indexed account, uint64 indexed orderId, LiquidityOrderParams params);
     event NewPositionOrder(address indexed account, uint64 indexed orderId, PositionOrderParams params);
     event NewWithdrawalOrder(address indexed account, uint64 indexed orderId, WithdrawalOrderParams params);
+    event NewRebalanceOrder(address indexed rebalancer, uint64 indexed orderId, RebalanceOrderParams params);
     event FillOrder(address indexed account, uint64 indexed orderId, OrderData orderData);
     event FillAdlOrder(address indexed account, AdlOrderParams params);
 
+    /**
+     * @dev Trader/LP can wrap ETH to OrderBook, transfer ERC20 to OrderBook, placeOrders
+     *
+     *      example for collateral = USDC:
+     *        multicall([
+     *          wrapNative(gas),
+     *          depositGas(gas),
+     *          transferToken(collateral),
+     *          placePositionOrder(positionOrderParams),
+     *        ])
+     *      example for collateral = ETH:
+     *        multicall([
+     *          wrapNative(gas),
+     *          depositGas(gas),
+     *          wrapNative(collateral),
+     *          placePositionOrder(positionOrderParams),
+     *        ])
+     */
     function multicall(bytes[] calldata proxyCalls) external payable returns (bytes[] memory results);
 
-    function wrapNative() external payable;
+    /**
+     * @dev Trader/LP can wrap ETH to OrderBook
+     */
+    function wrapNative(uint256 amount) external payable;
 
+    /**
+     * @dev Trader/LP can transfer ERC20 to OrderBook
+     */
     function transferToken(address token, uint256 amount) external;
 
+    /**
+     * @dev Delegator can transfer ERC20 from Trader/LP to OrderBook
+     */
     function transferTokenFrom(address from, address token, uint256 amount) external;
 
-    function cancelOrder(uint64 orderId) external;
+    /**
+     * @dev Trader/LP should pay for gas for their orders
+     *
+     *      you should pay configValue(MCO_ORDER_GAS_FEE_GWEI) * 1e9 / 1e18 ETH for each order
+     */
+    function depositGas(uint256 amount) external payable;
 
+    /**
+     * @dev Trader/LP can withdraw gas
+     *
+     *      usually your deposited gas should be consumed by your orders immediately,
+     *      but if you want to withdraw it, you can call this function
+     */
+    function withdrawGas(uint256 amount) external;
+
+    /**
+     * @notice A trader should set initial leverage at least once before open-position
+     */
     function setInitialLeverage(bytes32 positionId, bytes32 marketId, uint256 initialLeverage) external;
 
-    function placePositionOrder(PositionOrderParams memory orderParams, bytes32 referralCode) external;
+    /**
+     * @notice A Trader can open/close position
+     *
+     *         Market order will expire after marketOrderTimeout seconds.
+     *         Limit/Trigger order will expire after deadline.
+     */
+    function placePositionOrder(PositionOrderParams memory orderParams, bytes32 referralCode) external payable;
 
-    function placeLiquidityOrder(LiquidityOrderParams memory orderParams) external;
+    /**
+     * @notice A LP can add/remove liquidity to a CollateralPool
+     *
+     *         Can be filled after liquidityLockPeriod seconds.
+     */
+    function placeLiquidityOrder(LiquidityOrderParams memory orderParams) external payable;
 
-    function placeWithdrawalOrder(WithdrawalOrderParams memory orderParams) external;
+    /**
+     * @notice A Trader can withdraw collateral
+     *
+     *         This order will expire after marketOrderTimeout seconds.
+     */
+    function placeWithdrawalOrder(WithdrawalOrderParams memory orderParams) external payable;
 
+    /**
+     * @notice A Trader can withdraw all collateral only when position = 0
+     */
     function withdrawAllCollateral(WithdrawAllOrderParams memory orderParams) external;
 
+    /**
+     * @notice A Rebalancer can rebalance pool liquidity by swap token 0 for token 1
+     *
+     *         msg.sender must implement IMux3RebalancerCallback.
+     */
+    function placeRebalanceOrder(RebalanceOrderParams memory orderParams) external;
+
+    /**
+     * @notice A Trader/LP can cancel an Order by orderId after a cool down period.
+     *         A Broker can also cancel an Order after expiration.
+     */
+    function cancelOrder(uint64 orderId) external;
+
+    /**
+     * @notice A Trader can deposit collateral into a PositionAccount
+     */
     function depositCollateral(
         bytes32 positionId,
         address collateralToken,

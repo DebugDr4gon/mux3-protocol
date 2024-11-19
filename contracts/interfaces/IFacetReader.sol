@@ -31,40 +31,116 @@ struct PositionPoolReader {
 }
 
 interface IFacetReader {
-    function priceOf(address token) external view returns (uint256);
+    /**
+     * @dev Get price of a token
+     */
+    function priceOf(address token) external view returns (uint256 price);
 
-    function priceOf(bytes32 id) external view returns (uint256);
+    /**
+     * @dev Get price of an OracleId
+     */
+    function priceOf(bytes32 id) external view returns (uint256 price);
 
-    function configValue(bytes32 key) external view returns (bytes32);
+    /**
+     * @dev Get core global config
+     */
+    function configValue(bytes32 key) external view returns (bytes32 value);
 
-    function marketConfigValue(bytes32 marketId, bytes32 key) external view returns (bytes32);
+    /**
+     * @dev Get Market config
+     */
+    function marketConfigValue(bytes32 marketId, bytes32 key) external view returns (bytes32 value);
 
+    /**
+     * @dev Get Market state
+     */
     function marketState(bytes32 marketId) external view returns (string memory symbol, bool isLong);
 
+    /**
+     * @dev Get Collateral config
+     */
     function getCollateralToken(address token) external view returns (bool enabled, uint8 decimals);
 
-    function listCollateralTokens() external view returns (address[] memory);
+    /**
+     * @dev List collateral tokens
+     */
+    function listCollateralTokens() external view returns (address[] memory tokens);
 
+    /**
+     * @dev Get CollateralPool config
+     */
     function getCollateralPool(address pool) external view returns (bool enabled);
 
-    function listCollateralPool() external view returns (address[] memory);
+    /**
+     * @dev List CollateralPool addresses
+     */
+    function listCollateralPool() external view returns (address[] memory pools);
 
-    function listMarkets() external view returns (bytes32[] memory);
+    /**
+     * @dev List Markets
+     */
+    function listMarkets() external view returns (bytes32[] memory marketIds);
 
-    function listMarketPools(bytes32 marketId) external view returns (BackedPoolState[] memory);
+    /**
+     * @dev List backed CollateralPool in a Market
+     */
+    function listMarketPools(bytes32 marketId) external view returns (BackedPoolState[] memory pools);
 
-    function listPositionIdsOf(address trader) external view returns (bytes32[] memory);
+    /**
+     * @dev List PositionIds of a Trader
+     */
+    function listPositionIdsOf(address trader) external view returns (bytes32[] memory positionIds);
 
-    function listAccountCollaterals(bytes32 positionId) external view returns (CollateralReader[] memory collaterals);
+    /**
+     * @dev List active PositionIds
+     *
+     *      "active" means positionId that likely has positions. positionId with only collateral may not be in this list
+     */
+    function listActivePositionIds(
+        uint256 begin,
+        uint256 end
+    ) external view returns (bytes32[] memory positionIds, uint256 totalLength);
 
-    function listAccountPositions(bytes32 positionId) external view returns (PositionReader[] memory positions);
-
-    function listAccountCollateralsAndPositionsOf(
-        address trader
-    ) external view returns (AccountReader[] memory positions);
-
+    /**
+     * @dev Get Position of (positionId, marketId)
+     */
     function getPositionAccount(
         bytes32 positionId,
         bytes32 marketId
     ) external view returns (PositionReader memory position);
+
+    /**
+     * @dev List Collaterals of a PositionAccount
+     */
+    function listAccountCollaterals(bytes32 positionId) external view returns (CollateralReader[] memory collaterals);
+
+    /**
+     * @dev List Positions of a PositionAccount
+     */
+    function listAccountPositions(bytes32 positionId) external view returns (PositionReader[] memory positions);
+
+    /**
+     * @dev List Collaterals and Positions of all PositionAccounts of a Trader
+     */
+    function listCollateralsAndPositionsOf(address trader) external view returns (AccountReader[] memory positions);
+
+    /**
+     * @dev List active Collaterals and Positions
+     *
+     *      "active" means positionId that likely has positions. positionId with only collateral may not be in this list
+     */
+    function listActiveCollateralsAndPositions(
+        uint256 begin,
+        uint256 end
+    ) external view returns (AccountReader[] memory positions, uint256 totalLength);
+
+    /**
+     * @dev Check if deleverage is allowed
+     *
+     *      note: you should multicall([
+     *              updateBorrowingFee,
+     *              isDeleverageAllowed
+     *            ])
+     */
+    function isDeleverageAllowed(bytes32 positionId, bytes32 marketId) external view returns (bool);
 }

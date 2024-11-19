@@ -10,11 +10,11 @@ import "../interfaces/IOrderBook.sol";
 import "../libraries/LibTypeCast.sol";
 
 contract OrderBookStore is Initializable, AccessControlEnumerableUpgradeable {
-    using LibTypeCast for bytes32;
-
-    mapping(bytes32 => bytes32) internal _configTable;
+    mapping(bytes32 => bytes32) internal _deprecated0;
     OrderBookStorage internal _storage; // should be the last variable before __gap
     bytes32[50] __gap;
 
-    function __OrderBookStore_init() internal onlyInitializing {}
+    function __OrderBookStore_init() internal onlyInitializing {
+        __AccessControlEnumerable_init();
+    }
 }

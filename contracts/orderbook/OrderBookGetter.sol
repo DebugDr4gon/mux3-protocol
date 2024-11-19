@@ -22,49 +22,11 @@ contract OrderBookGetter is OrderBookStore, IOrderBookGetter {
     }
 
     function configValue(bytes32 key) external view override returns (bytes32) {
-        return _configTable.getBytes32(key);
+        return _storage.configTable.getBytes32(key);
     }
 
-    function _isBroker(address broker) internal view returns (bool) {
-        return hasRole(BROKER_ROLE, broker);
-    }
-
-    function _isMaintainer(address maintainer) internal view returns (bool) {
-        return hasRole(MAINTAINER_ROLE, maintainer);
-    }
-
-    function _isDelegator(address delegator) internal view returns (bool) {
-        return hasRole(DELEGATOR_ROLE, delegator);
-    }
-
-    function _liquidityLockPeriod() internal view returns (uint256 period) {
-        period = _configTable.getUint256(MCO_LIQUIDITY_LOCK_PERIOD);
-    }
-
-    function _isOrderPaused(OrderType orderType) internal view returns (bool paused) {
-        if (orderType == OrderType.PositionOrder) {
-            paused = _configTable.getBoolean(MCO_POSITION_ORDER_PAUSED);
-        } else if (orderType == OrderType.LiquidityOrder) {
-            paused = _configTable.getBoolean(MCO_LIQUIDITY_ORDER_PAUSED);
-        } else if (orderType == OrderType.WithdrawalOrder) {
-            paused = _configTable.getBoolean(MCO_WITHDRAWAL_ORDER_PAUSED);
-        }
-    }
-
-    function _marketOrderTimeout() internal view returns (uint256 timeout) {
-        timeout = _configTable.getUint256(MCO_MARKET_ORDER_TIMEOUT);
-    }
-
-    function _maxLimitOrderTimeout() internal view returns (uint256 timeout) {
-        timeout = _configTable.getUint256(MCO_LIMIT_ORDER_TIMEOUT);
-    }
-
-    function _referralManager() internal view returns (address ref) {
-        ref = _configTable.getAddress(MCO_REFERRAL_MANAGER);
-    }
-
-    function _cancelCoolDown() internal view returns (uint256 timeout) {
-        timeout = _configTable.getUint256(MCO_CANCEL_COOL_DOWN);
+    function gasBalanceOf(address user) external view returns (uint256) {
+        return _storage.gasBalances[user];
     }
 
     /**
@@ -114,5 +76,60 @@ contract OrderBookGetter is OrderBookStore, IOrderBookGetter {
             uint64 orderId = uint64(orders.at(i + begin));
             orderDataArray[i] = _storage.orderData[orderId];
         }
+    }
+
+    function _isBroker(address broker) internal view returns (bool) {
+        return hasRole(BROKER_ROLE, broker);
+    }
+
+    function _isMaintainer(address maintainer) internal view returns (bool) {
+        return hasRole(MAINTAINER_ROLE, maintainer);
+    }
+
+    function _isDelegator(address delegator) internal view returns (bool) {
+        return hasRole(DELEGATOR_ROLE, delegator);
+    }
+
+    function _liquidityLockPeriod() internal view returns (uint256 period) {
+        period = _storage.configTable.getUint256(MCO_LIQUIDITY_LOCK_PERIOD);
+    }
+
+    function _isOrderPaused(OrderType orderType) internal view returns (bool paused) {
+        if (orderType == OrderType.PositionOrder) {
+            paused = _storage.configTable.getBoolean(MCO_POSITION_ORDER_PAUSED);
+        } else if (orderType == OrderType.LiquidityOrder) {
+            paused = _storage.configTable.getBoolean(MCO_LIQUIDITY_ORDER_PAUSED);
+        } else if (orderType == OrderType.WithdrawalOrder) {
+            paused = _storage.configTable.getBoolean(MCO_WITHDRAWAL_ORDER_PAUSED);
+        }
+    }
+
+    function _marketOrderTimeout() internal view returns (uint256 timeout) {
+        timeout = _storage.configTable.getUint256(MCO_MARKET_ORDER_TIMEOUT);
+        // 0 is valid
+    }
+
+    function _maxLimitOrderTimeout() internal view returns (uint256 timeout) {
+        timeout = _storage.configTable.getUint256(MCO_LIMIT_ORDER_TIMEOUT);
+        // 0 is valid
+    }
+
+    function _referralManager() internal view returns (address ref) {
+        ref = _storage.configTable.getAddress(MCO_REFERRAL_MANAGER);
+        // 0 is valid
+    }
+
+    function _cancelCoolDown() internal view returns (uint256 timeout) {
+        timeout = _storage.configTable.getUint256(MCO_CANCEL_COOL_DOWN);
+        // 0 is valid
+    }
+
+    function _orderGasFeeGwei() internal view returns (uint256 gasFee) {
+        gasFee = _storage.configTable.getUint256(MCO_ORDER_GAS_FEE_GWEI);
+        // 0 is valid
+    }
+
+    function _balance(address token) internal view returns (uint256) {
+        return IERC20Upgradeable(token).balanceOf(address(this));
     }
 }

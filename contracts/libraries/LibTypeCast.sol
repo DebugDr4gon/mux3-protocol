@@ -54,9 +54,9 @@ library LibTypeCast {
         return uint96(n);
     }
 
-    function toUint32(uint256 n) internal pure returns (uint32) {
-        require(n <= uint256(type(uint32).max), "LibTypeCast::OVERFLOW");
-        return uint32(n);
+    function toUint64(uint256 n) internal pure returns (uint64) {
+        require(n <= uint256(type(uint64).max), "LibTypeCast::OVERFLOW");
+        return uint64(n);
     }
 
     function negInt256(int256 n) internal pure returns (uint256) {

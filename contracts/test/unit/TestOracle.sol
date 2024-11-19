@@ -4,14 +4,14 @@ pragma solidity 0.8.28;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../orderbook/providers/ChainlinkStreamProvider.sol";
 import "../../orderbook/providers/MuxPriceProvider.sol";
-import "../../core/management/Pricing.sol";
+import "../../core/management/PricingManager.sol";
 
 import "../TestSuit.sol";
 import "../SimplePriceProvider.sol";
 import "../integration/MockChainlinkVerifier.sol";
 import "../MockERC20.sol";
 
-contract TestOracle is Pricing, TestSuit {
+contract TestOracle is PricingManager, TestSuit {
     address chainlinkVerifier = 0x478Aa2aC9F6D65F84e09D9185d126c3a17c2a93C;
     address chainlinkFeeToken = 0xf97f4df75117a78c1A5a0DBb814Af92458539FB4;
 

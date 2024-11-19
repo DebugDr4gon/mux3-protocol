@@ -1,148 +1,29 @@
-import { ethers } from "hardhat"
+import { ethers, waffle } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
 import { expect } from "chai"
 import {
   toWei,
+  toUnit,
   createContract,
   OrderType,
   PositionOrderFlags,
   toBytes32,
   encodePositionId,
   zeroAddress,
+  parsePositionOrder,
+  parseLiquidityOrder,
+  parseWithdrawalOrder,
 } from "../scripts/deployUtils"
-import { Contract } from "ethers"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import {
-  ERC20PresetMinterPauser,
-  MockCollateralPool,
-  MockFeeDistributor,
-  MockMux3,
-  OrderBook,
-  WETH9,
-} from "../typechain"
+import { ERC20PresetMinterPauser, MockCollateralPool, MockMux3, OrderBook, WETH9, MockUniswapV3, Swapper } from "../typechain"
 import { time } from "@nomicfoundation/hardhat-network-helpers"
-const U = ethers.utils
+import { BigNumber } from "ethers"
 
 const a2b = (a) => {
   return a + "000000000000000000000000"
 }
 const u2b = (u) => {
   return ethers.utils.hexZeroPad(u.toTwos(256).toHexString(), 32)
-}
-
-function parsePositionOrder(orderData: string) {
-  const [
-    positionId,
-    marketId,
-    size,
-    flags,
-    limitPrice,
-    expiration,
-    lastConsumedToken,
-    collateralToken,
-    collateralAmount,
-    withdrawUsd,
-    withdrawSwapToken,
-    withdrawSwapSlippage,
-    tpPriceDiff,
-    slPriceDiff,
-    tpslExpiration,
-    tpslFlags,
-    tpslWithdrawSwapToken,
-    tpslWithdrawSwapSlippage,
-  ] = ethers.utils.defaultAbiCoder.decode(
-    [
-      "bytes32", // positionId
-      "bytes32", // marketId
-      "uint256", // size
-      "uint256", // flags
-      "uint256", // limitPrice
-      "uint256", // expiration
-      "address", // lastConsumedToken
-      "address", // collateralToken
-      "uint256", // collateralAmount
-      "uint256", // withdrawUsd
-      "address", // withdrawSwapToken
-      "uint256", // withdrawSwapSlippage
-      "uint256", // tpPriceDiff
-      "uint256", // slPriceDiff
-      "uint256", // tpslExpiration
-      "uint256", // tpslFlags
-      "address", // tpslWithdrawSwapToken
-      "uint256", // tpslWithdrawSwapSlippage
-    ],
-    orderData
-  )
-  return {
-    positionId,
-    marketId,
-    size,
-    flags,
-    limitPrice,
-    expiration,
-    lastConsumedToken,
-    collateralToken,
-    collateralAmount,
-    withdrawUsd,
-    withdrawSwapToken,
-    withdrawSwapSlippage,
-    tpPriceDiff,
-    slPriceDiff,
-    tpslExpiration,
-    tpslFlags,
-    tpslWithdrawSwapToken,
-    tpslWithdrawSwapSlippage,
-  }
-}
-
-function parseLiquidityOrder(orderData: string) {
-  const [poolAddress, rawAmount, isAdding, isUnwrapWeth] = ethers.utils.defaultAbiCoder.decode(
-    [
-      "address", // poolAddress
-      "uint256", // rawAmount
-      "bool", // isAdding
-      "bool", // isUnwrapWeth
-    ],
-    orderData
-  )
-  return {
-    poolAddress,
-    rawAmount,
-    isAdding,
-    isUnwrapWeth,
-  }
-}
-
-function parseWithdrawalOrder(orderData: string) {
-  const [
-    positionId,
-    tokenAddress,
-    rawAmount,
-    isUnwrapWeth,
-    lastConsumedToken,
-    withdrawSwapToken,
-    withdrawSwapSlippage,
-  ] = ethers.utils.defaultAbiCoder.decode(
-    [
-      "bytes32", // positionId
-      "address", // tokenAddress
-      "uint256", // rawAmount
-      "bool", // isUnwrapWeth
-      "address", // lastConsumedToken
-      "address", // withdrawSwapToken
-      "uint256", // withdrawSwapSlippage
-    ],
-    orderData
-  )
-  return {
-    positionId,
-    tokenAddress,
-    rawAmount,
-    isUnwrapWeth,
-    lastConsumedToken,
-    withdrawSwapToken,
-    withdrawSwapSlippage,
-  }
 }
 
 describe("Order", () => {
@@ -208,7 +89,7 @@ describe("Order", () => {
     await core.setCollateralPoolImplementation(imp.address)
 
     // pool 1
-    await core.createCollateralPool("TN0", "TS0", token0.address)
+    await core.createCollateralPool("TN0", "TS0", token0.address, 0)
     const poolAddr = (await core.listCollateralPool())[0]
     pool1 = (await ethers.getContractAt("MockCollateralPool", poolAddr)) as MockCollateralPool
     await pool1.setConfig(ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306")))
@@ -811,4 +692,229 @@ describe("Order", () => {
       expect(result[1]).to.equal(false)
     }
   })
+
+
+
+  it("placeLiquidityOrder - broker fee", async () => {
+    await orderBook.setConfig(ethers.utils.id("MCO_ORDER_GAS_FEE_GWEI"), u2b(BigNumber.from("1000000")))
+    await token0.mint(user0.address, toWei("1000"))
+    await token0.transfer(orderBook.address, toWei("150"))
+    // no1 - gas fee
+    await weth.deposit({ value: toUnit("1", 6 + 9) })
+    await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
+    await orderBook.depositGas(toUnit("1", 6 + 9))
+    expect(await orderBook.gasBalanceOf(user0.address)).to.equal(toUnit("1", 6 + 9))
+    const args = {
+      poolAddress: pool1.address,
+      rawAmount: toWei("150"),
+      isAdding: true,
+      isUnwrapWeth: false,
+    }
+    await orderBook.placeLiquidityOrder(args)
+    await time.increaseTo(timestampOfTest + 86400 + 10)
+
+    {
+      const balance = await waffle.provider.getBalance(user0.address)
+      expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("1", 6 + 9))
+      expect(await orderBook.gasBalanceOf(user0.address)).to.equal(toUnit("0", 6 + 9))
+      const tx = await orderBook.cancelOrder(0)
+      expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("0", 6 + 9))
+      const receipt = await tx.wait()
+      const gasUsed = receipt.gasUsed
+      const gasPrice = receipt.effectiveGasPrice
+      expect(await waffle.provider.getBalance(user0.address)).to.equal(balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice)))
+    }
+
+    await token0.mint(user0.address, toWei("1000"))
+    await token0.transfer(orderBook.address, toWei("150"))
+    await weth.deposit({ value: toUnit("1", 6 + 9) })
+    await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
+    await orderBook.depositGas(toUnit("1", 6 + 9))
+    await orderBook.placeLiquidityOrder(args)
+    await time.increaseTo(timestampOfTest + 86400 + 10 + 886400 + 10)
+
+    {
+      expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("1", 6 + 9))
+      const balance = await waffle.provider.getBalance(broker.address)
+      const tx = await orderBook.connect(broker).fillLiquidityOrder(1)
+      expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("0", 6 + 9))
+      const receipt = await tx.wait()
+      const gasUsed = receipt.gasUsed
+      const gasPrice = receipt.effectiveGasPrice
+      expect(await waffle.provider.getBalance(broker.address)).to.equal(balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice)))
+    }
+  })
+
+  it("place position order - broker fee", async () => {
+    await orderBook.setConfig(ethers.utils.id("MCO_ORDER_GAS_FEE_GWEI"), u2b(BigNumber.from("1000000")))
+    await token0.mint(user0.address, toWei("1"))
+    await token0.transfer(orderBook.address, toWei("1"))
+    const positionId = encodePositionId(user0.address, 0)
+    await orderBook.connect(user0).setInitialLeverage(positionId, mid0, toWei("10"))
+    const args = {
+      positionId,
+      marketId: mid0,
+      size: toWei("1"),
+      flags: PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder,
+      limitPrice: toWei("3000"),
+      expiration: timestampOfTest + 1000 + 86400 * 2,
+      lastConsumedToken: zeroAddress,
+      collateralToken: token0.address,
+      collateralAmount: toWei("1"),
+      withdrawUsd: toWei("0"),
+      withdrawSwapToken: zeroAddress,
+      withdrawSwapSlippage: toWei("0"),
+      tpPriceDiff: toWei("1.005"),
+      slPriceDiff: toWei("0.995"),
+      tpslExpiration: timestampOfTest + 2000 + 86400 * 3,
+      tpslFlags:
+        PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.WithdrawProfit + PositionOrderFlags.UnwrapEth,
+      tpslWithdrawSwapToken: token0.address,
+      tpslWithdrawSwapSlippage: toWei("0"),
+    }
+    await expect(orderBook.placePositionOrder(args, refCode)).to.be.revertedWith("Insufficient gas fee")
+    await weth.deposit({ value: toUnit("1", 6 + 9) })
+    await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
+    await orderBook.depositGas(toUnit("1", 6 + 9))
+    expect(await orderBook.gasBalanceOf(user0.address)).to.equal(toUnit("1", 6 + 9))
+    await orderBook.placePositionOrder(args, refCode)
+
+    {
+      await time.increaseTo(timestampOfTest + 10)
+      const balance = await waffle.provider.getBalance(user0.address)
+      expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("1", 6 + 9))
+      expect(await orderBook.gasBalanceOf(user0.address)).to.equal(toUnit("0", 6 + 9))
+      const tx = await orderBook.cancelOrder(0)
+      expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("0", 6 + 9))
+      const receipt = await tx.wait()
+      const gasUsed = receipt.gasUsed
+      const gasPrice = receipt.effectiveGasPrice
+      expect(await waffle.provider.getBalance(user0.address)).to.equal(balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice)))
+    }
+
+    await token0.mint(user0.address, toWei("1000"))
+    await token0.transfer(orderBook.address, toWei("150"))
+    await weth.deposit({ value: toUnit("1", 6 + 9) })
+    await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
+    await orderBook.depositGas(toUnit("1", 6 + 9))
+    await orderBook.placePositionOrder(args, refCode)
+    await time.increaseTo(timestampOfTest + 20)
+
+    {
+      expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("1", 6 + 9))
+      const balance = await waffle.provider.getBalance(broker.address)
+      const tx = await orderBook.connect(broker).fillPositionOrder(1)
+      expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("0", 6 + 9))
+      const receipt = await tx.wait()
+      const gasUsed = receipt.gasUsed
+      const gasPrice = receipt.effectiveGasPrice
+      expect(await waffle.provider.getBalance(broker.address)).to.equal(balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice)))
+    }
+  })
+
+  it("withdraw order - broker fee", async () => {
+
+    // swapper
+    const uniswap = (await createContract("MockUniswapV3", [
+      zeroAddress,
+      weth.address,
+      zeroAddress,
+      zeroAddress,
+    ])) as MockUniswapV3
+    const swapper = (await createContract("Swapper", [])) as Swapper
+    await swapper.initialize(weth.address, uniswap.address, uniswap.address)
+    await core.setConfig(ethers.utils.id("MC_SWAPPER"), a2b(swapper.address))
+
+    await orderBook.setConfig(ethers.utils.id("MCO_ORDER_GAS_FEE_GWEI"), u2b(BigNumber.from("1000000")))
+    await token0.mint(user0.address, toWei("1"))
+    await token0.transfer(orderBook.address, toWei("1"))
+    const positionId = encodePositionId(user0.address, 0)
+    await orderBook.connect(user0).setInitialLeverage(positionId, mid0, toWei("10"))
+    await weth.deposit({ value: toUnit("1", 6 + 9) })
+    await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
+    await orderBook.depositGas(toUnit("1", 6 + 9))
+    await orderBook.placePositionOrder({
+      positionId,
+      marketId: mid0,
+      size: toWei("1"),
+      flags: PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder,
+      limitPrice: toWei("3000"),
+      expiration: timestampOfTest + 1000 + 86400 * 2,
+      lastConsumedToken: zeroAddress,
+      collateralToken: token0.address,
+      collateralAmount: toWei("1"),
+      withdrawUsd: toWei("0"),
+      withdrawSwapToken: zeroAddress,
+      withdrawSwapSlippage: toWei("0"),
+      tpPriceDiff: toWei("1.005"),
+      slPriceDiff: toWei("0.995"),
+      tpslExpiration: timestampOfTest + 2000 + 86400 * 3,
+      tpslFlags:
+        PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.WithdrawProfit + PositionOrderFlags.UnwrapEth,
+      tpslWithdrawSwapToken: token0.address,
+      tpslWithdrawSwapSlippage: toWei("0"),
+    }, refCode)
+    await time.increaseTo(timestampOfTest + 10)
+
+    {
+      const balance = await waffle.provider.getBalance(user0.address)
+      expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("1", 6 + 9))
+      expect(await orderBook.gasBalanceOf(user0.address)).to.equal(toUnit("0", 6 + 9))
+      const tx = await orderBook.cancelOrder(0)
+      expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("0", 6 + 9))
+      const receipt = await tx.wait()
+      const gasUsed = receipt.gasUsed
+      const gasPrice = receipt.effectiveGasPrice
+      expect(await waffle.provider.getBalance(user0.address)).to.equal(balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice)))
+    }
+
+    const args = {
+      positionId,
+      tokenAddress: token0.address,
+      rawAmount: toWei("0.01"),
+      isUnwrapWeth: false,
+      lastConsumedToken: zeroAddress,
+      withdrawSwapToken: zeroAddress,
+      withdrawSwapSlippage: 0
+    }
+    await weth.deposit({ value: toUnit("1", 6 + 9) })
+    await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
+    await orderBook.depositGas(toUnit("1", 6 + 9))
+    await orderBook.placeWithdrawalOrder(args)
+
+
+    {
+      await time.increaseTo(timestampOfTest + 20)
+      const balance = await waffle.provider.getBalance(user0.address)
+      expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("1", 6 + 9))
+      expect(await orderBook.gasBalanceOf(user0.address)).to.equal(toUnit("0", 6 + 9))
+      const tx = await orderBook.cancelOrder(1)
+      expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("0", 6 + 9))
+      const receipt = await tx.wait()
+      const gasUsed = receipt.gasUsed
+      const gasPrice = receipt.effectiveGasPrice
+      expect(await waffle.provider.getBalance(user0.address)).to.equal(balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice)))
+    }
+
+    await token0.mint(user0.address, toWei("1000"))
+    await token0.transfer(orderBook.address, toWei("150"))
+    await weth.deposit({ value: toUnit("1", 6 + 9) })
+    await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
+    await orderBook.depositGas(toUnit("1", 6 + 9))
+    await orderBook.placeWithdrawalOrder(args)
+
+    {
+      await time.increaseTo(timestampOfTest + 30)
+      expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("1", 6 + 9))
+      const balance = await waffle.provider.getBalance(broker.address)
+      const tx = await orderBook.connect(broker).fillWithdrawalOrder(2)
+      expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("0", 6 + 9))
+      const receipt = await tx.wait()
+      const gasUsed = receipt.gasUsed
+      const gasPrice = receipt.effectiveGasPrice
+      expect(await waffle.provider.getBalance(broker.address)).to.equal(balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice)))
+    }
+  })
+
 })
+

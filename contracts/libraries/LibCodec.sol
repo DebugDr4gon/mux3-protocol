@@ -2,9 +2,13 @@
 pragma solidity 0.8.28;
 
 library LibCodec {
+    // |----- 160 -----|------ 96 ------|
+    // | user address  | position index |
+    //
+    // note:
+    // * positionIndex == 0: the PositionAccount can have multiple collaterals and multiple market positions
+    // * positionIndex != 0: the PositionAccount can have multiple collaterals but only single market position
     function decodePositionId(bytes32 positionId) internal pure returns (address trader, uint96 positionIndex) {
-        //  |----- 160 -----|------ 96 ------|
-        //  | user address  | position index |
         trader = address(bytes20(positionId));
         positionIndex = uint96(uint256(positionId));
     }
