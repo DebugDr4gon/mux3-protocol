@@ -569,8 +569,8 @@ describe("Mini", () => {
     }
     {
       await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 930 + 3600)
-      await expect(core.updateBorrowingFee(positionId, short1, zeroAddress)).to.revertedWith("AccessControl")
-      await orderBook.connect(broker).updateBorrowingFee(positionId, short1, zeroAddress)
+      await expect(core.updateBorrowingFee(positionId, short1, zeroAddress, false)).to.revertedWith("AccessControl")
+      await orderBook.connect(broker).updateBorrowingFee(positionId, short1, zeroAddress, false)
       {
         const collaterals = await core.listAccountCollaterals(positionId)
         expect(collaterals[0].collateralAddress).to.equal(usdc.address)

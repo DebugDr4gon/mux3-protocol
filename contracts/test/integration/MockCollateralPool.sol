@@ -83,13 +83,17 @@ contract MockCollateralPool is
 
     function realizeLoss(address token, uint256 rawAmount) external {}
 
-    function addLiquidity(address account, uint256 collateralAmount) external override returns (uint256 shares) {}
+    function addLiquidity(
+        address account,
+        uint256 rawCollateralAmount,
+        bool isUnwrapWeth
+    ) external override returns (uint256 shares) {}
 
     function removeLiquidity(
         address account,
         uint256 shares,
         bool isUnwrapWeth
-    ) external override returns (uint256 collateralAmount) {}
+    ) external override returns (uint256 rawCollateralAmount) {}
 
     function rebalance(
         address rebalancer,

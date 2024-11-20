@@ -17,56 +17,51 @@ contract FacetOpen is Mux3TradeBase, IFacetOpen {
      * @notice The entry point for opening a position
      */
     function openPosition(
-        bytes32 positionId,
-        bytes32 marketId,
-        uint256 size,
-        address lastConsumedToken
-    )
-        external
-        onlyRole(ORDER_BOOK_ROLE)
-        returns (uint256 tradingPrice, uint256 borrowingFeeUsd, uint256 positionFeeUsd)
-    {
+        OpenPositionArgs memory args
+    ) external onlyRole(ORDER_BOOK_ROLE) returns (OpenPositionResult memory result) {
         {
-            uint256 lotSize = _marketLotSize(marketId);
-            require(size % lotSize == 0, InvalidLotSize(size, lotSize));
+            uint256 lotSize = _marketLotSize(args.marketId);
+            require(args.size % lotSize == 0, InvalidLotSize(args.size, lotSize));
         }
-        require(_isMarketExists(marketId), MarketNotExists(marketId));
-        require(!_marketDisableTrade(marketId), MarketTradeDisabled(marketId));
-        require(!_marketDisableOpen(marketId), MarketTradeDisabled(marketId));
-        if (!_isPositionAccountExist(positionId)) {
-            _createPositionAccount(positionId);
+        require(_isMarketExists(args.marketId), MarketNotExists(args.marketId));
+        require(!_marketDisableTrade(args.marketId), MarketTradeDisabled(args.marketId));
+        require(!_marketDisableOpen(args.marketId), MarketTradeDisabled(args.marketId));
+        if (!_isPositionAccountExist(args.positionId)) {
+            _createPositionAccount(args.positionId);
         }
-        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
-        tradingPrice = _priceOf(_marketOracleId(marketId));
-        uint256[] memory allocations = _allocateLiquidity(marketId, size);
+        PositionAccountInfo storage positionAccount = _positionAccounts[args.positionId];
+        result.tradingPrice = _priceOf(_marketOracleId(args.marketId));
+        uint256[] memory allocations = _allocateLiquidity(args.marketId, args.size);
         // update borrowing fee for the current market
-        uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(marketId);
-        borrowingFeeUsd = _updateAndDispatchBorrowingFee(
+        uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(args.marketId);
+        result.borrowingFeeUsd = _updateAndDispatchBorrowingFee(
             positionAccount.owner,
-            positionId,
-            marketId,
+            args.positionId,
+            args.marketId,
             cumulatedBorrowingPerUsd,
             true, // shouldCollateralSufficient
-            lastConsumedToken
+            args.lastConsumedToken,
+            args.isUnwrapWeth
         );
         // position fee
-        positionFeeUsd = _dispatchPositionFee(
+        result.positionFeeUsd = _dispatchPositionFee(
             positionAccount.owner,
-            positionId,
-            marketId,
-            size,
+            args.positionId,
+            args.marketId,
+            args.size,
             allocations,
             false, // isLiquidating
             true, // shouldCollateralSufficient
-            lastConsumedToken
+            args.lastConsumedToken,
+            args.isUnwrapWeth
         );
         // open position
-        _openMarketPosition(marketId, allocations);
-        _openAccountPosition(positionId, marketId, allocations, cumulatedBorrowingPerUsd);
+        _openMarketPosition(args.marketId, allocations);
+        _openAccountPosition(args.positionId, args.marketId, allocations, cumulatedBorrowingPerUsd);
         // exceeds leverage set by setInitialLeverage
-        require(_isLeverageSafe(positionId), UnsafePositionAccount(positionId, SAFE_LEVERAGE));
+        require(_isLeverageSafe(args.positionId), UnsafePositionAccount(args.positionId, SAFE_LEVERAGE));
         // exceeds leverage set by MM_INITIAL_MARGIN_RATE
-        require(_isInitialMarginSafe(positionId), UnsafePositionAccount(positionId, SAFE_INITITAL_MARGIN));
+        require(_isInitialMarginSafe(args.positionId), UnsafePositionAccount(args.positionId, SAFE_INITITAL_MARGIN));
         // done
         {
             (
@@ -75,20 +70,20 @@ contract FacetOpen is Mux3TradeBase, IFacetOpen {
                 uint256[] memory newEntryPrices,
                 address[] memory newCollateralTokens,
                 uint256[] memory newCollateralAmounts
-            ) = _dumpForTradeEvent(positionId, marketId);
+            ) = _dumpForTradeEvent(args.positionId, args.marketId);
             emit OpenPosition(
                 positionAccount.owner,
-                positionId,
-                marketId,
-                _markets[marketId].isLong,
-                size,
-                tradingPrice,
+                args.positionId,
+                args.marketId,
+                _markets[args.marketId].isLong,
+                args.size,
+                result.tradingPrice,
                 backedPools,
                 allocations,
                 newSizes,
                 newEntryPrices,
-                positionFeeUsd,
-                borrowingFeeUsd,
+                result.positionFeeUsd,
+                result.borrowingFeeUsd,
                 newCollateralTokens,
                 newCollateralAmounts
             );
@@ -169,7 +164,8 @@ contract FacetOpen is Mux3TradeBase, IFacetOpen {
             args.marketId,
             mem.cumulatedBorrowingPerUsd,
             false, // shouldCollateralSufficient
-            args.lastConsumedToken
+            args.lastConsumedToken,
+            args.isUnwrapWeth
         );
         // close position
         _closeMarketPosition(args.positionId, args.marketId, mem.allocations);

@@ -17,7 +17,7 @@ contract Market is Mux3FacetBase, IMarket {
     using LibTypeCast for bytes32;
 
     function _openMarketPosition(bytes32 marketId, uint256[] memory allocations) internal {
-        BackedPoolState[] memory backedPools = _markets[marketId].pools;
+        BackedPoolState[] storage backedPools = _markets[marketId].pools;
         require(
             allocations.length == backedPools.length,
             AllocationLengthMismatch(allocations.length, backedPools.length)
@@ -32,7 +32,7 @@ contract Market is Mux3FacetBase, IMarket {
     }
 
     function _closeMarketPosition(bytes32 positionId, bytes32 marketId, uint256[] memory allocations) internal {
-        BackedPoolState[] memory backedPools = _markets[marketId].pools;
+        BackedPoolState[] storage backedPools = _markets[marketId].pools;
         require(
             allocations.length == backedPools.length,
             AllocationLengthMismatch(allocations.length, backedPools.length)
@@ -51,7 +51,7 @@ contract Market is Mux3FacetBase, IMarket {
      * @return allocations [amount of .pools[i]]
      */
     function _allocateLiquidity(bytes32 marketId, uint256 size) internal view returns (uint256[] memory allocations) {
-        BackedPoolState[] memory backedPools = _markets[marketId].pools;
+        BackedPoolState[] storage backedPools = _markets[marketId].pools;
         IBorrowingRate.AllocatePool[] memory confs = new IBorrowingRate.AllocatePool[](backedPools.length);
         uint256 price = _priceOf(_marketOracleId(marketId));
         // allocate pools according to sizeUsd
@@ -95,7 +95,7 @@ contract Market is Mux3FacetBase, IMarket {
         uint256 size
     ) internal view returns (uint256[] memory allocations) {
         PositionData storage positionData = _positionAccounts[positionId].positions[marketId];
-        BackedPoolState[] memory backedPools = _markets[marketId].pools;
+        BackedPoolState[] storage backedPools = _markets[marketId].pools;
         // deallocate
         IBorrowingRate.DeallocatePool[] memory confs = new IBorrowingRate.DeallocatePool[](backedPools.length);
         uint256 totalSize = 0;
@@ -133,7 +133,7 @@ contract Market is Mux3FacetBase, IMarket {
     }
 
     function _updateMarketBorrowing(bytes32 marketId) internal returns (uint256[] memory newCumulatedBorrowingPerUsd) {
-        BackedPoolState[] memory backedPools = _markets[marketId].pools;
+        BackedPoolState[] storage backedPools = _markets[marketId].pools;
         newCumulatedBorrowingPerUsd = new uint256[](backedPools.length);
         for (uint256 i = 0; i < backedPools.length; i++) {
             newCumulatedBorrowingPerUsd[i] = ICollateralPool(backedPools[i].backedPool).updateMarketBorrowing(marketId);
@@ -148,36 +148,42 @@ contract Market is Mux3FacetBase, IMarket {
         uint256[] memory feeAmounts, // [amount foreach feeAddresses], decimals = 18
         // note: allocation only represents a proportional relationship.
         //       the sum of allocations does not necessarily have to be consistent with the total value.
-        uint256[] memory allocations // [amount foreach backed pools], decimals = 18.
+        uint256[] memory allocations, // [amount foreach backed pools], decimals = 18.
+        bool isUnwrapWeth
     ) internal {
-        uint256 length = feeAddresses.length;
-        require(length == feeAmounts.length, AllocationLengthMismatch(length, feeAmounts.length));
-        require(
-            allocations.length == _markets[marketId].pools.length,
-            AllocationLengthMismatch(allocations.length, _markets[marketId].pools.length)
-        );
-        for (uint256 i = 0; i < length; i++) {
-            uint256 wad = feeAmounts[i];
-            if (wad == 0) {
-                continue;
-            }
-            emit CollectFee(feeAddresses[i], wad);
+        uint256 feeLength = feeAddresses.length;
+        require(feeLength == feeAmounts.length, AllocationLengthMismatch(feeLength, feeAmounts.length));
+        BackedPoolState[] storage backedPools = _markets[marketId].pools;
+        uint256 poolLength = backedPools.length;
+        require(allocations.length == poolLength, AllocationLengthMismatch(allocations.length, poolLength));
+        address[] memory backedPoolAddresses = new address[](poolLength);
+        for (uint256 pi = 0; pi < poolLength; pi++) {
+            backedPoolAddresses[pi] = backedPools[pi].backedPool;
         }
         address feeDistributor = _feeDistributor();
-        for (uint256 i = 0; i < length; i++) {
-            uint256 wad = feeAmounts[i];
+        uint256[] memory rawFeeAmounts = new uint256[](feeLength);
+        for (uint256 fi = 0; fi < feeLength; fi++) {
+            uint256 wad = feeAmounts[fi];
             if (wad == 0) {
                 continue;
             }
-            IERC20Upgradeable(feeAddresses[i]).safeTransfer(feeDistributor, _collateralToRaw(feeAddresses[i], wad));
+            emit CollectFee(feeAddresses[fi], wad);
+            uint256 raw = _collateralToRaw(feeAddresses[fi], wad);
+            if (raw == 0) {
+                continue;
+            }
+            IERC20Upgradeable(feeAddresses[fi]).safeTransfer(feeDistributor, raw);
+            rawFeeAmounts[fi] = raw;
         }
         IMux3FeeDistributor(feeDistributor).updatePositionFees(
             trader,
             positionId,
             marketId,
             feeAddresses,
-            feeAmounts,
-            allocations
+            rawFeeAmounts,
+            backedPoolAddresses,
+            allocations,
+            isUnwrapWeth
         );
     }
 
@@ -188,7 +194,7 @@ contract Market is Mux3FacetBase, IMarket {
         bool isThrowBankrupt,
         address lastConsumedToken
     ) internal returns (int256[] memory newPoolPnlUsds) {
-        BackedPoolState[] memory backedPools = _markets[marketId].pools;
+        BackedPoolState[] storage backedPools = _markets[marketId].pools;
         require(
             backedPools.length == poolPnlUsds.length,
             AllocationLengthMismatch(backedPools.length, poolPnlUsds.length)

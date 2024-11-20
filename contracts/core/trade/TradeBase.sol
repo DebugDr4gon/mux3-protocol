@@ -14,7 +14,8 @@ contract Mux3TradeBase is Mux3FacetBase, PositionAccount, Market {
         bytes32 marketId,
         uint256[] memory cumulatedBorrowingPerUsd,
         bool shouldCollateralSufficient,
-        address lastConsumedToken
+        address lastConsumedToken,
+        bool isUnwrapWeth
     ) internal returns (uint256 borrowingFeeUsd) {
         uint256[] memory borrowingFeeUsds;
         address[] memory borrowingFeeAddresses;
@@ -34,7 +35,8 @@ contract Mux3TradeBase is Mux3FacetBase, PositionAccount, Market {
             marketId,
             borrowingFeeAddresses,
             borrowingFeeAmounts,
-            borrowingFeeUsds // allocations
+            borrowingFeeUsds, // allocations
+            isUnwrapWeth
         );
     }
 
@@ -46,7 +48,8 @@ contract Mux3TradeBase is Mux3FacetBase, PositionAccount, Market {
         uint256[] memory allocations,
         bool isLiquidating,
         bool shouldCollateralSufficient,
-        address lastConsumedToken
+        address lastConsumedToken,
+        bool isUnwrapWeth
     ) internal returns (uint256 positionFeeUsd) {
         address[] memory positionFeeAddresses;
         uint256[] memory positionFeeAmounts;
@@ -58,7 +61,7 @@ contract Mux3TradeBase is Mux3FacetBase, PositionAccount, Market {
             shouldCollateralSufficient,
             lastConsumedToken
         );
-        _dispatchFee(trader, positionId, marketId, positionFeeAddresses, positionFeeAmounts, allocations);
+        _dispatchFee(trader, positionId, marketId, positionFeeAddresses, positionFeeAmounts, allocations, isUnwrapWeth);
     }
 
     function _dumpForTradeEvent(
@@ -78,7 +81,7 @@ contract Mux3TradeBase is Mux3FacetBase, PositionAccount, Market {
         PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         // pools
         {
-            BackedPoolState[] memory pools = _markets[marketId].pools;
+            BackedPoolState[] storage pools = _markets[marketId].pools;
             PositionData storage positionData = positionAccount.positions[marketId];
             backedPools = new address[](pools.length);
             newEntryPrices = new uint256[](pools.length);

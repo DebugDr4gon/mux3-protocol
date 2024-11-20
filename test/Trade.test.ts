@@ -2339,13 +2339,15 @@ describe("Trade", () => {
           // position fee = 50500 * 21 * 0.002 = 2121
           // update to 1 hour before liquidate
           await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 3600 * 6098)
-          await expect(orderBook.liquidate(positionId, long1, zeroAddress, false)).to.revertedWith("AccessControl")
-          await expect(orderBook.connect(broker).liquidate(positionId, long1, zeroAddress, false)).to.revertedWith(
-            "SafePositionAccount"
+          await expect(orderBook.liquidate(positionId, long1, zeroAddress, false, false)).to.revertedWith(
+            "AccessControl"
           )
+          await expect(
+            orderBook.connect(broker).liquidate(positionId, long1, zeroAddress, false, false)
+          ).to.revertedWith("SafePositionAccount")
           await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 3600 * 6099)
           {
-            const tx = await orderBook.connect(broker).liquidate(positionId, long1, zeroAddress, false)
+            const tx = await orderBook.connect(broker).liquidate(positionId, long1, zeroAddress, false, false)
             await expect(tx).to.emit(emitter, "UpdateMarketBorrowing").withArgs(
               pool1.address,
               long1,
@@ -2397,7 +2399,7 @@ describe("Trade", () => {
           await arbFeeder.setMockData(toUnit("2", 8), await time.latest())
           await btcFeeder.setMockData(toUnit("45516", 8), await time.latest())
           {
-            const tx = await orderBook.connect(broker).liquidate(positionId, long1, zeroAddress, false)
+            const tx = await orderBook.connect(broker).liquidate(positionId, long1, zeroAddress, false, false)
             await expect(tx)
               .to.emit(core, "LiquidatePosition")
               .withArgs(
@@ -2437,7 +2439,7 @@ describe("Trade", () => {
           await arbFeeder.setMockData(toUnit("2", 8), await time.latest())
           await btcFeeder.setMockData(toUnit("45300", 8), await time.latest())
           {
-            const tx = await orderBook.connect(broker).liquidate(positionId, long1, zeroAddress, false)
+            const tx = await orderBook.connect(broker).liquidate(positionId, long1, zeroAddress, false, false)
             await expect(tx)
               .to.emit(core, "LiquidatePosition")
               .withArgs(
@@ -2477,7 +2479,7 @@ describe("Trade", () => {
           await arbFeeder.setMockData(toUnit("2", 8), await time.latest())
           await btcFeeder.setMockData(toUnit("45200", 8), await time.latest())
           {
-            const tx = await orderBook.connect(broker).liquidate(positionId, long1, zeroAddress, false)
+            const tx = await orderBook.connect(broker).liquidate(positionId, long1, zeroAddress, false, false)
             await expect(tx)
               .to.emit(core, "LiquidatePosition")
               .withArgs(
@@ -3313,7 +3315,7 @@ describe("Trade", () => {
         await arbFeeder.setMockData(toUnit("2", 8), await time.latest())
         await btcFeeder.setMockData(toUnit("59950", 8), await time.latest())
         {
-          const tx = await orderBook.connect(broker).liquidate(positionId, short1, zeroAddress, true)
+          const tx = await orderBook.connect(broker).liquidate(positionId, short1, zeroAddress, true, false)
           await expect(tx)
             .to.emit(core, "LiquidatePosition")
             .withArgs(
@@ -4104,6 +4106,72 @@ describe("Trade", () => {
       })
     })
   }) // add some liquidity and test more
+
+  it("only 1 pool has liquidity, open long", async () => {
+    // add liquidity
+    await time.increaseTo(timestampOfTest + 86400 * 2)
+    await usdc.connect(lp1).transfer(orderBook.address, toUnit("1000000", 6))
+    {
+      const args = {
+        poolAddress: pool1.address,
+        rawAmount: toUnit("1000000", 6),
+        isAdding: true,
+        isUnwrapWeth: false,
+      }
+      await orderBook.connect(lp1).placeLiquidityOrder(args)
+    }
+    await time.increaseTo(timestampOfTest + 86400 * 2 + 930)
+    {
+      await orderBook.connect(broker).fillLiquidityOrder(0)
+      expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("100", 6)) // fee = 1000000 * 0.01% = 100
+      expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("999900", 6))
+    }
+    // open long
+    const positionId = encodePositionId(trader1.address, 0)
+    await usdc.connect(trader1).transfer(orderBook.address, toUnit("10000", 6))
+    {
+      const args = {
+        positionId,
+        marketId: long1,
+        size: toWei("1"),
+        flags: PositionOrderFlags.OpenPosition,
+        limitPrice: toWei("50000"),
+        expiration: timestampOfTest + 86400 * 2 + 930 + 300,
+        lastConsumedToken: zeroAddress,
+        collateralToken: usdc.address,
+        collateralAmount: toUnit("10000", 6),
+        withdrawUsd: toWei("0"),
+        withdrawSwapToken: zeroAddress,
+        withdrawSwapSlippage: toWei("0"),
+        tpPriceDiff: toWei("0"),
+        slPriceDiff: toWei("0"),
+        tpslExpiration: 0,
+        tpslFlags: 0,
+        tpslWithdrawSwapToken: zeroAddress,
+        tpslWithdrawSwapSlippage: toWei("0"),
+      }
+      await orderBook.connect(trader1).placePositionOrder(args, refCode)
+      const tx2 = await orderBook.connect(broker).fillPositionOrder(1)
+      await expect(tx2)
+        .to.emit(core, "OpenPosition")
+        .withArgs(
+          trader1.address,
+          positionId,
+          long1,
+          true,
+          toWei("1"), // size
+          toWei("50000"), // tradingPrice
+          [pool1.address, pool2.address, pool3.address], // backedPools
+          [toWei("1"), toWei("0"), toWei("0")], // allocations
+          [toWei("1"), toWei("0"), toWei("0")], // newSizes
+          [toWei("50000"), toWei("0"), toWei("0")], // newEntryPrices
+          toWei("50"), // positionFeeUsd = 50000 * 1 * 0.1%
+          toWei("0"), // borrowingFeeUsd
+          [usdc.address], // newCollateralTokens
+          [toWei("10000")] // newCollateralAmounts
+        )
+    }
+  })
 
   it("multicall can throw error(string)", async () => {
     await expect(

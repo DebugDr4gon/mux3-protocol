@@ -48,13 +48,17 @@ interface ICollateralPool {
         uint256 rawAmount // token decimals
     ) external;
 
-    function addLiquidity(address account, uint256 collaterals) external returns (uint256 shares);
+    function addLiquidity(
+        address account,
+        uint256 rawCollateralAmount,
+        bool isUnwrapWeth
+    ) external returns (uint256 shares);
 
     function removeLiquidity(
         address account,
         uint256 shares,
         bool isUnwrapWeth
-    ) external returns (uint256 collateralAmount);
+    ) external returns (uint256 rawCollateralAmount);
 
     function rebalance(
         address rebalancer,

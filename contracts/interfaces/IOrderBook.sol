@@ -236,6 +236,15 @@ interface IOrderBook {
         address collateralToken,
         uint256 collateralAmount // token decimals
     ) external;
+
+    /**
+     * @notice Add liquidity to a CollateralPool without mint shares
+     */
+    function donateLiquidity(
+        address poolAddress,
+        address collateralAddress,
+        uint256 rawAmount // token.decimals
+    ) external;
 }
 
 interface IOrderBookGetter {

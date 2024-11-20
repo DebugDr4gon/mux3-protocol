@@ -234,7 +234,7 @@ contract FacetReader is Mux3FacetBase, PositionAccount, IFacetReader {
         PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         uint256 tradingPrice = _priceOf(_marketOracleId(marketId));
         // allocation (just copy the existing sizes)
-        BackedPoolState[] memory backedPools = _markets[marketId].pools;
+        BackedPoolState[] storage backedPools = _markets[marketId].pools;
         PositionData storage positionData = positionAccount.positions[marketId];
         uint256[] memory allocations = new uint256[](backedPools.length);
         for (uint256 i = 0; i < backedPools.length; i++) {

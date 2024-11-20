@@ -288,7 +288,8 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         bytes32 positionId,
         bytes32 marketId,
         address lastConsumedToken,
-        bool isWithdrawAll
+        bool isWithdrawAll,
+        bool isUnwrapWeth
     )
         external
         onlyRole(BROKER_ROLE)
@@ -297,7 +298,15 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         updateSequence
         returns (uint256 tradingPrice)
     {
-        return LibOrderBook.liquidatePosition(_storage, positionId, marketId, lastConsumedToken, isWithdrawAll);
+        return
+            LibOrderBook.liquidatePosition(
+                _storage,
+                positionId,
+                marketId,
+                lastConsumedToken,
+                isWithdrawAll,
+                isUnwrapWeth
+            );
     }
 
     /**
@@ -330,9 +339,19 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         address fromPool,
         address toPool,
         uint256 size,
-        address lastConsumedToken
+        address lastConsumedToken,
+        bool isUnwrapWeth
     ) external onlyRole(BROKER_ROLE) nonReentrant whenNotPaused(OrderType.PositionOrder) updateSequence {
-        LibOrderBook.reallocate(_storage, positionId, marketId, fromPool, toPool, size, lastConsumedToken);
+        LibOrderBook.reallocate(
+            _storage,
+            positionId,
+            marketId,
+            fromPool,
+            toPool,
+            size,
+            lastConsumedToken,
+            isUnwrapWeth
+        );
     }
 
     /**
@@ -342,9 +361,10 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     function updateBorrowingFee(
         bytes32 positionId,
         bytes32 marketId,
-        address lastConsumedToken
+        address lastConsumedToken,
+        bool isUnwrapWeth
     ) external onlyRole(BROKER_ROLE) nonReentrant updateSequence {
-        LibOrderBook.updateBorrowingFee(_storage, positionId, marketId, lastConsumedToken);
+        LibOrderBook.updateBorrowingFee(_storage, positionId, marketId, lastConsumedToken, isUnwrapWeth);
     }
 
     function _blockTimestamp() internal view virtual returns (uint64) {

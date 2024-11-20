@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import "../../interfaces/IReferralTiers.sol";
 
-contract MockReferralTiers is IReferralTiers {
+contract TestReferralTiers is IReferralTiers {
     mapping(bytes32 => uint256) public code2Tier;
 
     function setTier(bytes32[] memory codes, uint256[] memory tiers) external {

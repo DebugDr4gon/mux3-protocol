@@ -47,134 +47,150 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
         );
     }
 
-    function withdraw(
-        bytes32 positionId,
-        address collateralToken,
-        uint256 rawAmount, // token.decimals
-        address lastConsumedToken,
-        bool isUnwrapWeth,
-        address withdrawSwapToken,
-        uint256 withdrawSwapSlippage
-    ) external onlyRole(ORDER_BOOK_ROLE) {
-        require(_isPositionAccountExist(positionId), PositionAccountNotExists(positionId));
-        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
+    struct WithdrawMemory {
+        uint256 allBorrowingFeeUsd;
+        uint256 collateralAmount;
+        bool isSwapSuccess;
+        uint256 rawSwapOut;
+    }
+
+    function withdraw(WithdrawArgs memory args) external onlyRole(ORDER_BOOK_ROLE) {
+        WithdrawMemory memory mem;
+        require(_isPositionAccountExist(args.positionId), PositionAccountNotExists(args.positionId));
+        PositionAccountInfo storage positionAccount = _positionAccounts[args.positionId];
         // update borrowing fee for all markets
-        uint256 allBorrowingFeeUsd = _updateBorrowingForAllMarkets(positionId, lastConsumedToken);
+        mem.allBorrowingFeeUsd = _updateBorrowingForAllMarkets(
+            args.positionId,
+            args.lastConsumedToken,
+            args.isUnwrapWeth
+        );
         // withdraw
-        uint256 collateralAmount = _collateralToWad(collateralToken, rawAmount);
-        (bool isSwapSuccess, uint256 rawSwapOut) = _withdrawFromAccount(
-            positionId,
-            collateralToken,
-            collateralAmount,
-            withdrawSwapToken,
-            withdrawSwapSlippage,
-            isUnwrapWeth
+        mem.collateralAmount = _collateralToWad(args.collateralToken, args.amount);
+        (mem.isSwapSuccess, mem.rawSwapOut) = _withdrawFromAccount(
+            args.positionId,
+            args.collateralToken,
+            mem.collateralAmount,
+            args.withdrawSwapToken,
+            args.withdrawSwapSlippage,
+            args.isUnwrapWeth
         );
         emit Withdraw(
             positionAccount.owner,
-            positionId,
-            collateralToken,
-            collateralAmount,
-            isSwapSuccess ? withdrawSwapToken : collateralToken,
-            rawSwapOut
+            args.positionId,
+            args.collateralToken,
+            mem.collateralAmount,
+            mem.isSwapSuccess ? args.withdrawSwapToken : args.collateralToken,
+            mem.rawSwapOut
         );
         // exceeds leverage set by setInitialLeverage
-        require(_isLeverageSafe(positionId), UnsafePositionAccount(positionId, SAFE_LEVERAGE));
+        require(_isLeverageSafe(args.positionId), UnsafePositionAccount(args.positionId, SAFE_LEVERAGE));
         // exceeds leverage set by MM_INITIAL_MARGIN_RATE
-        require(_isInitialMarginSafe(positionId), UnsafePositionAccount(positionId, SAFE_INITITAL_MARGIN));
-        _dumpForDepositWithdrawEvent(positionId, allBorrowingFeeUsd);
+        require(_isInitialMarginSafe(args.positionId), UnsafePositionAccount(args.positionId, SAFE_INITITAL_MARGIN));
+        _dumpForDepositWithdrawEvent(args.positionId, mem.allBorrowingFeeUsd);
     }
 
-    function withdrawAll(
-        bytes32 positionId,
-        bool isUnwrapWeth,
-        address withdrawSwapToken,
-        uint256 withdrawSwapSlippage
-    ) external onlyRole(ORDER_BOOK_ROLE) {
-        require(_isPositionAccountExist(positionId), PositionAccountNotExists(positionId));
-        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
+    struct WithdrawAllMemory {
+        address[] collaterals;
+        uint256 collateralAmount;
+        bool isSwapSuccess;
+        uint256 rawSwapOut;
+    }
+
+    function withdrawAll(WithdrawAllArgs memory args) external onlyRole(ORDER_BOOK_ROLE) {
+        WithdrawAllMemory memory mem;
+        require(_isPositionAccountExist(args.positionId), PositionAccountNotExists(args.positionId));
+        PositionAccountInfo storage positionAccount = _positionAccounts[args.positionId];
         // all positions should be closed
-        require(positionAccount.activeMarkets.length() == 0, PositionNotClosed(positionId));
-        address[] memory collaterals = positionAccount.activeCollaterals.values();
-        for (uint256 i = 0; i < collaterals.length; i++) {
-            address collateralToken = collaterals[i];
-            uint256 collateralAmount = positionAccount.collaterals[collateralToken];
-            if (collateralAmount == 0) {
+        require(positionAccount.activeMarkets.length() == 0, PositionNotClosed(args.positionId));
+        mem.collaterals = positionAccount.activeCollaterals.values();
+        for (uint256 i = 0; i < mem.collaterals.length; i++) {
+            mem.collateralAmount = positionAccount.collaterals[mem.collaterals[i]];
+            if (mem.collateralAmount == 0) {
                 // usually we do not protect collateralAmount == 0 and the contract should ensure empty collaterals are removed.
                 // but since this is usually the last step of trading, we allow withdrawing 0 for better fault tolerance
                 continue;
             }
-            (bool isSwapSuccess, uint256 rawSwapOut) = _withdrawFromAccount(
-                positionId,
-                collateralToken,
-                collateralAmount,
-                withdrawSwapToken,
-                withdrawSwapSlippage,
-                isUnwrapWeth
+            (mem.isSwapSuccess, mem.rawSwapOut) = _withdrawFromAccount(
+                args.positionId,
+                mem.collaterals[i],
+                mem.collateralAmount,
+                args.withdrawSwapToken,
+                args.withdrawSwapSlippage,
+                args.isUnwrapWeth
             );
             emit Withdraw(
                 positionAccount.owner,
-                positionId,
-                collateralToken,
-                collateralAmount,
-                isSwapSuccess ? withdrawSwapToken : collateralToken,
-                rawSwapOut
+                args.positionId,
+                mem.collaterals[i],
+                mem.collateralAmount,
+                mem.isSwapSuccess ? args.withdrawSwapToken : mem.collaterals[i],
+                mem.rawSwapOut
             );
         } // emit Withdraw here
         _dumpForDepositWithdrawEvent(
-            positionId,
+            args.positionId,
             0 // borrowingFeeUsd
         );
     }
 
-    function withdrawUsd(
-        bytes32 positionId,
-        uint256 collateralUsd, // 1e18
-        address lastConsumedToken,
-        bool isUnwrapWeth,
-        address withdrawSwapToken,
-        uint256 withdrawSwapSlippage
-    ) external onlyRole(ORDER_BOOK_ROLE) {
-        require(_isPositionAccountExist(positionId), PositionAccountNotExists(positionId));
-        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
+    struct WithdrawUsdMemory {
+        uint256 allBorrowingFeeUsd;
+        address[] collaterals;
+        uint256 remainUsd;
+        bool isSwapSuccess;
+        uint256 rawSwapOut;
+        uint256 tokenPrice;
+        uint256 payingUsd;
+        uint256 payingCollateral;
+    }
+
+    function withdrawUsd(WithdrawUsdArgs memory args) external onlyRole(ORDER_BOOK_ROLE) {
+        WithdrawUsdMemory memory mem;
+        require(_isPositionAccountExist(args.positionId), PositionAccountNotExists(args.positionId));
+        PositionAccountInfo storage positionAccount = _positionAccounts[args.positionId];
         // update borrowing fee for all markets
-        uint256 allBorrowingFeeUsd = _updateBorrowingForAllMarkets(positionId, lastConsumedToken);
+        mem.allBorrowingFeeUsd = _updateBorrowingForAllMarkets(
+            args.positionId,
+            args.lastConsumedToken,
+            args.isUnwrapWeth
+        );
         // withdraw
-        address[] memory collaterals = _activeCollateralsWithLastWithdraw(positionId, lastConsumedToken);
-        uint256 remainUsd = collateralUsd;
-        for (uint256 i = 0; i < collaterals.length; i++) {
-            address collateralToken = collaterals[i];
-            uint256 tokenPrice = _priceOf(collateralToken);
-            uint256 balanceUsd = (positionAccount.collaterals[collateralToken] * tokenPrice) / 1e18;
-            uint256 payingUsd = MathUpgradeable.min(balanceUsd, remainUsd);
-            uint256 payingCollateral = (payingUsd * 1e18) / tokenPrice;
-            (bool isSwapSuccess, uint256 rawSwapOut) = _withdrawFromAccount(
-                positionId,
-                collateralToken,
-                payingCollateral,
-                withdrawSwapToken,
-                withdrawSwapSlippage,
-                isUnwrapWeth
+        mem.collaterals = _activeCollateralsWithLastWithdraw(args.positionId, args.lastConsumedToken);
+        mem.remainUsd = args.collateralUsd;
+        for (uint256 i = 0; i < mem.collaterals.length; i++) {
+            mem.tokenPrice = _priceOf(mem.collaterals[i]);
+            {
+                uint256 balanceUsd = (positionAccount.collaterals[mem.collaterals[i]] * mem.tokenPrice) / 1e18;
+                mem.payingUsd = MathUpgradeable.min(balanceUsd, mem.remainUsd);
+            }
+            mem.payingCollateral = (mem.payingUsd * 1e18) / mem.tokenPrice;
+            (mem.isSwapSuccess, mem.rawSwapOut) = _withdrawFromAccount(
+                args.positionId,
+                mem.collaterals[i],
+                mem.payingCollateral,
+                args.withdrawSwapToken,
+                args.withdrawSwapSlippage,
+                args.isUnwrapWeth
             );
             emit Withdraw(
                 positionAccount.owner,
-                positionId,
-                collateralToken,
-                payingCollateral,
-                isSwapSuccess ? withdrawSwapToken : collateralToken,
-                rawSwapOut
+                args.positionId,
+                mem.collaterals[i],
+                mem.payingCollateral,
+                mem.isSwapSuccess ? args.withdrawSwapToken : mem.collaterals[i],
+                mem.rawSwapOut
             );
-            remainUsd -= payingUsd;
-            if (remainUsd == 0) {
+            mem.remainUsd -= mem.payingUsd;
+            if (mem.remainUsd == 0) {
                 break;
             }
         }
-        require(remainUsd == 0, InsufficientCollateralUsd(remainUsd));
-        _dumpForDepositWithdrawEvent(positionId, allBorrowingFeeUsd);
+        require(mem.remainUsd == 0, InsufficientCollateralUsd(mem.remainUsd));
         // exceeds leverage set by setInitialLeverage
-        require(_isLeverageSafe(positionId), UnsafePositionAccount(positionId, SAFE_LEVERAGE));
+        require(_isLeverageSafe(args.positionId), UnsafePositionAccount(args.positionId, SAFE_LEVERAGE));
         // exceeds leverage set by MM_INITIAL_MARGIN_RATE
-        require(_isInitialMarginSafe(positionId), UnsafePositionAccount(positionId, SAFE_INITITAL_MARGIN));
+        require(_isInitialMarginSafe(args.positionId), UnsafePositionAccount(args.positionId, SAFE_INITITAL_MARGIN));
+        _dumpForDepositWithdrawEvent(args.positionId, mem.allBorrowingFeeUsd);
     }
 
     /**
@@ -184,7 +200,8 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
     function updateBorrowingFee(
         bytes32 positionId,
         bytes32 marketId,
-        address lastConsumedToken
+        address lastConsumedToken,
+        bool isUnwrapWeth
     ) external onlyRole(ORDER_BOOK_ROLE) {
         if (!_isPositionAccountExist(positionId)) {
             _createPositionAccount(positionId);
@@ -198,14 +215,16 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
             marketId,
             cumulatedBorrowingPerUsd,
             true,
-            lastConsumedToken
+            lastConsumedToken,
+            isUnwrapWeth
         );
         emit UpdatePositionBorrowingFee(positionAccount.owner, positionId, marketId, borrowingFeeUsd);
     }
 
     function _updateBorrowingForAllMarkets(
         bytes32 positionId,
-        address lastConsumedToken
+        address lastConsumedToken,
+        bool isUnwrapWeth
     ) private returns (uint256 allBorrowingFeeUsd) {
         PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         uint256 marketLength = positionAccount.activeMarkets.length();
@@ -218,7 +237,8 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
                 marketId,
                 cumulatedBorrowingPerUsd,
                 true, // shouldCollateralSufficient
-                lastConsumedToken
+                lastConsumedToken,
+                isUnwrapWeth
             );
             allBorrowingFeeUsd += borrowingFeeUsd;
         }

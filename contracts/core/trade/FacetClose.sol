@@ -17,68 +17,69 @@ contract FacetClose is Mux3TradeBase, IFacetClose {
      * @notice The entry point for closing a position
      */
     function closePosition(
-        bytes32 positionId,
-        bytes32 marketId,
-        uint256 size,
-        address lastConsumedToken
-    )
-        external
-        onlyRole(ORDER_BOOK_ROLE)
-        returns (uint256 tradingPrice, int256[] memory poolPnlUsds, uint256 borrowingFeeUsd, uint256 positionFeeUsd)
-    {
+        ClosePositionArgs memory args
+    ) external onlyRole(ORDER_BOOK_ROLE) returns (ClosePositionResult memory result) {
         {
-            uint256 lotSize = _marketLotSize(marketId);
-            require(size % lotSize == 0, InvalidLotSize(size, lotSize));
+            uint256 lotSize = _marketLotSize(args.marketId);
+            require(args.size % lotSize == 0, InvalidLotSize(args.size, lotSize));
         }
-        require(_isMarketExists(marketId), MarketNotExists(marketId));
-        require(!_marketDisableTrade(marketId), MarketTradeDisabled(marketId));
-        require(_isPositionAccountExist(positionId), PositionAccountNotExists(positionId));
-        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
-        tradingPrice = _priceOf(_marketOracleId(marketId));
+        require(_isMarketExists(args.marketId), MarketNotExists(args.marketId));
+        require(!_marketDisableTrade(args.marketId), MarketTradeDisabled(args.marketId));
+        require(_isPositionAccountExist(args.positionId), PositionAccountNotExists(args.positionId));
+        PositionAccountInfo storage positionAccount = _positionAccounts[args.positionId];
+        result.tradingPrice = _priceOf(_marketOracleId(args.marketId));
         // allocation
-        uint256[] memory allocations = _deallocateLiquidity(positionId, marketId, size);
+        uint256[] memory allocations = _deallocateLiquidity(args.positionId, args.marketId, args.size);
         // update borrowing fee for the current market
         // borrowing fee should be updated before pnl, because profit/loss will affect aum
-        uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(marketId);
+        uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(args.marketId);
         // pnl
-        poolPnlUsds = _positionPnlUsd(positionId, marketId, allocations, tradingPrice, true /* useCappedPnl */);
-        poolPnlUsds = _realizeProfitAndLoss(
-            positionId,
-            marketId,
-            poolPnlUsds,
+        result.poolPnlUsds = _positionPnlUsd(
+            args.positionId,
+            args.marketId,
+            allocations,
+            result.tradingPrice,
+            true /* useCappedPnl */
+        );
+        result.poolPnlUsds = _realizeProfitAndLoss(
+            args.positionId,
+            args.marketId,
+            result.poolPnlUsds,
             true, // isThrowBankrupt
-            lastConsumedToken
+            args.lastConsumedToken
         );
         // update borrowing fee
-        borrowingFeeUsd = _updateAndDispatchBorrowingFee(
+        result.borrowingFeeUsd = _updateAndDispatchBorrowingFee(
             positionAccount.owner,
-            positionId,
-            marketId,
+            args.positionId,
+            args.marketId,
             cumulatedBorrowingPerUsd,
             false, // shouldCollateralSufficient
-            lastConsumedToken
+            args.lastConsumedToken,
+            args.isUnwrapWeth
         );
         // position fee
-        positionFeeUsd = _dispatchPositionFee(
+        result.positionFeeUsd = _dispatchPositionFee(
             positionAccount.owner,
-            positionId,
-            marketId,
-            size,
+            args.positionId,
+            args.marketId,
+            args.size,
             allocations,
             false, // isLiquidating
             false, // shouldCollateralSufficient
-            lastConsumedToken
+            args.lastConsumedToken,
+            args.isUnwrapWeth
         );
         // close position
-        _closeMarketPosition(positionId, marketId, allocations);
-        _closeAccountPosition(positionId, marketId, allocations);
+        _closeMarketPosition(args.positionId, args.marketId, allocations);
+        _closeAccountPosition(args.positionId, args.marketId, allocations);
         // should safe
         require(
             _isMaintenanceMarginSafe(
-                positionId,
+                args.positionId,
                 0 // pendingBorrowingFeeUsd = 0 because we have already deducted borrowing fee from collaterals
             ),
-            UnsafePositionAccount(positionId, SAFE_MAINTENANCE_MARGIN)
+            UnsafePositionAccount(args.positionId, SAFE_MAINTENANCE_MARGIN)
         );
         // done
         {
@@ -88,89 +89,102 @@ contract FacetClose is Mux3TradeBase, IFacetClose {
                 uint256[] memory newEntryPrices,
                 address[] memory newCollateralTokens,
                 uint256[] memory newCollateralAmounts
-            ) = _dumpForTradeEvent(positionId, marketId);
+            ) = _dumpForTradeEvent(args.positionId, args.marketId);
             emit ClosePosition(
                 positionAccount.owner,
-                positionId,
-                marketId,
-                _markets[marketId].isLong,
-                size,
-                tradingPrice,
+                args.positionId,
+                args.marketId,
+                _markets[args.marketId].isLong,
+                args.size,
+                result.tradingPrice,
                 backedPools,
                 allocations,
                 newSizes,
                 newEntryPrices,
-                poolPnlUsds,
-                positionFeeUsd,
-                borrowingFeeUsd,
+                result.poolPnlUsds,
+                result.positionFeeUsd,
+                result.borrowingFeeUsd,
                 newCollateralTokens,
                 newCollateralAmounts
             );
         }
     }
 
+    struct LiquidatePositionMemory {
+        uint256 size;
+        uint256[] allocations;
+        uint256[] cumulatedBorrowingPerUsd;
+    }
+
     /**
      * @notice Liquidate a position (of all pool allocations) in a position account. Leave other positions in this position account.
      */
     function liquidatePosition(
-        bytes32 positionId,
-        bytes32 marketId,
-        address lastConsumedToken
-    )
-        external
-        onlyRole(ORDER_BOOK_ROLE)
-        returns (uint256 tradingPrice, int256[] memory poolPnlUsds, uint256 borrowingFeeUsd, uint256 positionFeeUsd)
-    {
-        require(_isMarketExists(marketId), MarketNotExists(marketId));
-        require(!_marketDisableTrade(marketId), MarketTradeDisabled(marketId));
-        require(_isPositionAccountExist(positionId), PositionAccountNotExists(positionId));
-        PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
-        tradingPrice = _priceOf(_marketOracleId(marketId));
+        LiquidatePositionArgs memory args
+    ) external onlyRole(ORDER_BOOK_ROLE) returns (LiquidatePositionResult memory result) {
+        LiquidatePositionMemory memory mem;
+        require(_isMarketExists(args.marketId), MarketNotExists(args.marketId));
+        require(!_marketDisableTrade(args.marketId), MarketTradeDisabled(args.marketId));
+        require(_isPositionAccountExist(args.positionId), PositionAccountNotExists(args.positionId));
+        PositionAccountInfo storage positionAccount = _positionAccounts[args.positionId];
+        result.tradingPrice = _priceOf(_marketOracleId(args.marketId));
         // allocation (just copy the existing sizes)
-        (uint256 size, uint256[] memory allocations) = _copyPoolSizeAsAllocation(positionId, marketId);
+        (mem.size, mem.allocations) = _copyPoolSizeAsAllocation(args.positionId, args.marketId);
         // update borrowing fee for the current market
         // borrowing fee should be updated before pnl, because profit/loss will affect aum
-        uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(marketId);
+        mem.cumulatedBorrowingPerUsd = _updateMarketBorrowing(args.marketId);
         // should mm unsafe
         {
-            (uint256 pendingBorrowingFeeUsd, ) = _borrowingFeeUsd(positionId, marketId, cumulatedBorrowingPerUsd);
+            (uint256 pendingBorrowingFeeUsd, ) = _borrowingFeeUsd(
+                args.positionId,
+                args.marketId,
+                mem.cumulatedBorrowingPerUsd
+            );
             require(
-                !_isMaintenanceMarginSafe(positionId, pendingBorrowingFeeUsd),
-                SafePositionAccount(positionId, SAFE_MAINTENANCE_MARGIN)
+                !_isMaintenanceMarginSafe(args.positionId, pendingBorrowingFeeUsd),
+                SafePositionAccount(args.positionId, SAFE_MAINTENANCE_MARGIN)
             );
         }
         // pnl
-        poolPnlUsds = _positionPnlUsd(positionId, marketId, allocations, tradingPrice, true /* useCappedPnl */);
-        poolPnlUsds = _realizeProfitAndLoss(
-            positionId,
-            marketId,
-            poolPnlUsds,
+        result.poolPnlUsds = _positionPnlUsd(
+            args.positionId,
+            args.marketId,
+            mem.allocations,
+            result.tradingPrice,
+            true /* useCappedPnl */
+        );
+        result.poolPnlUsds = _realizeProfitAndLoss(
+            args.positionId,
+            args.marketId,
+            result.poolPnlUsds,
             false, // isThrowBankrupt
-            lastConsumedToken
+            args.lastConsumedToken
         );
         // update borrowing fee
-        borrowingFeeUsd = _updateAndDispatchBorrowingFee(
+        result.borrowingFeeUsd = _updateAndDispatchBorrowingFee(
             positionAccount.owner,
-            positionId,
-            marketId,
-            cumulatedBorrowingPerUsd,
+            args.positionId,
+            args.marketId,
+            mem.cumulatedBorrowingPerUsd,
             false, // shouldCollateralSufficient
-            lastConsumedToken
+            args.lastConsumedToken,
+            args.isUnwrapWeth
         );
         // position fee
-        positionFeeUsd = _dispatchPositionFee(
+        result.positionFeeUsd = _dispatchPositionFee(
             positionAccount.owner,
-            positionId,
-            marketId,
-            size,
-            allocations,
+            args.positionId,
+            args.marketId,
+            mem.size,
+            mem.allocations,
             true, // isLiquidating
             false, // shouldCollateralSufficient
-            lastConsumedToken
+            args.lastConsumedToken,
+            args.isUnwrapWeth
         );
         // close position
-        _closeMarketPosition(positionId, marketId, allocations);
-        _closeAccountPosition(positionId, marketId, allocations);
+        _closeMarketPosition(args.positionId, args.marketId, mem.allocations);
+        _closeAccountPosition(args.positionId, args.marketId, mem.allocations);
         // done
         {
             (
@@ -179,19 +193,19 @@ contract FacetClose is Mux3TradeBase, IFacetClose {
                 ,
                 address[] memory newCollateralTokens,
                 uint256[] memory newCollateralAmounts
-            ) = _dumpForTradeEvent(positionId, marketId);
+            ) = _dumpForTradeEvent(args.positionId, args.marketId);
             emit LiquidatePosition(
                 positionAccount.owner,
-                positionId,
-                marketId,
-                _markets[marketId].isLong,
-                size,
-                tradingPrice,
+                args.positionId,
+                args.marketId,
+                _markets[args.marketId].isLong,
+                mem.size,
+                result.tradingPrice,
                 backedPools,
-                allocations,
-                poolPnlUsds,
-                positionFeeUsd,
-                borrowingFeeUsd,
+                mem.allocations,
+                result.poolPnlUsds,
+                result.positionFeeUsd,
+                result.borrowingFeeUsd,
                 newCollateralTokens,
                 newCollateralAmounts
             );
@@ -203,7 +217,7 @@ contract FacetClose is Mux3TradeBase, IFacetClose {
         bytes32 marketId
     ) private view returns (uint256 size, uint256[] memory allocations) {
         PositionData storage positionData = _positionAccounts[positionId].positions[marketId];
-        BackedPoolState[] memory backedPools = _markets[marketId].pools;
+        BackedPoolState[] storage backedPools = _markets[marketId].pools;
         allocations = new uint256[](backedPools.length);
         for (uint256 i = 0; i < backedPools.length; i++) {
             uint256 sizeForPool = positionData.pools[backedPools[i].backedPool].size;

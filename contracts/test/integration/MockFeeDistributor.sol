@@ -18,7 +18,9 @@ contract MockMux3FeeDistributor is IMux3FeeDistributor {
     function updateLiquidityFees(
         address lp,
         address poolAddress,
-        uint256 amount // decimals = 18
+        address tokenAddress,
+        uint256 rawAmount, // token decimals
+        bool isUnwrapWeth
     ) external override {}
 
     // note: allocation only represents a proportional relationship.
@@ -27,8 +29,10 @@ contract MockMux3FeeDistributor is IMux3FeeDistributor {
         address trader,
         bytes32 positionId,
         bytes32 marketId,
-        address[] memory feeAddresses,
-        uint256[] memory feeAmounts, // [amount foreach feeAddresses], decimals = 18
-        uint256[] memory allocations // [amount foreach backed pools], decimals = 18
+        address[] memory tokenAddresses,
+        uint256[] memory rawAmounts, // [amount foreach tokenAddresses], token decimals
+        address[] memory backedPools,
+        uint256[] memory allocations, // [amount foreach backed pools], decimals = 18
+        bool isUnwrapWeth
     ) external override {}
 }

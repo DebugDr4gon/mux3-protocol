@@ -39,12 +39,21 @@ interface IFacetOpen {
         uint256[] newCollateralAmounts
     );
 
-    function openPosition(
-        bytes32 positionId,
-        bytes32 marketId,
-        uint256 size,
-        address lastConsumedToken
-    ) external returns (uint256 tradingPrice, uint256 borrowingFeeUsd, uint256 positionFeeUsd);
+    struct OpenPositionArgs {
+        bytes32 positionId;
+        bytes32 marketId;
+        uint256 size;
+        address lastConsumedToken;
+        bool isUnwrapWeth;
+    }
+
+    struct OpenPositionResult {
+        uint256 tradingPrice;
+        uint256 borrowingFeeUsd;
+        uint256 positionFeeUsd;
+    }
+
+    function openPosition(OpenPositionArgs memory args) external returns (OpenPositionResult memory result);
 
     struct ReallocatePositionArgs {
         bytes32 positionId;
@@ -53,6 +62,7 @@ interface IFacetOpen {
         address toPool;
         uint256 size;
         address lastConsumedToken;
+        bool isUnwrapWeth;
     }
 
     struct ReallocatePositionResult {
@@ -101,22 +111,40 @@ interface IFacetClose {
         uint256[] newCollateralAmounts
     );
 
-    function closePosition(
-        bytes32 positionId,
-        bytes32 marketId,
-        uint256 size,
-        address lastConsumedToken
-    )
-        external
-        returns (uint256 tradingPrice, int256[] memory poolPnlUsds, uint256 borrowingFeeUsd, uint256 positionFeeUsd);
+    struct ClosePositionArgs {
+        bytes32 positionId;
+        bytes32 marketId;
+        uint256 size;
+        address lastConsumedToken;
+        bool isUnwrapWeth;
+    }
+
+    struct ClosePositionResult {
+        uint256 tradingPrice;
+        int256[] poolPnlUsds;
+        uint256 borrowingFeeUsd;
+        uint256 positionFeeUsd;
+    }
+
+    function closePosition(ClosePositionArgs memory args) external returns (ClosePositionResult memory result);
+
+    struct LiquidatePositionArgs {
+        bytes32 positionId;
+        bytes32 marketId;
+        address lastConsumedToken;
+        bool isUnwrapWeth;
+    }
+
+    struct LiquidatePositionResult {
+        uint256 tradingPrice;
+        int256[] poolPnlUsds;
+        uint256 borrowingFeeUsd;
+        uint256 positionFeeUsd;
+    }
 
     function liquidatePosition(
-        bytes32 positionId,
-        bytes32 marketId,
-        address lastConsumedToken
-    )
-        external
-        returns (uint256 tradingPrice, int256[] memory poolPnlUsds, uint256 borrowingFeeUsd, uint256 positionFeeUsd);
+        LiquidatePositionArgs memory args
+    ) external returns (LiquidatePositionResult memory result);
 }
 
 interface IFacetPositionAccount {
@@ -159,31 +187,42 @@ interface IFacetPositionAccount {
 
     function deposit(bytes32 positionId, address collateralToken, uint256 amount) external;
 
-    function withdraw(
+    struct WithdrawArgs {
+        bytes32 positionId;
+        address collateralToken;
+        uint256 amount;
+        address lastConsumedToken;
+        bool isUnwrapWeth;
+        address withdrawSwapToken;
+        uint256 withdrawSwapSlippage;
+    }
+
+    function withdraw(WithdrawArgs memory args) external;
+
+    struct WithdrawAllArgs {
+        bytes32 positionId;
+        bool isUnwrapWeth;
+        address withdrawSwapToken;
+        uint256 withdrawSwapSlippage;
+    }
+
+    function withdrawAll(WithdrawAllArgs memory args) external;
+
+    struct WithdrawUsdArgs {
+        bytes32 positionId;
+        uint256 collateralUsd; // 1e18
+        address lastConsumedToken;
+        bool isUnwrapWeth;
+        address withdrawSwapToken;
+        uint256 withdrawSwapSlippage;
+    }
+
+    function withdrawUsd(WithdrawUsdArgs memory args) external;
+
+    function updateBorrowingFee(
         bytes32 positionId,
-        address collateralToken,
-        uint256 amount,
+        bytes32 marketId,
         address lastConsumedToken,
-        bool isUnwrapWeth,
-        address withdrawSwapToken,
-        uint256 withdrawSwapSlippage
+        bool isUnwrapWeth
     ) external;
-
-    function withdrawAll(
-        bytes32 positionId,
-        bool isUnwrapWeth,
-        address withdrawSwapToken,
-        uint256 withdrawSwapSlippage
-    ) external;
-
-    function withdrawUsd(
-        bytes32 positionId,
-        uint256 collateralUsd, // 1e18
-        address lastConsumedToken,
-        bool isUnwrapWeth,
-        address withdrawSwapToken,
-        uint256 withdrawSwapSlippage
-    ) external;
-
-    function updateBorrowingFee(bytes32 positionId, bytes32 marketId, address lastConsumedToken) external;
 }

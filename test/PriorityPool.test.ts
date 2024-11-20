@@ -595,11 +595,11 @@ describe("Priority pool", () => {
             await expect(
               orderBook
                 .connect(trader2)
-                .reallocate(positionId2, long1, pool2.address, pool1.address, toWei("7.5013"), usdc.address)
+                .reallocate(positionId2, long1, pool2.address, pool1.address, toWei("7.5013"), usdc.address, false)
             ).to.be.revertedWith("AccessControl")
             const tx3 = await orderBook
               .connect(broker)
-              .reallocate(positionId2, long1, pool2.address, pool1.address, toWei("7.5013"), usdc.address)
+              .reallocate(positionId2, long1, pool2.address, pool1.address, toWei("7.5013"), usdc.address, false)
             // {
             //   for (const i of (await (await tx3).wait()).events!) {
             //     if (i.topics[0] === "0xd96b06dba5730e68d159471f627b117be995386df87ebe38f94d51fe476d5985") {

@@ -86,9 +86,13 @@ library LibOrderBook {
                 collateralAddress, // token
                 orderParams.poolAddress, // receipt
                 orderParams.rawAmount,
-                false // unwrap eth
+                false // isUnwrapWeth. CollateralPool never accepts ETH
             );
-            outAmount = ICollateralPool(orderParams.poolAddress).addLiquidity(orderData.account, orderParams.rawAmount);
+            outAmount = ICollateralPool(orderParams.poolAddress).addLiquidity(
+                orderData.account,
+                orderParams.rawAmount,
+                orderParams.isUnwrapWeth
+            );
         } else {
             // note: lp token is still in the OrderBook
             outAmount = ICollateralPool(orderParams.poolAddress).removeLiquidity(
@@ -125,13 +129,15 @@ library LibOrderBook {
         require(blockTimestamp <= deadline, "Order expired");
         // fill
         IFacetPositionAccount(orderBook.mux3Facet).withdraw(
-            orderParams.positionId,
-            orderParams.tokenAddress,
-            orderParams.rawAmount,
-            orderParams.lastConsumedToken,
-            orderParams.isUnwrapWeth,
-            orderParams.withdrawSwapToken,
-            orderParams.withdrawSwapSlippage
+            IFacetPositionAccount.WithdrawArgs({
+                positionId: orderParams.positionId,
+                collateralToken: orderParams.tokenAddress,
+                amount: orderParams.rawAmount,
+                lastConsumedToken: orderParams.lastConsumedToken,
+                isUnwrapWeth: orderParams.isUnwrapWeth,
+                withdrawSwapToken: orderParams.withdrawSwapToken,
+                withdrawSwapSlippage: orderParams.withdrawSwapSlippage
+            })
         );
         _payGasFee(orderBook, orderData, msg.sender);
         emit IOrderBook.FillOrder(orderData.account, orderId, orderData);
@@ -250,10 +256,12 @@ library LibOrderBook {
             _validateCollateral(orderBook, orderParams.withdrawSwapToken);
         }
         IFacetPositionAccount(orderBook.mux3Facet).withdrawAll(
-            orderParams.positionId,
-            orderParams.isUnwrapWeth,
-            orderParams.withdrawSwapToken,
-            orderParams.withdrawSwapSlippage
+            IFacetPositionAccount.WithdrawAllArgs({
+                positionId: orderParams.positionId,
+                isUnwrapWeth: orderParams.isUnwrapWeth,
+                withdrawSwapToken: orderParams.withdrawSwapToken,
+                withdrawSwapSlippage: orderParams.withdrawSwapSlippage
+            })
         );
     }
 
@@ -347,12 +355,16 @@ library LibOrderBook {
             );
         }
         // open
-        (tradingPrice, , ) = IFacetOpen(orderBook.mux3Facet).openPosition(
-            orderParams.positionId,
-            orderParams.marketId,
-            orderParams.size,
-            orderParams.lastConsumedToken
+        IFacetOpen.OpenPositionResult memory result = IFacetOpen(orderBook.mux3Facet).openPosition(
+            IFacetOpen.OpenPositionArgs({
+                positionId: orderParams.positionId,
+                marketId: orderParams.marketId,
+                size: orderParams.size,
+                lastConsumedToken: orderParams.lastConsumedToken,
+                isUnwrapWeth: LibOrder.isUnwrapWeth(orderParams)
+            })
         );
+        tradingPrice = result.tradingPrice;
         // tp/sl strategy
         if (orderParams.tpPriceDiff > 0 || orderParams.slPriceDiff > 0) {
             _placeTpslOrders(orderBook, orderParams, tradingPrice, blockTimestamp);
@@ -365,24 +377,25 @@ library LibOrderBook {
         uint64 orderId
     ) internal returns (uint256 tradingPrice) {
         // close
-        int256[] memory poolPnlUsds;
-        uint256 borrowingFeeUsd;
-        uint256 positionFeeUsd;
-        (tradingPrice, poolPnlUsds, borrowingFeeUsd, positionFeeUsd) = IFacetClose(orderBook.mux3Facet).closePosition(
-            orderParams.positionId,
-            orderParams.marketId,
-            orderParams.size,
-            orderParams.lastConsumedToken
+        IFacetClose.ClosePositionResult memory result = IFacetClose(orderBook.mux3Facet).closePosition(
+            IFacetClose.ClosePositionArgs({
+                positionId: orderParams.positionId,
+                marketId: orderParams.marketId,
+                size: orderParams.size,
+                lastConsumedToken: orderParams.lastConsumedToken,
+                isUnwrapWeth: LibOrder.isUnwrapWeth(orderParams)
+            })
         );
+        tradingPrice = result.tradingPrice;
         // auto withdraw
         uint256 withdrawUsd = orderParams.withdrawUsd;
         if (LibOrder.isWithdrawProfit(orderParams)) {
             int256 pnlUsd = 0;
-            for (uint256 i = 0; i < poolPnlUsds.length; i++) {
-                pnlUsd += poolPnlUsds[i];
+            for (uint256 i = 0; i < result.poolPnlUsds.length; i++) {
+                pnlUsd += result.poolPnlUsds[i];
             }
-            pnlUsd -= borrowingFeeUsd.toInt256();
-            pnlUsd -= positionFeeUsd.toInt256();
+            pnlUsd -= result.borrowingFeeUsd.toInt256();
+            pnlUsd -= result.positionFeeUsd.toInt256();
             if (pnlUsd > 0) {
                 withdrawUsd += uint256(pnlUsd);
             }
@@ -390,12 +403,14 @@ library LibOrderBook {
         // auto withdraw
         if (withdrawUsd > 0) {
             IFacetPositionAccount(orderBook.mux3Facet).withdrawUsd(
-                orderParams.positionId,
-                withdrawUsd,
-                orderParams.lastConsumedToken,
-                LibOrder.isUnwrapWeth(orderParams),
-                orderParams.withdrawSwapToken,
-                orderParams.withdrawSwapSlippage
+                IFacetPositionAccount.WithdrawUsdArgs({
+                    positionId: orderParams.positionId,
+                    collateralUsd: withdrawUsd,
+                    lastConsumedToken: orderParams.lastConsumedToken,
+                    isUnwrapWeth: LibOrder.isUnwrapWeth(orderParams),
+                    withdrawSwapToken: orderParams.withdrawSwapToken,
+                    withdrawSwapSlippage: orderParams.withdrawSwapSlippage
+                })
             );
         }
         // remove the current order from tp/sl list
@@ -405,10 +420,12 @@ library LibOrderBook {
             // auto withdraw
             if (LibOrder.isWithdrawIfEmpty(orderParams)) {
                 IFacetPositionAccount(orderBook.mux3Facet).withdrawAll(
-                    orderParams.positionId,
-                    LibOrder.isUnwrapWeth(orderParams),
-                    orderParams.withdrawSwapToken,
-                    orderParams.withdrawSwapSlippage
+                    IFacetPositionAccount.WithdrawAllArgs({
+                        positionId: orderParams.positionId,
+                        isUnwrapWeth: LibOrder.isUnwrapWeth(orderParams),
+                        withdrawSwapToken: orderParams.withdrawSwapToken,
+                        withdrawSwapSlippage: orderParams.withdrawSwapSlippage
+                    })
                 );
             }
         }
@@ -423,23 +440,30 @@ library LibOrderBook {
         bytes32 positionId,
         bytes32 marketId,
         address lastConsumedToken,
-        bool isWithdrawAll
+        bool isWithdrawAll,
+        bool isUnwrapWeth
     ) external returns (uint256 tradingPrice) {
         // close
-        (tradingPrice, , , ) = IFacetClose(orderBook.mux3Facet).liquidatePosition(
-            positionId,
-            marketId,
-            lastConsumedToken
+        IFacetClose.LiquidatePositionResult memory result = IFacetClose(orderBook.mux3Facet).liquidatePosition(
+            IFacetClose.LiquidatePositionArgs({
+                positionId: positionId,
+                marketId: marketId,
+                lastConsumedToken: lastConsumedToken,
+                isUnwrapWeth: isUnwrapWeth
+            })
         );
+        tradingPrice = result.tradingPrice;
         // auto withdraw, equivalent to POSITION_WITHDRAW_ALL_IF_EMPTY
         if (isWithdrawAll) {
             // default values of isUnwrapWeth, withdrawSwapToken, withdrawSwapSlippage
             // so that mux3 looks like mux1
             IFacetPositionAccount(orderBook.mux3Facet).withdrawAll(
-                positionId,
-                true, // isUnwrapWeth
-                address(0), // withdrawSwapToken
-                0 // withdrawSwapSlippage
+                IFacetPositionAccount.WithdrawAllArgs({
+                    positionId: positionId,
+                    isUnwrapWeth: true,
+                    withdrawSwapToken: address(0),
+                    withdrawSwapSlippage: 0
+                })
             );
         }
         // cancel activated tp/sl orders
@@ -544,12 +568,16 @@ library LibOrderBook {
                 size += position.pools[i].size;
             }
         }
-        (tradingPrice, , , ) = IFacetClose(orderBook.mux3Facet).closePosition(
-            positionId,
-            marketId,
-            size,
-            lastConsumedToken
+        IFacetClose.ClosePositionResult memory result = IFacetClose(orderBook.mux3Facet).closePosition(
+            IFacetClose.ClosePositionArgs({
+                positionId: positionId,
+                marketId: marketId,
+                size: size,
+                lastConsumedToken: lastConsumedToken,
+                isUnwrapWeth: isUnwrapWeth
+            })
         );
+        tradingPrice = result.tradingPrice;
         {
             (address positionOwner, ) = LibCodec.decodePositionId(positionId);
             emit IOrderBook.FillAdlOrder(
@@ -568,10 +596,12 @@ library LibOrderBook {
             // default values of isUnwrapWeth, withdrawSwapToken, withdrawSwapSlippage
             // so that mux3 looks like mux1
             IFacetPositionAccount(orderBook.mux3Facet).withdrawAll(
-                positionId,
-                isUnwrapWeth,
-                address(0), // withdrawSwapToken
-                0 // withdrawSwapSlippage
+                IFacetPositionAccount.WithdrawAllArgs({
+                    positionId: positionId,
+                    isUnwrapWeth: isUnwrapWeth,
+                    withdrawSwapToken: address(0),
+                    withdrawSwapSlippage: 0
+                })
             );
         }
 
@@ -587,7 +617,8 @@ library LibOrderBook {
         address fromPool,
         address toPool,
         uint256 size,
-        address lastConsumedToken
+        address lastConsumedToken,
+        bool isUnwrapWeth
     ) external returns (uint256 tradingPrice) {
         // reallocate
         IFacetOpen.ReallocatePositionResult memory result = IFacetOpen(orderBook.mux3Facet).reallocatePosition(
@@ -597,7 +628,8 @@ library LibOrderBook {
                 fromPool: fromPool,
                 toPool: toPool,
                 size: size,
-                lastConsumedToken: lastConsumedToken
+                lastConsumedToken: lastConsumedToken,
+                isUnwrapWeth: isUnwrapWeth
             })
         );
         tradingPrice = result.tradingPrice;
@@ -826,9 +858,15 @@ library LibOrderBook {
         OrderBookStorage storage orderBook,
         bytes32 positionId,
         bytes32 marketId,
-        address lastConsumedToken
+        address lastConsumedToken,
+        bool isUnwrapWeth
     ) external {
-        IFacetPositionAccount(orderBook.mux3Facet).updateBorrowingFee(positionId, marketId, lastConsumedToken);
+        IFacetPositionAccount(orderBook.mux3Facet).updateBorrowingFee(
+            positionId,
+            marketId,
+            lastConsumedToken,
+            isUnwrapWeth
+        );
     }
 
     function depositGas(OrderBookStorage storage orderBook, uint256 amount, address sender) internal {

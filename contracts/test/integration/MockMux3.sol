@@ -17,59 +17,26 @@ contract MockMux3 is FacetManagement, FacetReader, IFacetOpen, IFacetClose, IFac
 
     function deposit(bytes32 positionId, address collateralToken, uint256 amount) external {}
 
-    function withdraw(
-        bytes32 positionId,
-        address collateralToken,
-        uint256 rawAmount, // token.decimals
-        address lastConsumedToken,
-        bool isUnwrapWeth,
-        address withdrawSwapToken,
-        uint256 withdrawSwapSlippage
-    ) external {}
+    function withdraw(WithdrawArgs memory args) external {}
 
-    function withdrawAll(
-        bytes32 positionId,
-        bool isUnwrapWeth,
-        address withdrawSwapToken,
-        uint256 withdrawSwapSlippage
-    ) external {}
+    function withdrawAll(WithdrawAllArgs memory args) external {}
 
-    function withdrawUsd(
-        bytes32 positionId,
-        uint256 collateralUsd, // 1e18
-        address lastConsumedToken,
-        bool isUnwrapWeth,
-        address withdrawSwapToken,
-        uint256 withdrawSwapSlippage
-    ) external {}
+    function withdrawUsd(WithdrawUsdArgs memory args) external {}
 
-    function updateBorrowingFee(bytes32 positionId, bytes32 marketId, address lastConsumedToken) external {}
-
-    function openPosition(
+    function updateBorrowingFee(
         bytes32 positionId,
         bytes32 marketId,
-        uint256 size,
-        address lastConsumedToken
-    ) external returns (uint256 tradingPrice, uint256 borrowingFeeUsd, uint256 positionFeeUsd) {}
+        address lastConsumedToken,
+        bool isUnwrapWeth
+    ) external {}
 
-    function closePosition(
-        bytes32 positionId,
-        bytes32 marketId,
-        uint256 size,
-        address lastConsumedToken
-    )
-        external
-        returns (uint256 tradingPrice, int256[] memory poolPnlUsds, uint256 borrowingFeeUsd, uint256 positionFeeUsd)
-    {}
+    function openPosition(OpenPositionArgs memory args) external returns (OpenPositionResult memory result) {}
+
+    function closePosition(ClosePositionArgs memory args) external returns (ClosePositionResult memory result) {}
 
     function liquidatePosition(
-        bytes32 positionId,
-        bytes32 marketId,
-        address lastConsumedToken
-    )
-        external
-        returns (uint256 tradingPrice, int256[] memory poolPnlUsds, uint256 borrowingFeeUsd, uint256 positionFeeUsd)
-    {}
+        LiquidatePositionArgs memory args
+    ) external returns (LiquidatePositionResult memory result) {}
 
     function reallocatePosition(
         ReallocatePositionArgs memory args

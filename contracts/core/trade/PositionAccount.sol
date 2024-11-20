@@ -115,7 +115,7 @@ contract PositionAccount is Mux3FacetBase {
     ) internal {
         // record to position
         PositionData storage positionData = _positionAccounts[positionId].positions[marketId];
-        BackedPoolState[] memory backedPools = _markets[marketId].pools;
+        BackedPoolState[] storage backedPools = _markets[marketId].pools;
         for (uint256 i = 0; i < backedPools.length; i++) {
             if (allocations[i] == 0) {
                 continue;
@@ -159,7 +159,7 @@ contract PositionAccount is Mux3FacetBase {
     function _closeAccountPosition(bytes32 positionId, bytes32 marketId, uint256[] memory allocations) internal {
         // record to position
         PositionData storage positionData = _positionAccounts[positionId].positions[marketId];
-        BackedPoolState[] memory backedPools = _markets[marketId].pools;
+        BackedPoolState[] storage backedPools = _markets[marketId].pools;
         bool isAllClosed = true; // true means all positions (allocations in backed pools) of this marketId in this PositionAccount are closed
         for (uint256 i = 0; i < backedPools.length; i++) {
             address backedPool = backedPools[i].backedPool;
@@ -255,7 +255,7 @@ contract PositionAccount is Mux3FacetBase {
             lastConsumedToken
         );
         // update entryBorrowing
-        BackedPoolState[] memory backedPools = _markets[marketId].pools;
+        BackedPoolState[] storage backedPools = _markets[marketId].pools;
         PositionData storage positionData = _positionAccounts[positionId].positions[marketId];
         for (uint256 i = 0; i < backedPools.length; i++) {
             address backedPool = backedPools[i].backedPool;
@@ -337,7 +337,7 @@ contract PositionAccount is Mux3FacetBase {
         for (uint256 i = 0; i < markets.length; i++) {
             bytes32 marketId = markets[i];
             PositionData storage positionData = positionAccount.positions[marketId];
-            BackedPoolState[] memory backedPools = _markets[marketId].pools;
+            BackedPoolState[] storage backedPools = _markets[marketId].pools;
             // position size
             uint256 size;
             uint256 entryValue;
@@ -431,7 +431,7 @@ contract PositionAccount is Mux3FacetBase {
             uint256[] memory borrowingFeeUsds // the same size as backed pools
         )
     {
-        BackedPoolState[] memory backedPools = _markets[marketId].pools;
+        BackedPoolState[] storage backedPools = _markets[marketId].pools;
         PositionData storage positionData = _positionAccounts[positionId].positions[marketId];
         borrowingFeeUsds = new uint256[](backedPools.length);
         for (uint256 i = 0; i < backedPools.length; i++) {
@@ -505,7 +505,7 @@ contract PositionAccount is Mux3FacetBase {
         uint256 marketLength = positionAccount.activeMarkets.length();
         for (uint256 i = 0; i < marketLength; i++) {
             bytes32 marketId = positionAccount.activeMarkets.at(i);
-            BackedPoolState[] memory backedPools = _markets[marketId].pools;
+            BackedPoolState[] storage backedPools = _markets[marketId].pools;
             PositionData storage positionData = positionAccount.positions[marketId];
             for (uint256 j = 0; j < backedPools.length; j++) {
                 address backedPool = backedPools[j].backedPool;
