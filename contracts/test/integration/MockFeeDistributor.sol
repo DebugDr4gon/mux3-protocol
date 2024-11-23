@@ -27,8 +27,6 @@ contract MockMux3FeeDistributor is IMux3FeeDistributor {
     //       the sum of allocations does not necessarily have to be consistent with the total value.
     function updatePositionFees(
         address trader,
-        bytes32 positionId,
-        bytes32 marketId,
         address[] memory tokenAddresses,
         uint256[] memory rawAmounts, // [amount foreach tokenAddresses], token decimals
         address[] memory backedPools,

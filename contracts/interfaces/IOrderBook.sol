@@ -44,10 +44,11 @@ struct OrderBookStorage {
     uint32 sequence; // will be 0 after 0xffffffff
     mapping(address => bool) priceProviders;
     address weth;
-    mapping(address => uint256) previousTokenBalance;
+    mapping(address => uint256) _reserved1; // was previousTokenBalance
     mapping(address => uint256) gasBalances;
     mapping(bytes32 => bytes32) configTable;
-    bytes32[48] __gap;
+    mapping(address => uint256) previousTokenBalance;
+    bytes32[47] __gap;
 }
 
 struct PositionOrderParams {

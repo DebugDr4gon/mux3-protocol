@@ -14,7 +14,7 @@ interface IErrors {
     error InvalidArrayLength(uint256 a, uint256 b);
     error InvalidLotSize(uint256 positionSize, uint256 lotSize);
     error InvalidDecimals(uint256 decimals);
-    error UnmatchedDecimals(uint256 deicmals, uint256 expectDecimals);
+    error UnmatchedDecimals(uint256 decimals, uint256 expectDecimals);
     error InvalidCloseSize(uint256 closingSize, uint256 positionSize);
 
     // price
@@ -52,7 +52,8 @@ interface IErrors {
     error UnsafePositionAccount(bytes32 positionId, uint256 safeType);
     error SafePositionAccount(bytes32 positionId, uint256 safeType);
     error InsufficientCollateralBalance(address collateralToken, uint256 balance, uint256 requiredAmount);
-    error InsufficientCollateralUsd(uint256 requiredUsd);
+    error InsufficientCollateralUsd(uint256 requiredUsd, uint256 remainUsd);
+    error InsufficientCollateral(uint256 required, uint256 remain);
     error InitialLeverageOutOfRange(uint256 leverage, uint256 leverageLimit);
     error PositionNotClosed(bytes32 positionId);
     error OnlySingleMarketPositionAllowed(bytes32 positionId);

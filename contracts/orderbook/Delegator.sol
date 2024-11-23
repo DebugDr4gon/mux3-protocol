@@ -7,7 +7,7 @@ import "../interfaces/IOrderBook.sol";
 import "../libraries/LibCodec.sol";
 
 contract Delegator is Initializable {
-    event SetDeletaor(address indexed owner, address indexed delegator, uint256 actionCount);
+    event SetDelegator(address indexed owner, address indexed delegator, uint256 actionCount);
 
     struct Delegation {
         address owner;

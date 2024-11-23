@@ -18,7 +18,7 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
         bytes32 marketId,
         uint256 leverage
     ) external onlyRole(ORDER_BOOK_ROLE) {
-        // make account if nessary
+        // make account if required
         if (!_isPositionAccountExist(positionId)) {
             _createPositionAccount(positionId);
         }
@@ -33,7 +33,7 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
         address collateralToken,
         uint256 rawAmount // token.decimals
     ) external onlyRole(ORDER_BOOK_ROLE) {
-        // make account if nessary
+        // make account if required
         if (!_isPositionAccountExist(positionId)) {
             _createPositionAccount(positionId);
         }
@@ -85,7 +85,7 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
         // exceeds leverage set by setInitialLeverage
         require(_isLeverageSafe(args.positionId), UnsafePositionAccount(args.positionId, SAFE_LEVERAGE));
         // exceeds leverage set by MM_INITIAL_MARGIN_RATE
-        require(_isInitialMarginSafe(args.positionId), UnsafePositionAccount(args.positionId, SAFE_INITITAL_MARGIN));
+        require(_isInitialMarginSafe(args.positionId), UnsafePositionAccount(args.positionId, SAFE_INITIAL_MARGIN));
         _dumpForDepositWithdrawEvent(args.positionId, mem.allBorrowingFeeUsd);
     }
 
@@ -185,11 +185,11 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
                 break;
             }
         }
-        require(mem.remainUsd == 0, InsufficientCollateralUsd(mem.remainUsd));
+        require(mem.remainUsd == 0, InsufficientCollateralUsd(mem.remainUsd, 0));
         // exceeds leverage set by setInitialLeverage
         require(_isLeverageSafe(args.positionId), UnsafePositionAccount(args.positionId, SAFE_LEVERAGE));
         // exceeds leverage set by MM_INITIAL_MARGIN_RATE
-        require(_isInitialMarginSafe(args.positionId), UnsafePositionAccount(args.positionId, SAFE_INITITAL_MARGIN));
+        require(_isInitialMarginSafe(args.positionId), UnsafePositionAccount(args.positionId, SAFE_INITIAL_MARGIN));
         _dumpForDepositWithdrawEvent(args.positionId, mem.allBorrowingFeeUsd);
     }
 

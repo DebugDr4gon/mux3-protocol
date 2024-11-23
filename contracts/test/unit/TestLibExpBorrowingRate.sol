@@ -57,20 +57,10 @@ contract TestLibExpBorrowingRate {
         return pools;
     }
 
-    function allocateNonPriorityPools(
+    function allocate(
         IBorrowingRate.AllocatePool[] memory pools,
         int256 xTotalUsd
     ) external pure returns (IBorrowingRate.AllocateResult[] memory result) {
-        LibExpBorrowingRate.AllocateMem memory mem;
-        mem.pools = new LibExpBorrowingRate.PoolState[](pools.length);
-        mem.xTotal = xTotalUsd;
-        mem.poolCount = int256(pools.length);
-        mem.poolsN = int256(pools.length);
-        mem.bestXi = new int256[](pools.length);
-        mem.candidate = new int256[](pools.length);
-        for (uint256 i = 0; i < pools.length; i++) {
-            mem.pools[i] = LibExpBorrowingRate.initPoolState(pools[i]);
-        }
-        return LibExpBorrowingRate.allocateNonPriorityPools(mem);
+        return LibExpBorrowingRate.allocate2(pools, pools.length, xTotalUsd);
     }
 }

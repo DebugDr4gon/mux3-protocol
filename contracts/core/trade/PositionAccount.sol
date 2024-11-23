@@ -226,7 +226,7 @@ contract PositionAccount is Mux3FacetBase {
             }
         }
         if (shouldCollateralSufficient) {
-            require(remainFeeUsd == 0, InsufficientCollateralUsd(remainFeeUsd));
+            require(remainFeeUsd == 0, InsufficientCollateralUsd(remainFeeUsd, 0));
         }
         deliveredFeeUsd = totalFeeUsd - remainFeeUsd;
     }

@@ -8,7 +8,7 @@ interface ICollateralPoolEventEmitter {
         address indexed account,
         address indexed tokenAddress,
         uint256 tokenPrice, // 1e18
-        uint256 feeCollateral, // 1e18
+        uint256 liquidityFeeCollateral, // 1e18
         uint256 lpPrice,
         uint256 shares
     );
@@ -18,7 +18,7 @@ interface ICollateralPoolEventEmitter {
         address indexed account,
         address indexed collateralAddress,
         uint256 tokenPrice, // 1e18
-        uint256 feeCollateral, // 1e18
+        uint256 liquidityFeeCollateral, // 1e18
         uint256 lpPrice,
         uint256 shares
     );
@@ -78,7 +78,7 @@ interface ICollateralPoolEventEmitter {
         address account,
         address tokenAddress,
         uint256 tokenPrice, // 1e18
-        uint256 feeCollateral, // 1e18
+        uint256 liquidityFeeCollateral, // 1e18
         uint256 lpPrice,
         uint256 shares
     ) external;
@@ -87,7 +87,7 @@ interface ICollateralPoolEventEmitter {
         address account,
         address collateralAddress,
         uint256 tokenPrice, // 1e18
-        uint256 feeCollateral, // 1e18
+        uint256 liquidityFeeCollateral, // 1e18
         uint256 lpPrice,
         uint256 shares
     ) external;

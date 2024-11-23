@@ -31,21 +31,6 @@ contract Mux3FeeDistributor is Initializable, AccessControlEnumerableUpgradeable
         _;
     }
 
-    function hotFixInitAgain(
-        address mux3Facet_,
-        address orderBook_,
-        address referralManager_,
-        address referralTiers_,
-        address weth_
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        mux3Facet = mux3Facet_;
-        orderBook = orderBook_;
-        referralManager = referralManager_;
-        referralTiers = referralTiers_;
-        weth = weth_;
-        lpRewardRatio = 1e18; // default ratio: income * 100% => LP holder
-    }
-
     function initialize(
         address mux3Facet_,
         address orderBook_,
@@ -62,6 +47,10 @@ contract Mux3FeeDistributor is Initializable, AccessControlEnumerableUpgradeable
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MAINTAINER_ROLE, msg.sender);
         lpRewardRatio = 1e18; // default ratio: income * 100% => LP holder
+    }
+
+    receive() external payable {
+        require(msg.sender == weth, "WETH");
     }
 
     /**
@@ -99,8 +88,6 @@ contract Mux3FeeDistributor is Initializable, AccessControlEnumerableUpgradeable
      */
     function updatePositionFees(
         address trader,
-        bytes32 positionId,
-        bytes32 marketId,
         address[] memory tokenAddresses,
         uint256[] memory rawAmounts, // [amount foreach tokenAddresses], token decimals
         address[] memory backedPools,
@@ -142,11 +129,15 @@ contract Mux3FeeDistributor is Initializable, AccessControlEnumerableUpgradeable
 
     function isFeeDistributorUser(address addr) public view returns (bool) {
         if (addr == mux3Facet) {
-            // mux3 core is valid
+            // mux3 core is valid (position fee, borrowing fee)
+            return true;
+        }
+        if (addr == orderBook) {
+            // orderBook is valid (reallocation fee)
             return true;
         }
         if (_isCollateralPool(addr)) {
-            // mux3 collateral pools are valid
+            // mux3 collateral pools are valid (LP fee)
             return true;
         }
         if (hasRole(FEE_DISTRIBUTOR_USER_ROLE, addr)) {

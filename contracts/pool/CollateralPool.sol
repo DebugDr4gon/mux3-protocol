@@ -179,7 +179,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         require(wad <= _liquidityBalances[token], InsufficientLiquidity(wad, _liquidityBalances[token]));
         _liquidityBalances[token] -= wad;
         ICollateralPoolEventEmitter(_eventEmitter).emitLiquidityBalanceOut(token, collateralPrice, wad);
-        IERC20Upgradeable(_collateralToken).safeTransfer(address(_core), raw);
+        IERC20Upgradeable(token).safeTransfer(address(_core), raw);
     }
 
     /**
@@ -212,29 +212,38 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         ICollateralPoolEventEmitter(_eventEmitter).emitReceiveFee(token, collateralPrice, wad);
     }
 
+    /**
+     * @dev Add liquidity to the pool and returns shares to the lp.
+     *
+     *      note: orderBook should transfer rawCollateralAmount to this contract
+     */
     function addLiquidity(
-        address account,
-        uint256 rawCollateralAmount, // OrderBook should transfer _collateralToken to this contract
-        bool isUnwrapWeth
-    ) external override onlyOrderBook returns (uint256 shares) {
-        require(rawCollateralAmount != 0, InvalidAmount(rawCollateralAmount));
+        AddLiquidityArgs memory args
+    ) external override onlyOrderBook returns (AddLiquidityResult memory result) {
+        _updateAllMarketBorrowing();
+        require(args.rawCollateralAmount != 0, InvalidAmount(args.rawCollateralAmount));
         require(_isCollateralEnabled(_collateralToken), CollateralTokenDisabled(_collateralToken));
         // nav
         uint256 collateralPrice = IFacetReader(_core).priceOf(_collateralToken);
         uint256 aumUsd = _aumUsd();
-        uint256 aumUsdWithoutPnl = _aumUsdWithoutPnl();
+        uint256 aumUsdWithoutPnl = _aumUsdWithoutPnl(); // important: read this before add liquidity
         uint256 lpPrice = _nav(aumUsd);
         // token amount
-        uint256 collateralAmount = _toWad(_collateralToken, rawCollateralAmount);
-        uint256 feeCollateral = (collateralAmount * _liqudityFeeRate()) / 1e18;
-        collateralAmount -= feeCollateral;
+        uint256 collateralAmount = _toWad(_collateralToken, args.rawCollateralAmount);
+        uint256 liquidityFeeCollateral = (collateralAmount * _liquidityFeeRate()) / 1e18;
+        require(
+            collateralAmount >= liquidityFeeCollateral,
+            InsufficientCollateral(collateralAmount, liquidityFeeCollateral)
+        );
+        collateralAmount -= liquidityFeeCollateral;
+        // to pool
         _liquidityBalances[_collateralToken] += collateralAmount;
         ICollateralPoolEventEmitter(_eventEmitter).emitLiquidityBalanceIn(
             _collateralToken,
             collateralPrice,
             collateralAmount
         );
-        // cap
+        // verify
         {
             uint256 liquidityCap = _liquidityCapUsd();
             uint256 collateralUsd = (collateralAmount * collateralPrice) / 1e18;
@@ -243,33 +252,39 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
                 CapacityExceeded(liquidityCap, aumUsdWithoutPnl, collateralUsd)
             );
         }
-        // send tokens
-        shares = (collateralAmount * collateralPrice) / lpPrice;
-        _mint(account, shares);
-        _distributeFee(account, collateralPrice, feeCollateral, isUnwrapWeth);
+        // share
+        result.shares = (collateralAmount * collateralPrice) / lpPrice;
+        _mint(args.account, result.shares);
+        // fees
+        _distributeFee(args.account, collateralPrice, liquidityFeeCollateral, args.isUnwrapWeth);
+        // done
         ICollateralPoolEventEmitter(_eventEmitter).emitAddLiquidity(
-            account,
+            args.account,
             _collateralToken,
             collateralPrice,
-            feeCollateral,
+            liquidityFeeCollateral,
             lpPrice,
-            shares
+            result.shares
         );
     }
 
+    /**
+     * @dev Remove liquidity from the pool and returns collateral tokens to the lp.
+     *
+     *      note: orderBook should transfer share token to this contract
+     */
     function removeLiquidity(
-        address account,
-        uint256 shares,
-        bool isUnwrapWeth
-    ) external override onlyOrderBook returns (uint256 rawCollateralAmount) {
-        require(shares != 0, InvalidAmount(shares));
+        RemoveLiquidityArgs memory args
+    ) external override onlyOrderBook returns (RemoveLiquidityResult memory result) {
+        _updateAllMarketBorrowing();
+        require(args.shares != 0, InvalidAmount(args.shares));
         require(_isCollateralEnabled(_collateralToken), CollateralTokenDisabled(_collateralToken));
         // nav
         uint256 aumUsd = _aumUsd();
         uint256 lpPrice = _nav(aumUsd);
-        // token amount
+        // from pool
         uint256 collateralPrice = IFacetReader(_core).priceOf(_collateralToken);
-        uint256 collateralAmount = (shares * lpPrice) / collateralPrice;
+        uint256 collateralAmount = (args.shares * lpPrice) / collateralPrice;
         require(
             collateralAmount <= _liquidityBalances[_collateralToken],
             InsufficientLiquidity(collateralAmount, _liquidityBalances[_collateralToken])
@@ -286,30 +301,30 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
                 aumUsd -= removedValue;
             }
         }
-        // fee
-        uint256 feeCollateral = (collateralAmount * _liqudityFeeRate()) / 1e18;
-        collateralAmount -= feeCollateral;
-        // send tokens
-        _burn(msg.sender, shares); // note: lp token is still in the OrderBook
-        _distributeFee(account, collateralPrice, feeCollateral, isUnwrapWeth);
-        rawCollateralAmount = _toRaw(_collateralToken, collateralAmount);
-        if (_collateralToken == _weth && isUnwrapWeth) {
-            LibEthUnwrapper.unwrap(_weth, payable(account), rawCollateralAmount);
+        // fees
+        uint256 liquidityFeeCollateral = (collateralAmount * _liquidityFeeRate()) / 1e18;
+        collateralAmount -= liquidityFeeCollateral;
+        _distributeFee(args.account, collateralPrice, liquidityFeeCollateral, args.isUnwrapWeth);
+        // send tokens to lp
+        _burn(address(this), args.shares);
+        result.rawCollateralAmount = _toRaw(_collateralToken, collateralAmount);
+        if (_collateralToken == _weth && args.isUnwrapWeth) {
+            LibEthUnwrapper.unwrap(_weth, payable(args.account), result.rawCollateralAmount);
         } else {
-            IERC20Upgradeable(_collateralToken).safeTransfer(account, rawCollateralAmount);
+            IERC20Upgradeable(_collateralToken).safeTransfer(args.account, result.rawCollateralAmount);
         }
-        // verify reservedUsd
+        // verify
         {
             uint256 reservedUsd = _reservedUsd();
             require(reservedUsd <= aumUsd, InsufficientLiquidity(reservedUsd, aumUsd));
         }
         ICollateralPoolEventEmitter(_eventEmitter).emitRemoveLiquidity(
-            account,
+            args.account,
             _collateralToken,
             collateralPrice,
-            feeCollateral,
+            liquidityFeeCollateral,
             lpPrice,
-            shares
+            args.shares
         );
     }
 
@@ -325,6 +340,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         uint256 maxRawAmount1, // collateralToken decimals
         bytes memory userData
     ) external override onlyOrderBook returns (uint256 rawAmount1) {
+        _updateAllMarketBorrowing();
         require(rebalancer != address(0), InvalidAddress(rebalancer));
         require(token0 != _collateralToken, InvalidAddress(token0));
         require(_isCollateralEnabled(token0), CollateralTokenDisabled(token0));
@@ -403,6 +419,10 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
      * @dev Update the borrowing state.
      */
     function updateMarketBorrowing(bytes32 marketId) external onlyCore returns (uint256 newCumulatedBorrowingPerUsd) {
+        return _updateMarketBorrowing(marketId);
+    }
+
+    function _updateMarketBorrowing(bytes32 marketId) internal returns (uint256 newCumulatedBorrowingPerUsd) {
         MarketState storage market = _marketStates[marketId];
         // interval check
         uint256 interval = IFacetReader(_core).configValue(MC_BORROWING_INTERVAL).toUint256();
@@ -417,9 +437,9 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
             // do nothing
             return market.cumulatedBorrowingPerUsd;
         }
-        uint256 timespan = nextFundingTime - market.lastBorrowingUpdateTime;
+        uint256 timeSpan = nextFundingTime - market.lastBorrowingUpdateTime;
         uint256 feeRateApy = borrowingFeeRateApy(marketId);
-        newCumulatedBorrowingPerUsd = market.cumulatedBorrowingPerUsd + (feeRateApy * timespan) / (365 * 86400);
+        newCumulatedBorrowingPerUsd = market.cumulatedBorrowingPerUsd + (feeRateApy * timeSpan) / (365 * 86400);
         market.cumulatedBorrowingPerUsd = newCumulatedBorrowingPerUsd;
         market.lastBorrowingUpdateTime = nextFundingTime;
         ICollateralPoolEventEmitter(_eventEmitter).emitUpdateMarketBorrowing(
@@ -427,6 +447,14 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
             feeRateApy,
             newCumulatedBorrowingPerUsd
         );
+    }
+
+    function _updateAllMarketBorrowing() internal {
+        uint256 marketCount = _marketIds.length();
+        for (uint256 i = 0; i < marketCount; i++) {
+            bytes32 marketId = _marketIds.at(i);
+            _updateMarketBorrowing(marketId);
+        }
     }
 
     /**
@@ -438,7 +466,6 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         poolFr.poolId = uint256(uint160(address(this)));
         poolFr.k = _borrowingK();
         poolFr.b = _borrowingB();
-        poolFr.highPriority = _configTable.getBoolean(MCP_IS_HIGH_PRIORITY);
         poolFr.poolSizeUsd = _aumUsdWithoutPnl().toInt256();
         poolFr.reservedUsd = _reservedUsd().toInt256();
         poolFr.reserveRate = _adlReserveRate(marketId).toInt256();

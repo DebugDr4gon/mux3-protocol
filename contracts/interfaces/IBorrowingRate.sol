@@ -17,7 +17,6 @@ library IBorrowingRate {
         uint256 poolId; // the allocator does not care what is a poolId, you can use any index or address here
         int256 k;
         int256 b;
-        bool highPriority; // always allocate from this pool if true
         int256 poolSizeUsd;
         int256 reservedUsd;
         int256 reserveRate;
@@ -30,7 +29,6 @@ library IBorrowingRate {
 
     struct DeallocatePool {
         uint256 poolId; // the deallocator does not care what is a poolId, you can use any index or address here
-        bool highPriority;
         int256 mySizeForPool; // not necessarily usd. we even do not care about the unit of "mySizeForPool"
     }
 

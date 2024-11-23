@@ -48,17 +48,29 @@ interface ICollateralPool {
         uint256 rawAmount // token decimals
     ) external;
 
-    function addLiquidity(
-        address account,
-        uint256 rawCollateralAmount,
-        bool isUnwrapWeth
-    ) external returns (uint256 shares);
+    struct AddLiquidityArgs {
+        address account; // lp address
+        uint256 rawCollateralAmount; // token in. token decimals
+        bool isUnwrapWeth; // useful for discount
+    }
 
-    function removeLiquidity(
-        address account,
-        uint256 shares,
-        bool isUnwrapWeth
-    ) external returns (uint256 rawCollateralAmount);
+    struct AddLiquidityResult {
+        uint256 shares;
+    }
+
+    function addLiquidity(AddLiquidityArgs memory args) external returns (AddLiquidityResult memory result);
+
+    struct RemoveLiquidityArgs {
+        address account; // lp address
+        uint256 shares; // token in. 1e18
+        bool isUnwrapWeth; // useful for discount
+    }
+
+    struct RemoveLiquidityResult {
+        uint256 rawCollateralAmount; // token out. token decimals
+    }
+
+    function removeLiquidity(RemoveLiquidityArgs memory args) external returns (RemoveLiquidityResult memory result);
 
     function rebalance(
         address rebalancer,

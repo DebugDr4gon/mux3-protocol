@@ -24,8 +24,8 @@ contract FacetReader is Mux3FacetBase, PositionAccount, IFacetReader {
     /**
      * @dev Get price of OracleId
      */
-    function priceOf(bytes32 id) external view returns (uint256 price) {
-        price = _priceOf(id);
+    function priceOf(bytes32 oracleId) external view returns (uint256 price) {
+        price = _priceOf(oracleId);
     }
 
     /**

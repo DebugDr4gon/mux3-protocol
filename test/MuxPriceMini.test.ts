@@ -120,7 +120,6 @@ describe("MuxPriceMini", () => {
     pool1 = (await ethers.getContractAt("CollateralPool", pool1Addr)) as CollateralPool
     await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306")))
     await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938")))
-    await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(ethers.BigNumber.from(0)))
     await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000")))
     await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001")))
     await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", long1), u2b(toWei("0.80")))
@@ -136,7 +135,6 @@ describe("MuxPriceMini", () => {
     pool2 = (await ethers.getContractAt("CollateralPool", pool2Addr)) as CollateralPool
     await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("3.46024")))
     await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-2.34434")))
-    await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(ethers.BigNumber.from(0)))
     await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000")))
     await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001")))
     await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", long1), u2b(toWei("0.80")))
@@ -191,37 +189,39 @@ describe("MuxPriceMini", () => {
     return (await waffle.provider.getBlock("latest")).timestamp
   }
 
-  it("1 pool mini test (real price data): +liq, +trade", async () => {
-    let seq = 1
-    const makePriceData = async (priceId: any, price: any) => {
+  let seq = 1
+
+  const makePriceData = async (contract, signer, priceIdtoData: any) => {
+    // priceId: any, price: any
+    let data: any[] = []
+    for (let i = 0; i < priceIdtoData.length; i++) {
       const _priceData = await getMuxPriceData(
         {
-          priceId: priceId,
+          priceId: priceIdtoData[i].priceId,
           chainid: 31337,
-          contractAddress: muxProvider.address,
+          contractAddress: contract,
           seq: seq++,
-          price: price,
+          price: priceIdtoData[i].price,
           timestamp: await blockTime(),
         },
         signer
       )
-      return [
-        {
-          id: priceId,
-          provider: muxProvider.address,
-          rawData: _priceData,
-        },
-      ]
+      data.push({
+        id: priceIdtoData[i].priceId,
+        provider: contract,
+        rawData: _priceData,
+      })
     }
+    return data
+  }
 
+  it("1 pool mini test (real price data): +liq, +trade", async () => {
     const signer = (await ethers.getSigners())[0]
     const muxProvider = await createContract("MuxPriceProvider", [])
     await muxProvider.initialize(signer.address)
     await muxProvider.setPriceExpirationSeconds(86400)
     await core.setOracleProvider(muxProvider.address, true)
 
-    // +liq usdc
-    await usdc.connect(lp1).transfer(orderBook.address, toUnit("1000000", 6))
     {
       await time.increaseTo(timestampOfTest + 86400 * 2 + 0)
       const args = {
@@ -230,7 +230,15 @@ describe("MuxPriceMini", () => {
         isAdding: true,
         isUnwrapWeth: true,
       }
-      const tx1 = await orderBook.connect(lp1).placeLiquidityOrder(args)
+
+      // +liq usdc
+      await usdc.connect(lp1).approve(orderBook.address, toUnit("1000000", 6))
+      const tx1 = await orderBook
+        .connect(lp1)
+        .multicall([
+          orderBook.interface.encodeFunctionData("transferToken", [usdc.address, toUnit("1000000", 6)]),
+          orderBook.interface.encodeFunctionData("placeLiquidityOrder", [args]),
+        ])
       await expect(tx1)
         .to.emit(orderBook, "NewLiquidityOrder")
         .withArgs(lp1.address, 0, [pool1.address, args.rawAmount, args.isAdding])
@@ -241,17 +249,17 @@ describe("MuxPriceMini", () => {
     }
     {
       await time.increaseTo(timestampOfTest + 86400 * 2 + 930)
-
-      const tx1 = await orderBook
-        .connect(broker)
-        .multicall([
-          orderBook.interface.encodeFunctionData("setPrices", [await makePriceData(a2b(usdc.address), toWei("1"))]),
-          orderBook.interface.encodeFunctionData("setPrices", [await makePriceData(a2b(weth.address), toWei("1000"))]),
-          orderBook.interface.encodeFunctionData("setPrices", [await makePriceData(a2b(arb.address), toWei("2"))]),
-          orderBook.interface.encodeFunctionData("setPrices", [await makePriceData(a2b(btc.address), toWei("50000"))]),
-          orderBook.interface.encodeFunctionData("fillLiquidityOrder", [0]),
-        ])
-
+      const tx1 = await orderBook.connect(broker).multicall([
+        orderBook.interface.encodeFunctionData("setPrices", [
+          await makePriceData(muxProvider.address, signer, [
+            { priceId: a2b(usdc.address), price: toWei("1") },
+            { priceId: a2b(weth.address), price: toWei("1000") },
+            { priceId: a2b(arb.address), price: toWei("2") },
+            { priceId: a2b(btc.address), price: toWei("50000") },
+          ]),
+        ]),
+        orderBook.interface.encodeFunctionData("fillLiquidityOrder", [0]),
+      ])
       await expect(tx1)
         .to.emit(emitter, "AddLiquidity")
         .withArgs(
@@ -339,13 +347,15 @@ describe("MuxPriceMini", () => {
 
       // fill
       // await core.setMockPrice(short1, toWei("2000"))
-      const tx2 = await orderBook
-        .connect(broker)
-        .multicall([
-          orderBook.interface.encodeFunctionData("setPrices", [await makePriceData(a2b(usdc.address), toWei("1"))]),
-          orderBook.interface.encodeFunctionData("setPrices", [await makePriceData(a2b(weth.address), toWei("2000"))]),
-          orderBook.interface.encodeFunctionData("fillPositionOrder", [1]),
-        ])
+      const tx2 = await orderBook.connect(broker).multicall([
+        orderBook.interface.encodeFunctionData("setPrices", [
+          await makePriceData(muxProvider.address, signer, [
+            { priceId: a2b(usdc.address), price: toWei("1") },
+            { priceId: a2b(weth.address), price: toWei("2000") },
+          ]),
+        ]),
+        orderBook.interface.encodeFunctionData("fillPositionOrder", [1]),
+      ])
       await expect(tx2)
         .to.emit(core, "OpenPosition")
         .withArgs(
@@ -401,32 +411,86 @@ describe("MuxPriceMini", () => {
         expect(state.totalSize).to.equal(toWei("1"))
         expect(state.averageEntryPrice).to.equal(toWei("2000"))
       }
+
+      await pool1.connect(lp1).approve(orderBook.address, toUnit("500000", 18))
+      await orderBook.connect(lp1).multicall([
+        orderBook.interface.encodeFunctionData("transferToken", [pool1.address, toUnit("100000", 18)]),
+        orderBook.interface.encodeFunctionData("placeLiquidityOrder", [
+          {
+            poolAddress: pool1.address,
+            rawAmount: toUnit("100000", 18),
+            isAdding: false,
+            isUnwrapWeth: true,
+          },
+        ]),
+      ])
+      {
+        await time.increaseTo(timestampOfTest + 86400 * 2 + 3600)
+        const tx1 = await orderBook.connect(broker).multicall([
+          orderBook.interface.encodeFunctionData("setPrices", [
+            await makePriceData(muxProvider.address, signer, [
+              { priceId: a2b(usdc.address), price: toWei("1") },
+              { priceId: a2b(weth.address), price: toWei("1000") },
+              { priceId: a2b(arb.address), price: toWei("2") },
+              { priceId: a2b(btc.address), price: toWei("50000") },
+            ]),
+          ]),
+          orderBook.interface.encodeFunctionData("fillLiquidityOrder", [2]),
+        ])
+        await expect(tx1)
+          .to.emit(emitter, "RemoveLiquidity")
+          .withArgs(
+            pool1.address,
+            lp1.address,
+            usdc.address,
+            toWei("1"),
+            toWei("9.989998999899989990"),
+            toWei("0.998999899989998999"),
+            toWei("100000")
+          )
+      }
+
+      await orderBook.connect(lp1).multicall([
+        orderBook.interface.encodeFunctionData("transferToken", [pool1.address, toUnit("100000", 18)]),
+        orderBook.interface.encodeFunctionData("placeLiquidityOrder", [
+          {
+            poolAddress: pool1.address,
+            rawAmount: toUnit("100000", 18),
+            isAdding: false,
+            isUnwrapWeth: true,
+          },
+        ]),
+      ])
+      {
+        await time.increaseTo(timestampOfTest + 86400 * 2 + 7200)
+        const tx1 = await orderBook.connect(broker).multicall([
+          orderBook.interface.encodeFunctionData("setPrices", [
+            await makePriceData(muxProvider.address, signer, [
+              { priceId: a2b(usdc.address), price: toWei("1") },
+              { priceId: a2b(weth.address), price: toWei("1000") },
+              { priceId: a2b(arb.address), price: toWei("2") },
+              { priceId: a2b(btc.address), price: toWei("50000") },
+            ]),
+          ]),
+          orderBook.interface.encodeFunctionData("fillLiquidityOrder", [3]),
+        ])
+        await expect(tx1)
+          .to.emit(emitter, "RemoveLiquidity")
+          .withArgs(
+            pool1.address,
+            lp1.address,
+            usdc.address,
+            toWei("1"),
+            toWei("9.989998999899990000"),
+            toWei("0.998999899989999000"),
+            toWei("100000")
+          )
+      }
     }
   })
 
   it("1 pool mini test (real price data): +liq, +trade, +gasfee", async () => {
     await orderBook.setConfig(ethers.utils.id("MCO_ORDER_GAS_FEE_GWEI"), u2b(ethers.BigNumber.from("1000000")))
-    let seq = 1
-    const makePriceData = async (priceId: any, price: any) => {
-      const _priceData = await getMuxPriceData(
-        {
-          priceId: priceId,
-          chainid: 31337,
-          contractAddress: muxProvider.address,
-          seq: seq++,
-          price: price,
-          timestamp: await blockTime(),
-        },
-        signer
-      )
-      return [
-        {
-          id: priceId,
-          provider: muxProvider.address,
-          rawData: _priceData,
-        },
-      ]
-    }
 
     const signer = (await ethers.getSigners())[0]
     const muxProvider = await createContract("MuxPriceProvider", [])
@@ -466,17 +530,20 @@ describe("MuxPriceMini", () => {
     }
     {
       await time.increaseTo(timestampOfTest + 86400 * 2 + 930)
-
-      const tx1 = await orderBook
-        .connect(broker)
-        .multicall([
-          orderBook.interface.encodeFunctionData("setPrices", [await makePriceData(a2b(usdc.address), toWei("1"))]),
-          orderBook.interface.encodeFunctionData("setPrices", [await makePriceData(a2b(weth.address), toWei("1000"))]),
-          orderBook.interface.encodeFunctionData("setPrices", [await makePriceData(a2b(arb.address), toWei("2"))]),
-          orderBook.interface.encodeFunctionData("setPrices", [await makePriceData(a2b(btc.address), toWei("50000"))]),
-          orderBook.interface.encodeFunctionData("fillLiquidityOrder", [0]),
-        ])
-
+      const tx1 = await orderBook.connect(broker).multicall([
+        orderBook.interface.encodeFunctionData("setPrices", [
+          await makePriceData(muxProvider.address, signer, [
+            {
+              priceId: a2b(usdc.address),
+              price: toWei("1"),
+            },
+            { priceId: a2b(weth.address), price: toWei("1000") },
+            { priceId: a2b(arb.address), price: toWei("2") },
+            { priceId: a2b(btc.address), price: toWei("50000") },
+          ]),
+        ]),
+        orderBook.interface.encodeFunctionData("fillLiquidityOrder", [0]),
+      ])
       await expect(tx1)
         .to.emit(emitter, "AddLiquidity")
         .withArgs(
@@ -573,13 +640,15 @@ describe("MuxPriceMini", () => {
 
       // fill
       // await core.setMockPrice(short1, toWei("2000"))
-      const tx2 = await orderBook
-        .connect(broker)
-        .multicall([
-          orderBook.interface.encodeFunctionData("setPrices", [await makePriceData(a2b(usdc.address), toWei("1"))]),
-          orderBook.interface.encodeFunctionData("setPrices", [await makePriceData(a2b(weth.address), toWei("2000"))]),
-          orderBook.interface.encodeFunctionData("fillPositionOrder", [1]),
-        ])
+      const tx2 = await orderBook.connect(broker).multicall([
+        orderBook.interface.encodeFunctionData("setPrices", [
+          await makePriceData(muxProvider.address, signer, [
+            { priceId: a2b(usdc.address), price: toWei("1") },
+            { priceId: a2b(weth.address), price: toWei("2000") },
+          ]),
+        ]),
+        orderBook.interface.encodeFunctionData("fillPositionOrder", [1]),
+      ])
       await expect(tx2)
         .to.emit(core, "OpenPosition")
         .withArgs(

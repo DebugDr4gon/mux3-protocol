@@ -21,24 +21,6 @@ interface IFacetOpen {
         uint256[] newCollateralAmounts
     );
 
-    event ReallocatePosition(
-        address indexed owner,
-        bytes32 indexed positionId,
-        bytes32 indexed marketId,
-        bool isLong,
-        address fromPool,
-        address toPool,
-        uint256 size,
-        uint256 tradingPrice,
-        address[] backedPools,
-        uint256[] newSizes,
-        uint256[] newEntryPrices,
-        int256[] poolPnlUsds, // 1e18
-        uint256 borrowingFeeUsd, // 1e18
-        address[] newCollateralTokens,
-        uint256[] newCollateralAmounts
-    );
-
     struct OpenPositionArgs {
         bytes32 positionId;
         bytes32 marketId;
@@ -54,26 +36,6 @@ interface IFacetOpen {
     }
 
     function openPosition(OpenPositionArgs memory args) external returns (OpenPositionResult memory result);
-
-    struct ReallocatePositionArgs {
-        bytes32 positionId;
-        bytes32 marketId;
-        address fromPool;
-        address toPool;
-        uint256 size;
-        address lastConsumedToken;
-        bool isUnwrapWeth;
-    }
-
-    struct ReallocatePositionResult {
-        uint256 tradingPrice;
-        int256[] poolPnlUsds;
-        uint256 borrowingFeeUsd;
-    }
-
-    function reallocatePosition(
-        ReallocatePositionArgs memory args
-    ) external returns (ReallocatePositionResult memory result);
 }
 
 interface IFacetClose {

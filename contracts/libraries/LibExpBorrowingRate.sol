@@ -157,7 +157,7 @@ library LibExpBorrowingRate {
         }
     }
 
-    // note: All "x" are usd in allocation series functions
+    // note: xTotal is usd
     struct AllocateMem {
         // input
         int256 poolCount;
@@ -238,71 +238,27 @@ library LibExpBorrowingRate {
 
     /**
      * @dev This is the entry point for allocate xTotalUsd into all pools,
-     *      considering priority, borrowing rate equalization, and liquidity
-     *      capacity.
+     *      considering borrowing rate equalization, and liquidity capacity.
      *
-     *      note: all "x" are usd in allocation series functions
+     *      `xTotalUsd` and `pools[].poolSizeUsd` should be USD.
      */
     function allocate2(
-        IBorrowingRate.AllocatePool[] memory pools,
+        IBorrowingRate.AllocatePool[] memory pools, // only pools[:poolLength] are valid
+        uint256 poolLength,
         int256 xTotalUsd
     ) internal pure returns (IBorrowingRate.AllocateResult[] memory result) {
-        // final result size
-        result = new IBorrowingRate.AllocateResult[](uint256(pools.length));
-        uint256 finalResultSize = 0;
-        // allocate priority pools first
-        for (uint256 i = 0; i < pools.length; i++) {
-            IBorrowingRate.AllocatePool memory pool = pools[i];
-            if (!pool.highPriority) {
-                continue;
-            }
-            int256 x = 0;
-            if (pool.reservedUsd < pool.poolSizeUsd) {
-                x = _maxPossibleXToFillPool(pool.poolSizeUsd, pool.reservedUsd, pool.reserveRate);
-            }
-            if (xTotalUsd < x) {
-                x = xTotalUsd;
-            }
-            xTotalUsd -= x;
-            result[finalResultSize] = IBorrowingRate.AllocateResult(pool.poolId, x);
-            finalResultSize++;
-        }
-        // allocate non-priority pools
+        // init
         AllocateMem memory mem;
-        {
-            uint256 nonPriorityPoolsCount = pools.length - finalResultSize; // at this moment finalResultSize is the count of priority pools
-            mem.pools = new PoolState[](nonPriorityPoolsCount);
-            mem.xTotal = xTotalUsd;
-            mem.poolCount = int256(nonPriorityPoolsCount);
-            mem.poolsN = int256(nonPriorityPoolsCount);
-            mem.bestXi = new int256[](nonPriorityPoolsCount);
-            mem.candidate = new int256[](nonPriorityPoolsCount);
-            nonPriorityPoolsCount = 0;
-            for (uint256 i = 0; i < pools.length; i++) {
-                IBorrowingRate.AllocatePool memory pool = pools[i];
-                if (pool.highPriority) {
-                    continue;
-                }
-                mem.pools[nonPriorityPoolsCount] = initPoolState(pool);
-                nonPriorityPoolsCount++;
-            }
+        mem.pools = new PoolState[](poolLength);
+        mem.xTotal = xTotalUsd;
+        mem.poolCount = int256(poolLength);
+        mem.poolsN = int256(poolLength);
+        mem.bestXi = new int256[](poolLength);
+        mem.candidate = new int256[](poolLength);
+        for (uint256 i = 0; i < poolLength; i++) {
+            mem.pools[i] = initPoolState(pools[i]);
         }
-        IBorrowingRate.AllocateResult[] memory nonPriorityPoolResult = allocateNonPriorityPools(mem);
-        for (uint256 i = 0; i < nonPriorityPoolResult.length; i++) {
-            result[finalResultSize] = nonPriorityPoolResult[i];
-            finalResultSize++;
-        }
-        require(finalResultSize == pools.length, "allocate2: result size mismatch");
-    }
-
-    /**
-     * @dev Allocate mem.xTotal into non-priority pools.
-     *
-     *      note: all "x" are usd in allocation series functions
-     */
-    function allocateNonPriorityPools(
-        AllocateMem memory mem
-    ) internal pure returns (IBorrowingRate.AllocateResult[] memory result) {
+        result = new IBorrowingRate.AllocateResult[](poolLength);
         // in each iteration, move full pools to the end
         bool poolUpdated = true; // some pools are moved
         while (mem.totalAllocated < mem.xTotal && mem.poolsN > 0 && poolUpdated) {
@@ -342,70 +298,33 @@ library LibExpBorrowingRate {
         }
 
         // return result
-        result = new IBorrowingRate.AllocateResult[](uint256(mem.poolCount));
         for (int256 i = 0; i < mem.poolCount; i++) {
             PoolState memory pool = mem.pools[uint256(i)];
             result[uint256(i)] = IBorrowingRate.AllocateResult(pool.conf.poolId, pool.allocated);
         }
     }
 
-    // note: "x" is NOT necessarily usd in deallocation series functions. we
-    //       even do not care about the unit of "x".
-    struct DeallocateMem {
-        IBorrowingRate.DeallocatePool[] confs;
-        int256 xTotal;
-        IBorrowingRate.DeallocateResult[] result;
-        uint256 finalResultSize;
-    }
-
     /**
-     * @dev This is the entry point for deallocate xTotal from all pools,
-     *      considering priority, borrowing rate equalization, and liquidity
-     *      capacity.
+     * @dev This is the entry point for deallocate xTotal from all pools.
      *
-     *      note: "x" is NOT necessarily usd in deallocation series functions. we
-     *            even do not care about the unit of "x".
+     *      `xTotal` is NOT necessarily USD. we do not care about the unit.
      */
     function deallocate2(
         IBorrowingRate.DeallocatePool[] memory confs,
         int256 xTotal
     ) internal pure returns (IBorrowingRate.DeallocateResult[] memory result) {
         result = new IBorrowingRate.DeallocateResult[](confs.length);
-        DeallocateMem memory mem;
-        mem.confs = confs;
-        mem.xTotal = xTotal;
-        mem.result = result;
-        mem.finalResultSize = 0;
-        // deallocate non-priority pools first, according to the proportion of my positions in each pool
-        deallocatePools(mem, false);
-        // deallocate priority pools, according to the proportion of their sizes
-        deallocatePools(mem, true);
-        require(mem.finalResultSize == mem.confs.length, "deallocate2: result size mismatch");
-    }
-
-    function deallocatePools(DeallocateMem memory mem, bool highPriority) private pure {
-        int256 sizeForPools = 0;
-        for (uint256 i = 0; i < mem.confs.length; i++) {
-            if (mem.confs[i].highPriority != highPriority) {
-                continue;
-            }
-            sizeForPools += mem.confs[i].mySizeForPool;
+        int256 totalSizeInPools = 0;
+        for (uint256 i = 0; i < confs.length; i++) {
+            totalSizeInPools += confs[i].mySizeForPool;
         }
-        int256 deallocating = sizeForPools;
-        if (mem.xTotal < deallocating) {
-            deallocating = mem.xTotal;
-        }
-        for (uint256 i = 0; i < mem.confs.length; i++) {
-            if (mem.confs[i].highPriority != highPriority) {
-                continue;
-            }
+        require(xTotal <= totalSizeInPools, "ExpBorrow: size > position size");
+        for (uint256 i = 0; i < confs.length; i++) {
             int256 xi = 0;
-            if (sizeForPools > 0) {
-                xi = (deallocating * mem.confs[i].mySizeForPool) / sizeForPools;
+            if (totalSizeInPools > 0) {
+                xi = (xTotal * confs[i].mySizeForPool) / totalSizeInPools;
             }
-            mem.result[mem.finalResultSize] = IBorrowingRate.DeallocateResult(mem.confs[i].poolId, xi);
-            mem.finalResultSize++;
+            result[i] = IBorrowingRate.DeallocateResult(confs[i].poolId, xi);
         }
-        mem.xTotal -= deallocating;
     }
 }

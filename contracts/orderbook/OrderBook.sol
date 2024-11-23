@@ -331,30 +331,6 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @dev Reallocate a position from pool0 to pool1. called by Broker
-     */
-    function reallocate(
-        bytes32 positionId,
-        bytes32 marketId,
-        address fromPool,
-        address toPool,
-        uint256 size,
-        address lastConsumedToken,
-        bool isUnwrapWeth
-    ) external onlyRole(BROKER_ROLE) nonReentrant whenNotPaused(OrderType.PositionOrder) updateSequence {
-        LibOrderBook.reallocate(
-            _storage,
-            positionId,
-            marketId,
-            fromPool,
-            toPool,
-            size,
-            lastConsumedToken,
-            isUnwrapWeth
-        );
-    }
-
-    /**
      * @dev Updates the borrowing fee for a position and market,
      *      allowing LPs to collect fees even if the position remains open.
      */

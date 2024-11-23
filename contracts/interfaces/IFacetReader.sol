@@ -39,7 +39,7 @@ interface IFacetReader {
     /**
      * @dev Get price of an OracleId
      */
-    function priceOf(bytes32 id) external view returns (uint256 price);
+    function priceOf(bytes32 oracleId) external view returns (uint256 price);
 
     /**
      * @dev Get core global config

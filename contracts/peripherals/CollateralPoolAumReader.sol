@@ -36,10 +36,10 @@ contract CollateralPoolAumReader is Initializable, OwnableUpgradeable {
         priceExpiration = PRICE_EXPIRATION;
     }
 
-    function setMarketPriceProvider(bytes32 marketId, address oraclePrivoder) public onlyOwner {
-        require(oraclePrivoder != address(0), "InvalidAddress");
-        marketPriceProviders[marketId] = oraclePrivoder;
-        emit SetMarketPriceProvider(marketId, oraclePrivoder);
+    function setMarketPriceProvider(bytes32 marketId, address oracleProvider) public onlyOwner {
+        require(oracleProvider != address(0), "InvalidAddress");
+        marketPriceProviders[marketId] = oracleProvider;
+        emit SetMarketPriceProvider(marketId, oracleProvider);
     }
 
     function setTokenPriceProvider(address token, address oracleProvider) public onlyOwner {

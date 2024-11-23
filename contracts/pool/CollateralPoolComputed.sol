@@ -19,7 +19,7 @@ contract CollateralPoolComputed is CollateralPoolStore {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
 
-    function _liqudityFeeRate() internal view returns (uint256 rate) {
+    function _liquidityFeeRate() internal view returns (uint256 rate) {
         rate = _configTable.getUint256(MCP_LIQUIDITY_FEE_RATE);
         // 0 is valid
     }

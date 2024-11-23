@@ -115,7 +115,6 @@ describe("LibExpBorrowingRate", () => {
       b: toWei("-6.58938"),
       poolSizeUsd: toWei("100000000"),
       reservedUsd: toWei("0"),
-      highPriority: false,
       reserveRate: toWei("1.00"),
     }
     for (const c of cases) {
@@ -159,7 +158,6 @@ describe("LibExpBorrowingRate", () => {
       b: toWei("-2.91416"),
       poolSizeUsd: toWei("100000000"),
       reservedUsd: toWei("0"),
-      highPriority: false,
       reserveRate: toWei("1.00"),
     }
     for (const c of cases) {
@@ -177,7 +175,6 @@ describe("LibExpBorrowingRate", () => {
         b: toWei("-6.58938"),
         poolSizeUsd: toWei("30000000"),
         reservedUsd: toWei("0"),
-        highPriority: false,
         reserveRate: toWei("1.00"),
       },
       {
@@ -186,7 +183,6 @@ describe("LibExpBorrowingRate", () => {
         b: toWei("-6.58938"),
         poolSizeUsd: toWei("30000000"),
         reservedUsd: toWei("0"),
-        highPriority: false,
         reserveRate: toWei("1.00"),
       },
       {
@@ -195,7 +191,6 @@ describe("LibExpBorrowingRate", () => {
         b: toWei("-6.58938"),
         poolSizeUsd: toWei("30000000"),
         reservedUsd: toWei("0"),
-        highPriority: false,
         reserveRate: toWei("1.00"),
       },
     ]
@@ -233,7 +228,6 @@ describe("LibExpBorrowingRate", () => {
         b: toWei("-6.58938"),
         poolSizeUsd: toWei("50000000"),
         reservedUsd: toWei("0"),
-        highPriority: false,
         poolId: toWei("1"),
         reserveRate: toWei("1.00"),
       },
@@ -242,7 +236,6 @@ describe("LibExpBorrowingRate", () => {
         b: toWei("-2.34434"),
         poolSizeUsd: toWei("20000000"),
         reservedUsd: toWei("0"),
-        highPriority: false,
         poolId: toWei("2"),
         reserveRate: toWei("1.00"),
       },
@@ -251,7 +244,6 @@ describe("LibExpBorrowingRate", () => {
         b: toWei("-2.91416"),
         poolSizeUsd: toWei("10000000"),
         reservedUsd: toWei("0"),
-        highPriority: false,
         poolId: toWei("3"),
         reserveRate: toWei("1.00"),
       },
@@ -291,7 +283,6 @@ describe("LibExpBorrowingRate", () => {
     expect(a.conf.poolId).to.be.eq(b.conf.poolId, caseName)
     expect(a.conf.k).to.be.eq(b.conf.k, caseName)
     expect(a.conf.b).to.be.eq(b.conf.b, caseName)
-    expect(a.conf.highPriority).to.be.eq(b.conf.highPriority, caseName)
     expect(a.conf.poolSizeUsd).to.be.eq(b.conf.poolSizeUsd, caseName)
     expect(a.conf.reservedUsd).to.be.eq(b.conf.reservedUsd, caseName)
     expect(a.conf.reserveRate).to.be.eq(b.conf.reserveRate, caseName)
@@ -307,7 +298,6 @@ describe("LibExpBorrowingRate", () => {
         poolId: toWei("1"),
         k: toWei("1"),
         b: toWei("2"),
-        highPriority: false,
         poolSizeUsd: toWei("3"),
         reservedUsd: toWei("4"),
         reserveRate: toWei("1.00"),
@@ -322,7 +312,6 @@ describe("LibExpBorrowingRate", () => {
         poolId: "0x0000000000000000000000000000000000000011",
         k: toWei("11"),
         b: toWei("12"),
-        highPriority: false,
         poolSizeUsd: toWei("13"),
         reservedUsd: toWei("14"),
         reserveRate: toWei("1.00"),
@@ -337,7 +326,6 @@ describe("LibExpBorrowingRate", () => {
         poolId: "0x0000000000000000000000000000000000000021",
         k: toWei("21"),
         b: toWei("22"),
-        highPriority: false,
         poolSizeUsd: toWei("23"),
         reservedUsd: toWei("24"),
         reserveRate: toWei("1.00"),
@@ -386,7 +374,6 @@ describe("LibExpBorrowingRate", () => {
         b: toWei("-3"),
         poolSizeUsd: toWei("1000000"),
         reservedUsd: toWei("0"),
-        highPriority: false,
         poolId: toWei("1"),
         reserveRate: toWei("1.00"),
       },
@@ -395,7 +382,6 @@ describe("LibExpBorrowingRate", () => {
         b: toWei("-6"),
         poolSizeUsd: toWei("1000000"),
         reservedUsd: toWei("0"),
-        highPriority: false,
         poolId: toWei("2"),
         reserveRate: toWei("1.00"),
       },
@@ -404,7 +390,6 @@ describe("LibExpBorrowingRate", () => {
         b: toWei("-7"),
         poolSizeUsd: toWei("1000000"),
         reservedUsd: toWei("0"),
-        highPriority: false,
         poolId: toWei("3"),
         reserveRate: toWei("1.00"),
       },
@@ -712,7 +697,7 @@ describe("LibExpBorrowingRate", () => {
       { x_total: "3000000", xi: ["1000000", "1000000", "1000000"] },
     ]
     for (const test of cases) {
-      const result = await testLibExpBorrowingRate.allocateNonPriorityPools(pools, toWei(test.x_total))
+      const result = await testLibExpBorrowingRate.allocate(pools, toWei(test.x_total))
       expect(result.length).to.equal(test.xi.length)
       for (let i = 0; i < test.xi.length; i++) {
         const expectedIndex = getIndexByPoolId(result[i].poolId)
@@ -721,9 +706,7 @@ describe("LibExpBorrowingRate", () => {
     }
 
     // insufficient liquidity
-    await expect(testLibExpBorrowingRate.allocateNonPriorityPools(pools, toWei("3000001"))).to.be.revertedWith(
-      "ExpBorrow: full"
-    )
+    await expect(testLibExpBorrowingRate.allocate(pools, toWei("3000001"))).to.be.revertedWith("ExpBorrow: full")
   })
 
   it("full allocate: consume step by step. reserveRate = 100%", async () => {
@@ -733,7 +716,6 @@ describe("LibExpBorrowingRate", () => {
         b: toWei("-3"),
         poolSizeUsd: toWei("1000000"),
         reservedUsd: toWei("0"),
-        highPriority: false,
         poolId: toWei("1"),
         reserveRate: toWei("1.00"),
       },
@@ -742,7 +724,6 @@ describe("LibExpBorrowingRate", () => {
         b: toWei("-6"),
         poolSizeUsd: toWei("1000000"),
         reservedUsd: toWei("0"),
-        highPriority: false,
         poolId: toWei("2"),
         reserveRate: toWei("1.00"),
       },
@@ -751,7 +732,6 @@ describe("LibExpBorrowingRate", () => {
         b: toWei("-7"),
         poolSizeUsd: toWei("1000000"),
         reservedUsd: toWei("0"),
-        highPriority: false,
         poolId: toWei("3"),
         reserveRate: toWei("1.00"),
       },
@@ -2106,7 +2086,7 @@ describe("LibExpBorrowingRate", () => {
       for (let i = 0; i < test.reserved.length; i++) {
         pools[i].reservedUsd = toWei(test.reserved[i])
       }
-      const result = await testLibExpBorrowingRate.allocateNonPriorityPools(pools, toWei(step.toString()))
+      const result = await testLibExpBorrowingRate.allocate(pools, toWei(step.toString()))
       expect(result.length).to.equal(test.xi.length)
       for (let i = 0; i < test.xi.length; i++) {
         const expectedIndex = getIndexByPoolId(result[i].poolId)
@@ -2118,9 +2098,7 @@ describe("LibExpBorrowingRate", () => {
       pools[0].reservedUsd = toWei("1000000")
       pools[1].reservedUsd = toWei("1000000")
       pools[2].reservedUsd = toWei("1000000")
-      await expect(testLibExpBorrowingRate.allocateNonPriorityPools(pools, toWei("1"))).to.be.revertedWith(
-        "ExpBorrow: full"
-      )
+      await expect(testLibExpBorrowingRate.allocate(pools, toWei("1"))).to.be.revertedWith("ExpBorrow: full")
     }
   })
 
@@ -2131,7 +2109,6 @@ describe("LibExpBorrowingRate", () => {
         b: toWei("-3"),
         poolSizeUsd: toWei("1250000"),
         reservedUsd: toWei("0"),
-        highPriority: false,
         poolId: toWei("1"),
         reserveRate: toWei("1.25"),
       },
@@ -2140,7 +2117,6 @@ describe("LibExpBorrowingRate", () => {
         b: toWei("-6"),
         poolSizeUsd: toWei("1000000"),
         reservedUsd: toWei("0"),
-        highPriority: false,
         poolId: toWei("2"),
         reserveRate: toWei("1.00"),
       },
@@ -2149,7 +2125,6 @@ describe("LibExpBorrowingRate", () => {
         b: toWei("-7"),
         poolSizeUsd: toWei("800000"),
         reservedUsd: toWei("0"),
-        highPriority: false,
         poolId: toWei("3"),
         reserveRate: toWei("0.80"),
       },
@@ -3504,7 +3479,7 @@ describe("LibExpBorrowingRate", () => {
       for (let i = 0; i < test.reserved.length; i++) {
         pools[i].reservedUsd = toWei(test.reserved[i])
       }
-      const result = await testLibExpBorrowingRate.allocateNonPriorityPools(pools, toWei(step.toString()))
+      const result = await testLibExpBorrowingRate.allocate(pools, toWei(step.toString()))
       expect(result.length).to.equal(test.xi.length)
       for (let i = 0; i < test.xi.length; i++) {
         const expectedIndex = getIndexByPoolId(result[i].poolId)
@@ -3516,9 +3491,7 @@ describe("LibExpBorrowingRate", () => {
       pools[0].reservedUsd = toWei("1250000")
       pools[1].reservedUsd = toWei("1000000")
       pools[2].reservedUsd = toWei("800000")
-      await expect(testLibExpBorrowingRate.allocateNonPriorityPools(pools, toWei("1"))).to.be.revertedWith(
-        "ExpBorrow: full"
-      )
+      await expect(testLibExpBorrowingRate.allocate(pools, toWei("1"))).to.be.revertedWith("ExpBorrow: full")
     }
   })
 })

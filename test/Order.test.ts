@@ -94,7 +94,6 @@ describe("Order", () => {
     pool1 = (await ethers.getContractAt("MockCollateralPool", poolAddr)) as MockCollateralPool
     await pool1.setConfig(ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306")))
     await pool1.setConfig(ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938")))
-    await pool1.setConfig(ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(ethers.BigNumber.from(0)))
 
     // market
     await core.createMarket(mid0, "MARKET0", true, [pool1.address])
@@ -573,8 +572,8 @@ describe("Order", () => {
       const result = await orderBook.getOrder(1)
       expect(result[1]).to.equal(false)
       expect(await pool1.balanceOf(user0.address)).to.equal(toWei("1"))
-      expect(await pool1.balanceOf(orderBook.address)).to.equal(toWei("1")) // because this test uses a mocked liquidity pool
-      expect(await pool1.balanceOf(pool1.address)).to.equal(toWei("0"))
+      expect(await pool1.balanceOf(orderBook.address)).to.equal(toWei("0"))
+      expect(await pool1.balanceOf(pool1.address)).to.equal(toWei("1")) // because this test uses a mocked liquidity pool
     }
   })
 

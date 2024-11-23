@@ -24,7 +24,7 @@ contract CollateralPoolEventEmitter is Initializable, ICollateralPoolEventEmitte
         address account,
         address tokenAddress,
         uint256 tokenPrice, // 1e18
-        uint256 feeCollateral, // 1e18
+        uint256 liquidityFeeCollateral, // 1e18
         uint256 lpPrice,
         uint256 shares
     ) external onlyCollateralPool {
@@ -33,7 +33,7 @@ contract CollateralPoolEventEmitter is Initializable, ICollateralPoolEventEmitte
             account,
             tokenAddress,
             tokenPrice, // 1e18
-            feeCollateral, // 1e18
+            liquidityFeeCollateral, // 1e18
             lpPrice,
             shares
         );
@@ -43,7 +43,7 @@ contract CollateralPoolEventEmitter is Initializable, ICollateralPoolEventEmitte
         address account,
         address collateralAddress,
         uint256 tokenPrice, // 1e18
-        uint256 feeCollateral, // 1e18
+        uint256 liquidityFeeCollateral, // 1e18
         uint256 lpPrice,
         uint256 shares
     ) external onlyCollateralPool {
@@ -52,7 +52,7 @@ contract CollateralPoolEventEmitter is Initializable, ICollateralPoolEventEmitte
             account,
             collateralAddress,
             tokenPrice, // 1e18
-            feeCollateral, // 1e18
+            liquidityFeeCollateral, // 1e18
             lpPrice,
             shares
         );

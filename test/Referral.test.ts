@@ -127,7 +127,6 @@ describe("ReferralAndFeeDistributor", () => {
     pool1 = (await ethers.getContractAt("CollateralPool", poolAddr)) as CollateralPool
     await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("10")))
     await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-7")))
-    await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(ethers.BigNumber.from(0)))
     await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000")))
     await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001")))
     await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", long1), u2b(toWei("0.80")))
@@ -140,7 +139,6 @@ describe("ReferralAndFeeDistributor", () => {
     pool2 = (await ethers.getContractAt("CollateralPool", pool2Addr)) as CollateralPool
     await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("10")))
     await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-7")))
-    await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(ethers.BigNumber.from(0)))
     await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000")))
     await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001")))
     await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", long1), u2b(toWei("0.80")))
@@ -213,7 +211,7 @@ describe("ReferralAndFeeDistributor", () => {
           isUnwrapWeth: false,
         }
         await orderBook.connect(lp1).placeLiquidityOrder(args)
-        const tx1 = await orderBook.connect(broker).fillLiquidityOrder(0)
+        const tx1 = await orderBook.connect(broker).fillLiquidityOrder(0, [])
         // fee = 1000000 * 0.01% = 100
         await expect(tx1).to.emit(emitter, "CollectFee").withArgs(pool1.address, usdc.address, toWei("1"), toWei("100"))
         await expect(tx1)
@@ -245,7 +243,7 @@ describe("ReferralAndFeeDistributor", () => {
           isUnwrapWeth: false,
         }
         await orderBook.connect(lp1).placeLiquidityOrder(args)
-        const tx1 = await orderBook.connect(broker).fillLiquidityOrder(1)
+        const tx1 = await orderBook.connect(broker).fillLiquidityOrder(1, [])
         // fee = 20 * 0.01% = 0.002
         await expect(tx1)
           .to.emit(emitter, "CollectFee")
@@ -326,8 +324,9 @@ describe("ReferralAndFeeDistributor", () => {
 
   it("tier 1. to trader, referer, pool", async () => {
     // referral
-    await referralManager.setReferrerCodeFor(lp1.address, refCode2, admin.address /* recipient */)
-    await referralManager.setReferrerCodeFor(trader1.address, refCode2, admin.address /* recipient */)
+    await referralManager.setReferrerCodeFor(lp1.address, refCode2)
+    await referralManager.setReferrerCodeFor(trader1.address, refCode2)
+    await referralManager.setRebateRecipient(refCode2, admin.address /* recipient */)
     await referralTiers.setTier([refCode2], [1])
     // add liquidity 1
     {
@@ -340,7 +339,7 @@ describe("ReferralAndFeeDistributor", () => {
           isUnwrapWeth: false,
         }
         await orderBook.connect(lp1).placeLiquidityOrder(args)
-        const tx1 = await orderBook.connect(broker).fillLiquidityOrder(0)
+        const tx1 = await orderBook.connect(broker).fillLiquidityOrder(0, [])
         // fee = 1000000 * 0.01% = 100
         await expect(tx1).to.emit(emitter, "CollectFee").withArgs(pool1.address, usdc.address, toWei("1"), toWei("100"))
         await expect(tx1)
@@ -380,7 +379,7 @@ describe("ReferralAndFeeDistributor", () => {
           isUnwrapWeth: false,
         }
         await orderBook.connect(lp1).placeLiquidityOrder(args)
-        const tx1 = await orderBook.connect(broker).fillLiquidityOrder(1)
+        const tx1 = await orderBook.connect(broker).fillLiquidityOrder(1, [])
         // fee = 20 * 0.01% = 0.002
         await expect(tx1)
           .to.emit(emitter, "CollectFee")

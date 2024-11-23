@@ -31,7 +31,6 @@ contract Mux3TradeBase is Mux3FacetBase, PositionAccount, Market {
         );
         _dispatchFee(
             trader,
-            positionId,
             marketId,
             borrowingFeeAddresses,
             borrowingFeeAmounts,
@@ -61,7 +60,7 @@ contract Mux3TradeBase is Mux3FacetBase, PositionAccount, Market {
             shouldCollateralSufficient,
             lastConsumedToken
         );
-        _dispatchFee(trader, positionId, marketId, positionFeeAddresses, positionFeeAmounts, allocations, isUnwrapWeth);
+        _dispatchFee(trader, marketId, positionFeeAddresses, positionFeeAmounts, allocations, isUnwrapWeth);
     }
 
     function _dumpForTradeEvent(

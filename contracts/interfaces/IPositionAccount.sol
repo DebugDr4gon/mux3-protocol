@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
-uint256 constant SAFE_INITITAL_MARGIN = 0x1;
+uint256 constant SAFE_INITIAL_MARGIN = 0x1;
 uint256 constant SAFE_MAINTENANCE_MARGIN = 0x2;
 uint256 constant SAFE_LEVERAGE = 0x3;
 
