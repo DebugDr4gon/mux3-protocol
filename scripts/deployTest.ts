@@ -139,9 +139,6 @@ async function main(deployer: Deployer) {
   )
   await ensureFinished(core.setPoolConfig(pool1, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306"))))
   await ensureFinished(core.setPoolConfig(pool1, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938"))))
-  await ensureFinished(
-    core.setPoolConfig(pool1, ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(ethers.BigNumber.from(0)))
-  )
   await ensureFinished(core.setPoolConfig(pool1, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))
   await ensureFinished(core.setPoolConfig(pool1, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001"))))
 
@@ -154,24 +151,18 @@ async function main(deployer: Deployer) {
   )
   await ensureFinished(core.setPoolConfig(pool2, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306"))))
   await ensureFinished(core.setPoolConfig(pool2, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938"))))
-  await ensureFinished(
-    core.setPoolConfig(pool2, ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(ethers.BigNumber.from(0)))
-  )
   await ensureFinished(core.setPoolConfig(pool2, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))
   await ensureFinished(core.setPoolConfig(pool2, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001"))))
 
-  // pool 3: weth, high priority, support eth
+  // pool 3: weth, support eth
   await ensureFinished(core.createCollateralPool("MUX3 ETH Pool", "LP3", weth, 2))
   const pool3 = (await core.listCollateralPool())[2]
   console.log("pool3Addr", pool3)
   await ensureFinished(
-    core.setPoolConfig(pool3, ethers.utils.id("MCP_SYMBOL"), ethers.utils.formatBytes32String("Priority ETH"))
+    core.setPoolConfig(pool3, ethers.utils.id("MCP_SYMBOL"), ethers.utils.formatBytes32String("ETH only"))
   )
-  await ensureFinished(core.setPoolConfig(pool3, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306")))) // meaningless
-  await ensureFinished(core.setPoolConfig(pool3, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938")))) // meaningless
-  await ensureFinished(
-    core.setPoolConfig(pool3, ethers.utils.id("MCP_IS_HIGH_PRIORITY"), u2b(ethers.BigNumber.from(1)))
-  )
+  await ensureFinished(core.setPoolConfig(pool3, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306"))))
+  await ensureFinished(core.setPoolConfig(pool3, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938"))))
   await ensureFinished(core.setPoolConfig(pool3, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))
   await ensureFinished(core.setPoolConfig(pool3, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001"))))
 
@@ -264,8 +255,10 @@ async function main(deployer: Deployer) {
 
   // periphery
   await ensureFinished(delegator.initialize(orderBook.address))
-  await ensureFinished(feeDistributor.initialize(core.address, muxReferralManager, muxReferralTiers))
-  await ensureFinished(feeDistributor.grantRole(ethers.utils.id("FEE_DISTRIBUTOR_USER_ROLE"), core.address))
+  await ensureFinished(
+    feeDistributor.initialize(core.address, orderBook.address, muxReferralManager, muxReferralTiers, weth)
+  )
+  await ensureFinished(feeDistributor.setFeeRatio(toWei("0.85")))
 
   // oracle
   await ensureFinished(chainlinkStreamProvider.initialize("0x478Aa2aC9F6D65F84e09D9185d126c3a17c2a93C"))
