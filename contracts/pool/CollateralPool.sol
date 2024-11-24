@@ -299,6 +299,8 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
             uint256 removedValue = (collateralPrice * collateralAmount) / 1e18;
             if (removedValue < aumUsd) {
                 aumUsd -= removedValue;
+            } else {
+                aumUsd = 0;
             }
         }
         // fees
