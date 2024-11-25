@@ -180,7 +180,7 @@
     "address": "0xE3A2028aB6eE109DC76c67fa4584E829a6A3E7F8",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x25DE70079C1d4491639EB25ea7dA17Be2c74D343"
+      "implementation": "0x7310939c59aDB6F4e6bFB16c965bb159cAf55824"
     },
     "deployedAt": 265067381
   },
@@ -213,8 +213,8 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0x25DE70079C1d4491639EB25ea7dA17Be2c74D343",
-    "deployedAt": 277347184
+    "address": "0x7310939c59aDB6F4e6bFB16c965bb159cAf55824",
+    "deployedAt": 278026784
   },
   "Delegator__implementation": {
     "type": "plain",
@@ -305,7 +305,7 @@
   "LibOrderBook": {
     "type": "plain",
     "name": "LibOrderBook",
-    "address": "0x61079b1977EC065fcE8ad0d7AA4B4Af208FE1210",
-    "deployedAt": 277347168
+    "address": "0xC4285891A9B6723916c991b882e4bF7f2e79abb4",
+    "deployedAt": 278026761
   }
 }

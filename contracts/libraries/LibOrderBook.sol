@@ -224,6 +224,14 @@ library LibOrderBook {
             if (orderParams.tpslWithdrawSwapToken != address(0)) {
                 _validateCollateral(orderBook, orderParams.tpslWithdrawSwapToken);
             }
+            bool isLong = _isMarketLong(orderBook, orderParams.marketId);
+            if (isLong) {
+                // close a long means sell, sl means limitPrice = tradingPrice * (1 - slPriceDiff)
+                require(orderParams.slPriceDiff < 1e18, "slPriceDiff too large");
+            } else {
+                // close a short means buy, tp means limitPrice = tradingPrice * (1 - tpPriceDiff)
+                require(orderParams.tpPriceDiff < 1e18, "tpPriceDiff too large");
+            }
         }
     }
 
@@ -649,11 +657,15 @@ library LibOrderBook {
     ) private {
         bool isLong = _isMarketLong(orderBook, orderParams.marketId);
         if (orderParams.tpPriceDiff > 0) {
-            // close a long means sell, tp means limitPrice = tradingPrice * (1 + tpPriceDiff)
-            // close a short means buy, tp means limitPrice = tradingPrice * (1 - tpPriceDiff)
-            uint256 limitPrice = isLong
-                ? (tradingPrice * (1e18 + orderParams.tpPriceDiff)) / 1e18
-                : (tradingPrice * (1e18 - orderParams.tpPriceDiff)) / 1e18;
+            uint256 limitPrice = 0;
+            if (isLong) {
+                // close a long means sell, tp means limitPrice = tradingPrice * (1 + tpPriceDiff)
+                limitPrice = (tradingPrice * (1e18 + orderParams.tpPriceDiff)) / 1e18;
+            } else {
+                // close a short means buy, tp means limitPrice = tradingPrice * (1 - tpPriceDiff)
+                require(orderParams.tpPriceDiff < 1e18, "tpPriceDiff too large");
+                limitPrice = (tradingPrice * (1e18 - orderParams.tpPriceDiff)) / 1e18;
+            }
             uint64 orderId = _appendPositionOrder(
                 orderBook,
                 PositionOrderParams({
@@ -686,11 +698,15 @@ library LibOrderBook {
             );
         }
         if (orderParams.slPriceDiff > 0) {
-            // close a long means sell, sl means limitPrice = tradingPrice * (1 - slPriceDiff)
-            // close a short means buy, sl means limitPrice = tradingPrice * (1 + slPriceDiff)
-            uint256 limitPrice = isLong
-                ? (tradingPrice * (1e18 - orderParams.slPriceDiff)) / 1e18
-                : (tradingPrice * (1e18 + orderParams.slPriceDiff)) / 1e18;
+            uint256 limitPrice = 0;
+            if (isLong) {
+                // close a long means sell, sl means limitPrice = tradingPrice * (1 - slPriceDiff)
+                require(orderParams.slPriceDiff < 1e18, "slPriceDiff too large");
+                limitPrice = (tradingPrice * (1e18 - orderParams.slPriceDiff)) / 1e18;
+            } else {
+                // close a short means buy, sl means limitPrice = tradingPrice * (1 + slPriceDiff)
+                limitPrice = (tradingPrice * (1e18 + orderParams.slPriceDiff)) / 1e18;
+            }
             uint64 orderId = _appendPositionOrder(
                 orderBook,
                 PositionOrderParams({
