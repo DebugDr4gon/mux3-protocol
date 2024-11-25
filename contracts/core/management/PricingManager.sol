@@ -9,25 +9,25 @@ contract PricingManager is Mux3FacetBase {
     uint256 constant STABLE_TOKEN_PRICE = 1e18;
 
     function _setPrice(
-        bytes32 priceId,
+        bytes32 oracleId,
         address provider,
         bytes memory oracleCallData
     ) internal returns (uint256 price, uint256 timestamp) {
-        require(priceId != bytes32(0), InvalidId(priceId));
+        require(oracleId != bytes32(0), InvalidId(oracleId));
         require(provider != address(0), InvalidAddress(provider));
-        (price, timestamp) = IPriceProvider(provider).getOraclePrice(priceId, oracleCallData);
-        if (_strictStableIds[priceId]) {
+        (price, timestamp) = IPriceProvider(provider).getOraclePrice(oracleId, oracleCallData);
+        if (_strictStableIds[oracleId]) {
             uint256 deviation = _strictStableDeviation();
             uint256 tolerance = (STABLE_TOKEN_PRICE * deviation) / 1e18;
             if (STABLE_TOKEN_PRICE + tolerance >= price && price >= STABLE_TOKEN_PRICE - tolerance) {
                 price = STABLE_TOKEN_PRICE;
             }
         }
-        _setCachedPrice(priceId, price);
+        _setCachedPrice(oracleId, price);
     }
 
-    function _setCachedPrice(bytes32 priceId, uint256 price) internal {
-        _writeCacheUint256(priceId, price);
+    function _setCachedPrice(bytes32 oracleId, uint256 price) internal {
+        _writeCacheUint256(oracleId, price);
     }
 
     function _writeCacheUint256(bytes32 key, uint256 n) internal {

@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract MuxPriceProvider is OwnableUpgradeable {
     struct OracleData {
-        bytes32 priceId;
+        bytes32 oracleId;
         uint256 sequence;
         uint256 price;
         uint256 timestamp;
@@ -48,9 +48,9 @@ contract MuxPriceProvider is OwnableUpgradeable {
         emit SetOracleSigner(_oracleSigner);
     }
 
-    function getOraclePrice(bytes32 priceId, bytes memory rawData) external returns (uint256, uint256) {
+    function getOraclePrice(bytes32 oracleId, bytes memory rawData) external returns (uint256, uint256) {
         OracleData memory oracleData = abi.decode(rawData, (OracleData));
-        require(oracleData.priceId == priceId, IdMismatch(oracleData.priceId, priceId));
+        require(oracleData.oracleId == oracleId, IdMismatch(oracleData.oracleId, oracleId));
         require(
             oracleData.timestamp + priceExpiration >= block.timestamp,
             PriceExpired(oracleData.timestamp + priceExpiration, block.timestamp)

@@ -28,7 +28,7 @@ contract ChainlinkStreamProvider is OwnableUpgradeable {
 
     event SetChainlinkVerifier(address chainlinkVerifier);
     event SetPriceExpiration(uint256 expiration);
-    event SetFeedId(bytes32 priceId, bytes32 feedId);
+    event SetFeedId(bytes32 oracleId, bytes32 feedId);
     event SetCallerWhitelist(address caller, bool isWhitelisted);
     error InvalidChainlinkVerifier();
     error InvalidPrice(int192 price);
@@ -62,13 +62,13 @@ contract ChainlinkStreamProvider is OwnableUpgradeable {
         emit SetPriceExpiration(_priceExpiration);
     }
 
-    function setFeedId(bytes32 priceId, bytes32 feedId) external onlyOwner {
-        feedIds[priceId] = feedId;
-        emit SetFeedId(priceId, feedId);
+    function setFeedId(bytes32 oracleId, bytes32 feedId) external onlyOwner {
+        feedIds[oracleId] = feedId;
+        emit SetFeedId(oracleId, feedId);
     }
 
     function getOraclePrice(
-        bytes32 priceId,
+        bytes32 oracleId,
         bytes memory rawData
     ) external onlyWhitelisted returns (uint256 price, uint256 timestamp) {
         require(chainlinkVerifier != address(0), InvalidChainlinkVerifier());
@@ -88,7 +88,7 @@ contract ChainlinkStreamProvider is OwnableUpgradeable {
         // Verify the report
         bytes memory verifiedReportData = verifier.verify(unverifiedReport, abi.encode(feeTokenAddress));
         Report memory verifiedReport = abi.decode(verifiedReportData, (Report));
-        require(verifiedReport.feedId == feedIds[priceId], IdMismatch(verifiedReport.feedId, feedIds[priceId]));
+        require(verifiedReport.feedId == feedIds[oracleId], IdMismatch(verifiedReport.feedId, feedIds[oracleId]));
         require(verifiedReport.price > 0, InvalidPrice(verifiedReport.price));
         require(verifiedReport.expiresAt >= block.timestamp, PriceExpired(verifiedReport.expiresAt, block.timestamp));
 

@@ -71,7 +71,7 @@ contract TestOracle is PricingManager, TestSuit {
         mpp.initialize(signer); // signer
 
         MuxPriceProvider.OracleData memory data = MuxPriceProvider.OracleData({
-            priceId: bytes32(uint256(0x1234)),
+            oracleId: bytes32(uint256(0x1234)),
             sequence: 12,
             price: 2000e18,
             timestamp: 17295938660,
@@ -85,7 +85,7 @@ contract TestOracle is PricingManager, TestSuit {
     function test_muxPriceProvider_error(address signer, bytes memory signature) external {
         mpp.initialize(signer); // signer
         MuxPriceProvider.OracleData memory data = MuxPriceProvider.OracleData({
-            priceId: bytes32(uint256(0x1234)),
+            oracleId: bytes32(uint256(0x1234)),
             sequence: 12,
             price: 2000e18,
             timestamp: 17295938660,

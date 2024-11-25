@@ -42,9 +42,9 @@ contract FacetManagement is
         emit AddCollateralToken(token, decimals);
     }
 
-    function setStrictStableId(bytes32 priceId, bool strictStable) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setStrictStableId(priceId, strictStable);
-        emit SetStrictStableId(priceId, strictStable);
+    function setStrictStableId(bytes32 oracleId, bool strictStable) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setStrictStableId(oracleId, strictStable);
+        emit SetStrictStableId(oracleId, strictStable);
     }
 
     function setCollateralTokenStatus(address token, bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -105,11 +105,11 @@ contract FacetManagement is
     }
 
     function setPrice(
-        bytes32 priceId,
+        bytes32 oracleId,
         address provider,
         bytes memory oracleCalldata
     ) external virtual onlyRole(ORDER_BOOK_ROLE) {
-        (uint256 price, uint256 timestamp) = _setPrice(priceId, provider, oracleCalldata);
-        emit SetPrice(priceId, provider, oracleCalldata, price, timestamp);
+        (uint256 price, uint256 timestamp) = _setPrice(oracleId, provider, oracleCalldata);
+        emit SetPrice(oracleId, provider, oracleCalldata, price, timestamp);
     }
 }

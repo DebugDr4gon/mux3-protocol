@@ -174,7 +174,7 @@ export async function getMuxSignature(
 
 export async function getMuxPriceData(
   priceData: {
-    priceId: string
+    oracleId: string
     chainid: number
     contractAddress: string
     seq: number
@@ -192,7 +192,7 @@ export async function getMuxPriceData(
   const signature = await signer.signMessage(ethers.utils.arrayify(message))
   return ethers.utils.defaultAbiCoder.encode(
     ["(bytes32,uint256,uint256,uint256,bytes)"],
-    [[priceData.priceId, priceData.seq, priceData.price, priceData.timestamp, signature]]
+    [[priceData.oracleId, priceData.seq, priceData.price, priceData.timestamp, signature]]
   )
 }
 

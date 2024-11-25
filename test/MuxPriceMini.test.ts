@@ -191,23 +191,23 @@ describe("MuxPriceMini", () => {
 
   let seq = 1
 
-  const makePriceData = async (contract, signer, priceIdtoData: any) => {
-    // priceId: any, price: any
+  const makePriceData = async (contract, signer, oracleIdToData: any) => {
+    // oracleId: any, price: any
     let data: any[] = []
-    for (let i = 0; i < priceIdtoData.length; i++) {
+    for (let i = 0; i < oracleIdToData.length; i++) {
       const _priceData = await getMuxPriceData(
         {
-          priceId: priceIdtoData[i].priceId,
+          oracleId: oracleIdToData[i].oracleId,
           chainid: 31337,
           contractAddress: contract,
           seq: seq++,
-          price: priceIdtoData[i].price,
+          price: oracleIdToData[i].price,
           timestamp: await blockTime(),
         },
         signer
       )
       data.push({
-        id: priceIdtoData[i].priceId,
+        id: oracleIdToData[i].oracleId,
         provider: contract,
         rawData: _priceData,
       })
@@ -252,10 +252,10 @@ describe("MuxPriceMini", () => {
       const tx1 = await orderBook.connect(broker).multicall([
         orderBook.interface.encodeFunctionData("setPrices", [
           await makePriceData(muxProvider.address, signer, [
-            { priceId: a2b(usdc.address), price: toWei("1") },
-            { priceId: a2b(weth.address), price: toWei("1000") },
-            { priceId: a2b(arb.address), price: toWei("2") },
-            { priceId: a2b(btc.address), price: toWei("50000") },
+            { oracleId: a2b(usdc.address), price: toWei("1") },
+            { oracleId: a2b(weth.address), price: toWei("1000") },
+            { oracleId: a2b(arb.address), price: toWei("2") },
+            { oracleId: a2b(btc.address), price: toWei("50000") },
           ]),
         ]),
         orderBook.interface.encodeFunctionData("fillLiquidityOrder", [0]),
@@ -350,8 +350,8 @@ describe("MuxPriceMini", () => {
       const tx2 = await orderBook.connect(broker).multicall([
         orderBook.interface.encodeFunctionData("setPrices", [
           await makePriceData(muxProvider.address, signer, [
-            { priceId: a2b(usdc.address), price: toWei("1") },
-            { priceId: a2b(weth.address), price: toWei("2000") },
+            { oracleId: a2b(usdc.address), price: toWei("1") },
+            { oracleId: a2b(weth.address), price: toWei("2000") },
           ]),
         ]),
         orderBook.interface.encodeFunctionData("fillPositionOrder", [1]),
@@ -429,10 +429,10 @@ describe("MuxPriceMini", () => {
         const tx1 = await orderBook.connect(broker).multicall([
           orderBook.interface.encodeFunctionData("setPrices", [
             await makePriceData(muxProvider.address, signer, [
-              { priceId: a2b(usdc.address), price: toWei("1") },
-              { priceId: a2b(weth.address), price: toWei("1000") },
-              { priceId: a2b(arb.address), price: toWei("2") },
-              { priceId: a2b(btc.address), price: toWei("50000") },
+              { oracleId: a2b(usdc.address), price: toWei("1") },
+              { oracleId: a2b(weth.address), price: toWei("1000") },
+              { oracleId: a2b(arb.address), price: toWei("2") },
+              { oracleId: a2b(btc.address), price: toWei("50000") },
             ]),
           ]),
           orderBook.interface.encodeFunctionData("fillLiquidityOrder", [2]),
@@ -466,10 +466,10 @@ describe("MuxPriceMini", () => {
         const tx1 = await orderBook.connect(broker).multicall([
           orderBook.interface.encodeFunctionData("setPrices", [
             await makePriceData(muxProvider.address, signer, [
-              { priceId: a2b(usdc.address), price: toWei("1") },
-              { priceId: a2b(weth.address), price: toWei("1000") },
-              { priceId: a2b(arb.address), price: toWei("2") },
-              { priceId: a2b(btc.address), price: toWei("50000") },
+              { oracleId: a2b(usdc.address), price: toWei("1") },
+              { oracleId: a2b(weth.address), price: toWei("1000") },
+              { oracleId: a2b(arb.address), price: toWei("2") },
+              { oracleId: a2b(btc.address), price: toWei("50000") },
             ]),
           ]),
           orderBook.interface.encodeFunctionData("fillLiquidityOrder", [3]),
@@ -534,12 +534,12 @@ describe("MuxPriceMini", () => {
         orderBook.interface.encodeFunctionData("setPrices", [
           await makePriceData(muxProvider.address, signer, [
             {
-              priceId: a2b(usdc.address),
+              oracleId: a2b(usdc.address),
               price: toWei("1"),
             },
-            { priceId: a2b(weth.address), price: toWei("1000") },
-            { priceId: a2b(arb.address), price: toWei("2") },
-            { priceId: a2b(btc.address), price: toWei("50000") },
+            { oracleId: a2b(weth.address), price: toWei("1000") },
+            { oracleId: a2b(arb.address), price: toWei("2") },
+            { oracleId: a2b(btc.address), price: toWei("50000") },
           ]),
         ]),
         orderBook.interface.encodeFunctionData("fillLiquidityOrder", [0]),
@@ -643,8 +643,8 @@ describe("MuxPriceMini", () => {
       const tx2 = await orderBook.connect(broker).multicall([
         orderBook.interface.encodeFunctionData("setPrices", [
           await makePriceData(muxProvider.address, signer, [
-            { priceId: a2b(usdc.address), price: toWei("1") },
-            { priceId: a2b(weth.address), price: toWei("2000") },
+            { oracleId: a2b(usdc.address), price: toWei("1") },
+            { oracleId: a2b(weth.address), price: toWei("2000") },
           ]),
         ]),
         orderBook.interface.encodeFunctionData("fillPositionOrder", [1]),

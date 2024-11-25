@@ -146,25 +146,25 @@ contract TestFacetManagement is FacetManagement, TestSuit {
 
         // non-strict-stable token
         _addCollateralToken(address(d6), 6);
-        bytes32 priceId = address(d6).toBytes32();
+        bytes32 oracleId = address(d6).toBytes32();
 
-        _setStrictStableId(priceId, false);
-        _setPrice(priceId, address(spp), abi.encode(uint256(1004e15)));
-        assertEq(_priceOf(priceId), 1004e15, "E01");
-        _setPrice(priceId, address(spp), abi.encode(uint256(996e15)));
-        assertEq(_priceOf(priceId), 996e15, "E02");
+        _setStrictStableId(oracleId, false);
+        _setPrice(oracleId, address(spp), abi.encode(uint256(1004e15)));
+        assertEq(_priceOf(oracleId), 1004e15, "E01");
+        _setPrice(oracleId, address(spp), abi.encode(uint256(996e15)));
+        assertEq(_priceOf(oracleId), 996e15, "E02");
 
         // strict-stable token
-        _setStrictStableId(priceId, true);
-        _setPrice(priceId, address(spp), abi.encode(uint256(1004e15)));
-        assertEq(_priceOf(priceId), 1004e15, "E01");
-        _setPrice(priceId, address(spp), abi.encode(uint256(996e15)));
-        assertEq(_priceOf(priceId), 996e15, "E02");
+        _setStrictStableId(oracleId, true);
+        _setPrice(oracleId, address(spp), abi.encode(uint256(1004e15)));
+        assertEq(_priceOf(oracleId), 1004e15, "E01");
+        _setPrice(oracleId, address(spp), abi.encode(uint256(996e15)));
+        assertEq(_priceOf(oracleId), 996e15, "E02");
 
-        _setPrice(priceId, address(spp), abi.encode(uint256(1003e15)));
-        assertEq(_priceOf(priceId), 1e18, "E03");
-        _setPrice(priceId, address(spp), abi.encode(uint256(997e15)));
-        assertEq(_priceOf(priceId), 1e18, "E04");
+        _setPrice(oracleId, address(spp), abi.encode(uint256(1003e15)));
+        assertEq(_priceOf(oracleId), 1e18, "E03");
+        _setPrice(oracleId, address(spp), abi.encode(uint256(997e15)));
+        assertEq(_priceOf(oracleId), 1e18, "E04");
     }
 }
 

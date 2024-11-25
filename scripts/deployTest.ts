@@ -102,6 +102,7 @@ async function main(deployer: Deployer) {
   await ensureFinished(core.setConfig(ethers.utils.id("MC_BORROWING_INTERVAL"), u2b(ethers.BigNumber.from(3600))))
   await ensureFinished(core.setConfig(ethers.utils.id("MC_FEE_DISTRIBUTOR"), a2b(feeDistributor.address)))
   await ensureFinished(core.setConfig(ethers.utils.id("MC_SWAPPER"), a2b(swapper.address)))
+  await ensureFinished(core.setConfig(ethers.utils.id("MC_STRICT_STABLE_DEVIATION"), u2b(toWei("0.003"))))
 
   // event emitter
   await ensureFinished(collateralPoolEventEmitter.initialize(core.address))
