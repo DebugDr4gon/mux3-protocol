@@ -10,7 +10,6 @@ library LibConfigMap {
     using LibTypeCast for bool;
 
     event SetValue(bytes32 key, bytes32 value);
-    error InvalidAddress(bytes32 key);
 
     // ================================== single functions ======================================
 
@@ -46,14 +45,6 @@ library LibConfigMap {
 
     function getAddress(mapping(bytes32 => bytes32) storage store, bytes32 key) internal view returns (address) {
         return store[key].toAddress();
-    }
-
-    function mustGetAddress(mapping(bytes32 => bytes32) storage store, bytes32 key) internal view returns (address) {
-        address a = getAddress(store, key);
-        if (a == address(0)) {
-            revert InvalidAddress(key);
-        }
-        return a;
     }
 
     function getBoolean(mapping(bytes32 => bytes32) storage store, bytes32 key) internal view returns (bool) {

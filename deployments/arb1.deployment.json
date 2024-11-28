@@ -38,8 +38,8 @@
   "FacetManagement": {
     "type": "plain",
     "name": "FacetManagement",
-    "address": "0x038DEABFF4C3636B6EC148E3B2395b6a2bC9fC8c",
-    "deployedAt": 277347441
+    "address": "0x6a1c455c8F0Ad2508440fF44B7Ba92Ca82c22A2d",
+    "deployedAt": 278732595
   },
   "FacetReader": {
     "type": "plain",
@@ -95,7 +95,7 @@
         ]
       },
       "facetManagement": {
-        "address": "0x038DEABFF4C3636B6EC148E3B2395b6a2bC9fC8c",
+        "address": "0x6a1c455c8F0Ad2508440fF44B7Ba92Ca82c22A2d",
         "selectors": [
           "0xb9faeaec",
           "0x0606fd4f",
@@ -105,6 +105,7 @@
           "0xca15c873",
           "0x2f2ff15d",
           "0x91d14854",
+          "0x875d9a7c",
           "0x5c60da1b",
           "0xc4d66de8",
           "0xd547741f",
@@ -225,8 +226,8 @@
   "ChainlinkStreamProvider__implementation": {
     "type": "plain",
     "name": "ChainlinkStreamProvider__implementation",
-    "address": "0x8029a4498E77Fa5d6341Cf2D5942dF2076DF73B4",
-    "deployedAt": 267361641
+    "address": "0xF7b82D8eF9b2157439e5F88c1C1F024565B12896",
+    "deployedAt": 278876631
   },
   "ChainlinkStreamProvider": {
     "type": "upgradeable",
@@ -234,15 +235,15 @@
     "address": "0x381200de35Cd57810F5AB9a6273eaD68917961e2",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x8029a4498E77Fa5d6341Cf2D5942dF2076DF73B4"
+      "implementation": "0xF7b82D8eF9b2157439e5F88c1C1F024565B12896"
     },
     "deployedAt": 267361654
   },
   "MuxPriceProvider__implementation": {
     "type": "plain",
     "name": "MuxPriceProvider__implementation",
-    "address": "0x4EDef45435bafD901922c3620d41613ee926B63d",
-    "deployedAt": 274639103
+    "address": "0x4586769A59BFE5D7EBC492BFB195e6d767E4ca0a",
+    "deployedAt": 278876745
   },
   "MuxPriceProvider": {
     "type": "upgradeable",
@@ -250,7 +251,7 @@
     "address": "0x384b3384CC4cE9CEf6fBa182F2f2e5Fe76f8D280",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x4EDef45435bafD901922c3620d41613ee926B63d"
+      "implementation": "0x4586769A59BFE5D7EBC492BFB195e6d767E4ca0a"
     },
     "deployedAt": 269763501
   },
@@ -308,4 +309,4 @@
     "address": "0xC4285891A9B6723916c991b882e4bF7f2e79abb4",
     "deployedAt": 278026761
   }
-} 
+}

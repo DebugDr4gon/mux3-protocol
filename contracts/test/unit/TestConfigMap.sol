@@ -40,7 +40,6 @@ contract TestConfigMap is TestSuit {
 
         LibConfigMap.setAddress(table, key("TK0"), address(this));
         assertEq(LibConfigMap.getAddress(table, key("TK0")), address(this), "E06");
-        assertEq(LibConfigMap.mustGetAddress(table, key("TK0")), address(this), "E07");
 
         LibConfigMap.setBoolean(table, key("TK0"), true);
         assertEq(LibConfigMap.getBoolean(table, key("TK0")), true, "E08");

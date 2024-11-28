@@ -10,7 +10,7 @@ interface IErrors {
     // params
     error InvalidId(bytes32 id);
     error InvalidAmount(uint256 amount);
-    error InvalidAddress(address pool);
+    error InvalidAddress(address addr);
     error InvalidArrayLength(uint256 a, uint256 b);
     error InvalidLotSize(uint256 positionSize, uint256 lotSize);
     error InvalidDecimals(uint256 decimals);
@@ -58,9 +58,18 @@ interface IErrors {
     error PositionNotClosed(bytes32 positionId);
     error OnlySingleMarketPositionAllowed(bytes32 positionId);
 
-    // implies bug
+    // potential bugs
     error ArrayAppendFailed();
     error AllocationLengthMismatch(uint256 len1, uint256 len2);
     error AllocationPositionMismatch(uint256 positionSize1, uint256 positionSize2);
     error OutOfBound(uint256 index, uint256 length);
+
+    // oracle
+    error InvalidPrice(uint256 price);
+    error InvalidPriceExpiration(uint256 expiration);
+    error PriceExpired(uint256 timestamp, uint256 blockTimestamp);
+    error IdMismatch(bytes32 id, bytes32 expectedId);
+    error MissingSignature();
+    error InvalidSequence(uint256 sequence, uint256 expectedSequence);
+    error InvalidSignature(address signer, address expectSigner);
 }

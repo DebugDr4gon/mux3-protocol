@@ -64,7 +64,7 @@ describe("Oracle", () => {
   })
 
   it("test_mockChainlinkStreamProvider_error", async () => {
-    await expect(tester.test_mockChainlinkStreamProvider_error()).to.be.revertedWith("NotWhitelisted")
+    await expect(tester.test_mockChainlinkStreamProvider_error()).to.be.revertedWith("UnauthorizedCaller")
   })
 
   it("test_muxPriceProvider", async () => {
@@ -83,7 +83,13 @@ describe("Oracle", () => {
     await tester.test_muxPriceProvider(signer.address, signature)
 
     await getMuxSignature(
-      { chainid: 42161, contractAddress: "0x384b3384CC4cE9CEf6fBa182F2f2e5Fe76f8D280", seq: 1, price: toWei("3100"), timestamp: 1731293409 },
+      {
+        chainid: 42161,
+        contractAddress: "0x384b3384CC4cE9CEf6fBa182F2f2e5Fe76f8D280",
+        seq: 1,
+        price: toWei("3100"),
+        timestamp: 1731293409,
+      },
       signer
     )
   })

@@ -130,6 +130,7 @@ async function main(deployer: Deployer) {
   await ensureFinished(core.setCollateralTokenStatus(usdc, true))
   await ensureFinished(core.addCollateralToken(weth, 18))
   await ensureFinished(core.setCollateralTokenStatus(weth, true))
+  await ensureFinished(core.setStrictStableId(a2b(usdc), true))
 
   // pool 1: usdc, normal, support all
   await ensureFinished(core.createCollateralPool("MUX3 USDC Pool 1", "LP1", usdc, 0))
@@ -168,7 +169,7 @@ async function main(deployer: Deployer) {
   await ensureFinished(core.setPoolConfig(pool3, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001"))))
 
   // markets
-  await ensureFinished(core.createMarket(lEthMarketId, "ETH_LONG", true, [pool1, pool2, pool3]))
+  await ensureFinished(core.createMarket(lEthMarketId, "ETH", true, [pool1, pool2, pool3]))
   await ensureFinished(
     core.setMarketConfig(lEthMarketId, ethers.utils.id("MM_POSITION_FEE_RATE"), u2b(toWei("0.0006")))
   )
@@ -211,7 +212,7 @@ async function main(deployer: Deployer) {
     core.setPoolConfig(pool3, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", lEthMarketId), u2b(toWei("0.70")))
   )
 
-  await ensureFinished(core.createMarket(sEthMarketId, "ETH_SHORT", false, [pool1, pool2, pool3]))
+  await ensureFinished(core.createMarket(sEthMarketId, "ETH", false, [pool1, pool2, pool3]))
   await ensureFinished(
     core.setMarketConfig(sEthMarketId, ethers.utils.id("MM_POSITION_FEE_RATE"), u2b(toWei("0.0006")))
   )
@@ -265,9 +266,16 @@ async function main(deployer: Deployer) {
   await ensureFinished(chainlinkStreamProvider.initialize("0x478Aa2aC9F6D65F84e09D9185d126c3a17c2a93C"))
   await ensureFinished(chainlinkStreamProvider.setPriceExpirationSeconds(86400))
   await ensureFinished(core.setOracleProvider(chainlinkStreamProvider.address, true))
+  await ensureFinished(core.setOracleProvider(mux3PriceProvider.address, true))
   await ensureFinished(mux3PriceProvider.initialize(mux3OracleSigner))
   await ensureFinished(mux3PriceProvider.setPriceExpirationSeconds(86400))
-  await ensureFinished(core.setOracleProvider(mux3PriceProvider.address, true))
+  await ensureFinished(chainlinkStreamProvider.setCallerWhitelist(core.address, true))
+  await ensureFinished(
+    chainlinkStreamProvider.setFeedId(a2b(weth), "0x000362205e10b3a147d02792eccee483dca6c7b44ecce7012cb8c6e0b68b3ae9")
+  )
+  await ensureFinished(
+    chainlinkStreamProvider.setFeedId(a2b(wbtc), "0x00039d9e45394f473ab1f050a1b963e6b05351e52d71e507509ada0c95ed75b8")
+  )
 
   // swapper
   const uniRouter = "0xE592427A0AEce92De3Edee1F18E0157C05861564"

@@ -7,6 +7,7 @@ bytes32 constant MC_BORROWING_INTERVAL = keccak256("MC_BORROWING_INTERVAL");
 bytes32 constant MC_FEE_DISTRIBUTOR = keccak256("MC_FEE_DISTRIBUTOR");
 bytes32 constant MC_SWAPPER = keccak256("MC_SWAPPER");
 bytes32 constant MC_STRICT_STABLE_DEVIATION = keccak256("MC_STRICT_STABLE_DEVIATION");
+
 // market
 bytes32 constant MM_POSITION_FEE_RATE = keccak256("MM_POSITION_FEE_RATE");
 bytes32 constant MM_LIQUIDATION_FEE_RATE = keccak256("MM_LIQUIDATION_FEE_RATE");
@@ -18,7 +19,7 @@ bytes32 constant MM_DISABLE_TRADE = keccak256("MM_DISABLE_TRADE");
 bytes32 constant MM_DISABLE_OPEN = keccak256("MM_DISABLE_OPEN");
 
 // pool
-bytes32 constant MCP_SYMBOL = keccak256("MCP_SYMBOL");
+bytes32 constant MCP_SYMBOL = keccak256("MCP_SYMBOL"); // the contract does not use it but can be used in UI
 bytes32 constant MCP_LIQUIDITY_FEE_RATE = keccak256("MCP_LIQUIDITY_FEE_RATE");
 bytes32 constant MCP_LIQUIDITY_CAP_USD = keccak256("MCP_LIQUIDITY_CAP_USD");
 bytes32 constant MCP_BORROWING_K = keccak256("MCP_BORROWING_K");

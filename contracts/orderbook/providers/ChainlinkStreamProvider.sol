@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "../../interfaces/chainlink/ICommon.sol";
 import "../../interfaces/chainlink/IFeeManager.sol";
 import "../../interfaces/chainlink/IVerifyProxy.sol";
+import "../../interfaces/IErrors.sol";
 
 contract ChainlinkStreamProvider is OwnableUpgradeable {
     struct Report {
@@ -30,15 +31,9 @@ contract ChainlinkStreamProvider is OwnableUpgradeable {
     event SetPriceExpiration(uint256 expiration);
     event SetFeedId(bytes32 oracleId, bytes32 feedId);
     event SetCallerWhitelist(address caller, bool isWhitelisted);
-    error InvalidChainlinkVerifier();
-    error InvalidPrice(int192 price);
-    error InvalidPriceExpiration(uint256 expiration);
-    error PriceExpired(uint256 timestamp, uint256 blockTimestamp);
-    error IdMismatch(bytes32 id, bytes32 expectedId);
-    error NotWhitelisted(address caller);
 
     modifier onlyWhitelisted() {
-        require(callerWhitelist[msg.sender], NotWhitelisted(msg.sender));
+        require(callerWhitelist[msg.sender], IErrors.UnauthorizedCaller(msg.sender));
         _;
     }
 
@@ -57,7 +52,7 @@ contract ChainlinkStreamProvider is OwnableUpgradeable {
     }
 
     function setPriceExpirationSeconds(uint256 _priceExpiration) external onlyOwner {
-        require(_priceExpiration <= 86400 && _priceExpiration > 0, InvalidPriceExpiration(_priceExpiration));
+        require(_priceExpiration <= 86400 && _priceExpiration > 0, IErrors.InvalidPriceExpiration(_priceExpiration));
         priceExpiration = _priceExpiration;
         emit SetPriceExpiration(_priceExpiration);
     }
@@ -71,7 +66,7 @@ contract ChainlinkStreamProvider is OwnableUpgradeable {
         bytes32 oracleId,
         bytes memory rawData
     ) external onlyWhitelisted returns (uint256 price, uint256 timestamp) {
-        require(chainlinkVerifier != address(0), InvalidChainlinkVerifier());
+        require(chainlinkVerifier != address(0), IErrors.InvalidAddress(chainlinkVerifier));
         bytes memory unverifiedReport = rawData;
         // Report verification fees
         IVerifyProxy verifier = IVerifyProxy(chainlinkVerifier);
@@ -88,20 +83,26 @@ contract ChainlinkStreamProvider is OwnableUpgradeable {
         // Verify the report
         bytes memory verifiedReportData = verifier.verify(unverifiedReport, abi.encode(feeTokenAddress));
         Report memory verifiedReport = abi.decode(verifiedReportData, (Report));
-        require(verifiedReport.feedId == feedIds[oracleId], IdMismatch(verifiedReport.feedId, feedIds[oracleId]));
-        require(verifiedReport.price > 0, InvalidPrice(verifiedReport.price));
-        require(verifiedReport.expiresAt >= block.timestamp, PriceExpired(verifiedReport.expiresAt, block.timestamp));
+        require(
+            verifiedReport.feedId == feedIds[oracleId],
+            IErrors.IdMismatch(verifiedReport.feedId, feedIds[oracleId])
+        );
+        require(verifiedReport.price > 0, IErrors.InvalidPrice(uint256(int256(verifiedReport.price))));
+        require(
+            verifiedReport.expiresAt >= block.timestamp,
+            IErrors.PriceExpired(verifiedReport.expiresAt, block.timestamp)
+        );
 
         price = uint256(uint192(verifiedReport.price));
         timestamp = uint256(verifiedReport.observationsTimestamp);
         require(
             timestamp + priceExpiration >= block.timestamp,
-            PriceExpired(timestamp + priceExpiration, block.timestamp)
+            IErrors.PriceExpired(timestamp + priceExpiration, block.timestamp)
         );
     }
 
     function _setChainlinkVerifier(address _chainlinkVerifier) internal {
-        require(_chainlinkVerifier != address(0), InvalidChainlinkVerifier());
+        require(_chainlinkVerifier != address(0), IErrors.InvalidAddress(_chainlinkVerifier));
         chainlinkVerifier = _chainlinkVerifier;
         emit SetChainlinkVerifier(_chainlinkVerifier);
     }

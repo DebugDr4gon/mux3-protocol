@@ -12,13 +12,13 @@ interface IFacetOpen {
         uint256 size,
         uint256 tradingPrice,
         address[] backedPools,
-        uint256[] allocations,
-        uint256[] newSizes,
-        uint256[] newEntryPrices,
+        uint256[] allocations, // 1e18
+        uint256[] newSizes, // 1e18
+        uint256[] newEntryPrices, // 1e18
         uint256 positionFeeUsd, // 1e18
         uint256 borrowingFeeUsd, // 1e18
         address[] newCollateralTokens,
-        uint256[] newCollateralAmounts
+        uint256[] newCollateralAmounts // 1e18
     );
 
     struct OpenPositionArgs {
@@ -47,14 +47,14 @@ interface IFacetClose {
         uint256 size,
         uint256 tradingPrice,
         address[] backedPools,
-        uint256[] allocations,
-        uint256[] newSizes,
-        uint256[] newEntryPrices,
+        uint256[] allocations, // 1e18
+        uint256[] newSizes, // 1e18
+        uint256[] newEntryPrices, // 1e18
         int256[] poolPnlUsds, // 1e18
         uint256 positionFeeUsd, // 1e18
         uint256 borrowingFeeUsd, // 1e18
         address[] newCollateralTokens,
-        uint256[] newCollateralAmounts
+        uint256[] newCollateralAmounts // 1e18
     );
 
     event LiquidatePosition(
@@ -63,14 +63,14 @@ interface IFacetClose {
         bytes32 indexed marketId,
         bool isLong,
         uint256 oldSize,
-        uint256 tradingPrice,
+        uint256 tradingPrice, // 1e18
         address[] backedPools,
-        uint256[] allocations,
+        uint256[] allocations, // 1e18
         int256[] poolPnlUsds, // 1e18
         uint256 positionFeeUsd, // 1e18
         uint256 borrowingFeeUsd, // 1e18
         address[] newCollateralTokens,
-        uint256[] newCollateralAmounts
+        uint256[] newCollateralAmounts // 1e18
     );
 
     struct ClosePositionArgs {
