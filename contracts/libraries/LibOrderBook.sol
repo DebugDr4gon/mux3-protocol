@@ -929,8 +929,8 @@ library LibOrderBook {
     }
 
     function _validateCollateral(OrderBookStorage storage orderBook, address tokenAddress) private view {
-        (bool enabled, ) = IFacetReader(orderBook.mux3Facet).getCollateralToken(tokenAddress);
-        require(enabled, "Invalid collateralToken");
+        (bool isExist, ) = IFacetReader(orderBook.mux3Facet).getCollateralToken(tokenAddress);
+        require(isExist, "Invalid collateralToken");
     }
 
     function _validatePool(OrderBookStorage storage orderBook, address poolAddress) private view {
@@ -985,8 +985,8 @@ library LibOrderBook {
         address collateralToken,
         uint256 rawAmount
     ) internal view returns (uint256 wadAmount) {
-        (bool enabled, uint8 decimals) = IFacetReader(orderBook.mux3Facet).getCollateralToken(collateralToken);
-        require(enabled, "Collateral token not enabled");
+        (bool isExist, uint8 decimals) = IFacetReader(orderBook.mux3Facet).getCollateralToken(collateralToken);
+        require(isExist, "Collateral token not enabled");
         if (decimals <= 18) {
             wadAmount = rawAmount * (10 ** (18 - decimals));
         } else {
@@ -999,8 +999,8 @@ library LibOrderBook {
         address collateralToken,
         uint256 wadAmount
     ) internal view returns (uint256 rawAmount) {
-        (bool enabled, uint8 decimals) = IFacetReader(orderBook.mux3Facet).getCollateralToken(collateralToken);
-        require(enabled, "Collateral token not enabled");
+        (bool isExist, uint8 decimals) = IFacetReader(orderBook.mux3Facet).getCollateralToken(collateralToken);
+        require(isExist, "Collateral token not enabled");
         if (decimals <= 18) {
             rawAmount = wadAmount / 10 ** (18 - decimals);
         } else {
