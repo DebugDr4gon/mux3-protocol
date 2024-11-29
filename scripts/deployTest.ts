@@ -155,9 +155,6 @@ async function main(deployer: Deployer) {
   await ensureFinished(core.createCollateralPool("MUX Elemental Pool 1", "MEP-1", usdc, 0))
   const pool1 = (await core.listCollateralPool())[0]
   console.log("pool1Addr", pool1)
-  await ensureFinished(
-    core.setPoolConfig(pool1, ethers.utils.id("MCP_SYMBOL"), ethers.utils.formatBytes32String("USDC for all markets"))
-  )
   await ensureFinished(core.setPoolConfig(pool1, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306"))))
   await ensureFinished(core.setPoolConfig(pool1, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938"))))
   await ensureFinished(core.setPoolConfig(pool1, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))
@@ -167,9 +164,6 @@ async function main(deployer: Deployer) {
   await ensureFinished(core.createCollateralPool("MUX Elemental Pool 2", "MEP-2", usdc, 1))
   const pool2 = (await core.listCollateralPool())[1]
   console.log("pool2Addr", pool2)
-  await ensureFinished(
-    core.setPoolConfig(pool2, ethers.utils.id("MCP_SYMBOL"), ethers.utils.formatBytes32String("USDC for ETH"))
-  )
   await ensureFinished(core.setPoolConfig(pool2, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306"))))
   await ensureFinished(core.setPoolConfig(pool2, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938"))))
   await ensureFinished(core.setPoolConfig(pool2, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))
@@ -179,9 +173,6 @@ async function main(deployer: Deployer) {
   await ensureFinished(core.createCollateralPool("MUX3 ETH Pool", "LP3", weth, 2))
   const pool3 = (await core.listCollateralPool())[2]
   console.log("pool3Addr", pool3)
-  await ensureFinished(
-    core.setPoolConfig(pool3, ethers.utils.id("MCP_SYMBOL"), ethers.utils.formatBytes32String("ETH only"))
-  )
   await ensureFinished(core.setPoolConfig(pool3, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306"))))
   await ensureFinished(core.setPoolConfig(pool3, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938"))))
   await ensureFinished(core.setPoolConfig(pool3, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))

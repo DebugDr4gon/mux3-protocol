@@ -51,7 +51,23 @@ library LibConfigMap {
         return store[key].toBoolean();
     }
 
+    function getString(mapping(bytes32 => bytes32) storage store, bytes32 key) internal view returns (string memory) {
+        return toString(store[key]);
+    }
+
     function toBytes32(address a) internal pure returns (bytes32) {
         return bytes32(bytes20(a));
+    }
+
+    function toString(bytes32 b) internal pure returns (string memory) {
+        uint256 length = 0;
+        while (length < 32 && b[length] != 0) {
+            length++;
+        }
+        bytes memory bytesArray = new bytes(length);
+        for (uint256 i = 0; i < length; i++) {
+            bytesArray[i] = b[i];
+        }
+        return string(bytesArray);
     }
 }

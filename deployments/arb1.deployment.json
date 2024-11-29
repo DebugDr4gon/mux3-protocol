@@ -170,8 +170,8 @@
   "CollateralPool__implementation": {
     "type": "plain",
     "name": "CollateralPool__implementation",
-    "address": "0xb82d9105D37B9fA5D5163785B70aF9CEc1B0f422",
-    "deployedAt": 279482182
+    "address": "0xEcB6f25a5e1266D9e8670Ae35971292730838492",
+    "deployedAt": 279506959
   },
   "OrderBook": {
     "type": "upgradeable",

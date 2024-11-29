@@ -118,6 +118,22 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         ICollateralPoolEventEmitter(_eventEmitter).emitSetConfig(key, value);
     }
 
+    /**
+     * @dev Modifying ERC20 name is not a common practice. If we really need it, this is the only way.
+     */
+    function name() public view override returns (string memory) {
+        string memory overrideName = _configTable.getString(MCP_TOKEN_NAME);
+        return bytes(overrideName).length > 0 ? overrideName : super.name();
+    }
+
+    /**
+     * @dev Modifying ERC20 symbols is not a common practice. If we really need it, this is the only way.
+     */
+    function symbol() public view override returns (string memory) {
+        string memory overrideSymbol = _configTable.getString(MCP_TOKEN_SYMBOL);
+        return bytes(overrideSymbol).length > 0 ? overrideSymbol : super.symbol();
+    }
+
     function configValue(bytes32 key) external view returns (bytes32) {
         return _configTable.getBytes32(key);
     }

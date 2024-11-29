@@ -19,7 +19,8 @@ bytes32 constant MM_DISABLE_TRADE = keccak256("MM_DISABLE_TRADE");
 bytes32 constant MM_DISABLE_OPEN = keccak256("MM_DISABLE_OPEN");
 
 // pool
-bytes32 constant MCP_SYMBOL = keccak256("MCP_SYMBOL"); // the contract does not use it but can be used in UI
+bytes32 constant MCP_TOKEN_NAME = keccak256("MCP_TOKEN_NAME");
+bytes32 constant MCP_TOKEN_SYMBOL = keccak256("MCP_TOKEN_SYMBOL");
 bytes32 constant MCP_LIQUIDITY_FEE_RATE = keccak256("MCP_LIQUIDITY_FEE_RATE");
 bytes32 constant MCP_LIQUIDITY_CAP_USD = keccak256("MCP_LIQUIDITY_CAP_USD");
 bytes32 constant MCP_BORROWING_K = keccak256("MCP_BORROWING_K");
