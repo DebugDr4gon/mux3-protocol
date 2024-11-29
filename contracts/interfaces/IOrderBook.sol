@@ -162,12 +162,12 @@ interface IOrderBook {
     /**
      * @dev Trader/LP can transfer ERC20 to OrderBook
      */
-    function transferToken(address token, uint256 amount) external;
+    function transferToken(address token, uint256 amount) external payable;
 
     /**
      * @dev Delegator can transfer ERC20 from Trader/LP to OrderBook
      */
-    function transferTokenFrom(address from, address token, uint256 amount) external;
+    function transferTokenFrom(address from, address token, uint256 amount) external payable;
 
     /**
      * @dev Trader/LP should pay for gas for their orders
@@ -187,7 +187,7 @@ interface IOrderBook {
     /**
      * @notice A trader should set initial leverage at least once before open-position
      */
-    function setInitialLeverage(bytes32 positionId, bytes32 marketId, uint256 initialLeverage) external;
+    function setInitialLeverage(bytes32 positionId, bytes32 marketId, uint256 initialLeverage) external payable;
 
     /**
      * @notice A Trader can open/close position

@@ -179,7 +179,7 @@
     "address": "0xE3A2028aB6eE109DC76c67fa4584E829a6A3E7F8",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x7310939c59aDB6F4e6bFB16c965bb159cAf55824"
+      "implementation": "0x650cEA77D3Af757F794c84F2a3e4C180E840dB8d"
     },
     "deployedAt": 265067381
   },
@@ -212,8 +212,8 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0x7310939c59aDB6F4e6bFB16c965bb159cAf55824",
-    "deployedAt": 278026784
+    "address": "0x650cEA77D3Af757F794c84F2a3e4C180E840dB8d",
+    "deployedAt": 279576798
   },
   "Delegator__implementation": {
     "type": "plain",

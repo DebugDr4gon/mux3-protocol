@@ -81,14 +81,14 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     /**
      * @dev Trader/LP can transfer ERC20 to OrderBook
      */
-    function transferToken(address token, uint256 amount) external nonReentrant {
+    function transferToken(address token, uint256 amount) external payable nonReentrant {
         IERC20Upgradeable(token).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     /**
      * @dev Delegator can transfer ERC20 from Trader/LP to OrderBook
      */
-    function transferTokenFrom(address from, address token, uint256 amount) external nonReentrant {
+    function transferTokenFrom(address from, address token, uint256 amount) external payable nonReentrant {
         require(_isDelegator(msg.sender), "Delegator only");
         IERC20Upgradeable(token).safeTransferFrom(from, address(this), amount);
     }
@@ -119,7 +119,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         bytes32 positionId,
         bytes32 marketId,
         uint256 initialLeverage
-    ) external nonReentrant updateSequence {
+    ) external payable nonReentrant updateSequence {
         (address positionAccount, ) = LibCodec.decodePositionId(positionId);
         if (_isDelegator(msg.sender)) {} else {
             require(positionAccount == msg.sender, "Not authorized");
