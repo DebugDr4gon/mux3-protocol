@@ -60,7 +60,7 @@ contract MockCollateralPool is
     function borrowingFeeRateApy(bytes32 marketId) public pure returns (uint256 feeRateApy) {}
 
     function setMarket(bytes32 marketId, bool isLong) external {
-        require(!_marketIds.contains(marketId), MarketAlreadyExists(marketId));
+        require(!_marketIds.contains(marketId), MarketAlreadyExist(marketId));
         require(_marketIds.add(marketId), ArrayAppendFailed());
         _marketStates[marketId].isLong = isLong;
     }

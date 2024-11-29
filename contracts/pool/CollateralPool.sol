@@ -108,7 +108,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     }
 
     function setMarket(bytes32 marketId, bool isLong) external onlyCore {
-        require(!_marketIds.contains(marketId), MarketAlreadyExists(marketId));
+        require(!_marketIds.contains(marketId), MarketAlreadyExist(marketId));
         require(_marketIds.add(marketId), ArrayAppendFailed());
         _marketStates[marketId].isLong = isLong;
     }
@@ -222,7 +222,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     ) external override onlyOrderBook returns (AddLiquidityResult memory result) {
         _updateAllMarketBorrowing();
         require(args.rawCollateralAmount != 0, InvalidAmount(args.rawCollateralAmount));
-        require(_isCollateralEnabled(_collateralToken), CollateralTokenDisabled(_collateralToken));
+        require(_isCollateralExist(_collateralToken), CollateralNotExist(_collateralToken));
         // nav
         uint256 collateralPrice = IFacetReader(_core).priceOf(_collateralToken);
         uint256 aumUsd = _aumUsd();
@@ -278,7 +278,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     ) external override onlyOrderBook returns (RemoveLiquidityResult memory result) {
         _updateAllMarketBorrowing();
         require(args.shares != 0, InvalidAmount(args.shares));
-        require(_isCollateralEnabled(_collateralToken), CollateralTokenDisabled(_collateralToken));
+        require(_isCollateralExist(_collateralToken), CollateralNotExist(_collateralToken));
         // nav
         uint256 aumUsd = _aumUsd();
         uint256 lpPrice = _nav(aumUsd);
@@ -345,8 +345,8 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         _updateAllMarketBorrowing();
         require(rebalancer != address(0), InvalidAddress(rebalancer));
         require(token0 != _collateralToken, InvalidAddress(token0));
-        require(_isCollateralEnabled(token0), CollateralTokenDisabled(token0));
-        require(_isCollateralEnabled(_collateralToken), CollateralTokenDisabled(_collateralToken));
+        require(_isCollateralExist(token0), CollateralNotExist(token0));
+        require(_isCollateralExist(_collateralToken), CollateralNotExist(_collateralToken));
         uint256 price0 = IFacetReader(_core).priceOf(token0);
         uint256 price1 = IFacetReader(_core).priceOf(_collateralToken);
         // send token 0

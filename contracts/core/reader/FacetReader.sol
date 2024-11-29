@@ -54,9 +54,9 @@ contract FacetReader is Mux3FacetBase, PositionAccount, IFacetReader {
     /**
      * @dev Get Collateral config
      */
-    function getCollateralToken(address token) external view returns (bool enabled, uint8 decimals) {
+    function getCollateralToken(address token) external view returns (bool isExist, uint8 decimals) {
         CollateralTokenInfo storage collateralToken = _collateralTokens[token];
-        enabled = collateralToken.enabled == Enabled.Enabled;
+        isExist = collateralToken.isExist;
         decimals = collateralToken.decimals;
     }
 
@@ -228,9 +228,9 @@ contract FacetReader is Mux3FacetBase, PositionAccount, IFacetReader {
      *            ])
      */
     function isDeleverageAllowed(bytes32 positionId, bytes32 marketId) external view returns (bool) {
-        require(_isMarketExists(marketId), MarketNotExists(marketId));
+        require(_isMarketExist(marketId), MarketNotExists(marketId));
         require(!_marketDisableTrade(marketId), MarketTradeDisabled(marketId));
-        require(_isPositionAccountExist(positionId), PositionAccountNotExists(positionId));
+        require(_isPositionAccountExist(positionId), PositionAccountNotExist(positionId));
         PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         uint256 tradingPrice = _priceOf(_marketOracleId(marketId));
         // allocation (just copy the existing sizes)

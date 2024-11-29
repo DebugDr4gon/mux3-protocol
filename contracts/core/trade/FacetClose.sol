@@ -23,9 +23,9 @@ contract FacetClose is Mux3TradeBase, IFacetClose {
             uint256 lotSize = _marketLotSize(args.marketId);
             require(args.size % lotSize == 0, InvalidLotSize(args.size, lotSize));
         }
-        require(_isMarketExists(args.marketId), MarketNotExists(args.marketId));
+        require(_isMarketExist(args.marketId), MarketNotExists(args.marketId));
         require(!_marketDisableTrade(args.marketId), MarketTradeDisabled(args.marketId));
-        require(_isPositionAccountExist(args.positionId), PositionAccountNotExists(args.positionId));
+        require(_isPositionAccountExist(args.positionId), PositionAccountNotExist(args.positionId));
         PositionAccountInfo storage positionAccount = _positionAccounts[args.positionId];
         result.tradingPrice = _priceOf(_marketOracleId(args.marketId));
         // allocation
@@ -123,9 +123,9 @@ contract FacetClose is Mux3TradeBase, IFacetClose {
         LiquidatePositionArgs memory args
     ) external onlyRole(ORDER_BOOK_ROLE) returns (LiquidatePositionResult memory result) {
         LiquidatePositionMemory memory mem;
-        require(_isMarketExists(args.marketId), MarketNotExists(args.marketId));
+        require(_isMarketExist(args.marketId), MarketNotExists(args.marketId));
         require(!_marketDisableTrade(args.marketId), MarketTradeDisabled(args.marketId));
-        require(_isPositionAccountExist(args.positionId), PositionAccountNotExists(args.positionId));
+        require(_isPositionAccountExist(args.positionId), PositionAccountNotExist(args.positionId));
         PositionAccountInfo storage positionAccount = _positionAccounts[args.positionId];
         result.tradingPrice = _priceOf(_marketOracleId(args.marketId));
         // allocation (just copy the existing sizes)

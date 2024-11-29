@@ -84,9 +84,6 @@ describe("Mini", () => {
     await core.addCollateralToken(usdc.address, 6)
     await core.addCollateralToken(arb.address, 18)
     await core.addCollateralToken(btc.address, 8)
-    await core.setCollateralTokenStatus(usdc.address, true)
-    await core.setCollateralTokenStatus(arb.address, true)
-    await core.setCollateralTokenStatus(btc.address, true)
     await core.setConfig(ethers.utils.id("MC_BORROWING_BASE_APY"), u2b(toWei("0.10")))
     await core.setConfig(ethers.utils.id("MC_BORROWING_INTERVAL"), u2b(ethers.BigNumber.from(3600)))
 

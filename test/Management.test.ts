@@ -37,7 +37,7 @@ describe("Management", () => {
     await expect(tester.addCollateralToken(await tester.d6(), 18)).to.be.revertedWith("UnmatchedDecimals")
 
     await tester.addCollateralToken(await tester.d6(), 6)
-    await expect(tester.addCollateralToken(await tester.d6(), 6)).to.be.revertedWith("CollateralAlreadyExists")
+    await expect(tester.addCollateralToken(await tester.d6(), 6)).to.be.revertedWith("CollateralAlreadyExist")
   })
 
   it("test_PricingManager_setPrice", async () => {

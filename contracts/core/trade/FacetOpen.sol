@@ -23,7 +23,7 @@ contract FacetOpen is Mux3TradeBase, IFacetOpen {
             uint256 lotSize = _marketLotSize(args.marketId);
             require(args.size % lotSize == 0, InvalidLotSize(args.size, lotSize));
         }
-        require(_isMarketExists(args.marketId), MarketNotExists(args.marketId));
+        require(_isMarketExist(args.marketId), MarketNotExists(args.marketId));
         require(!_marketDisableTrade(args.marketId), MarketTradeDisabled(args.marketId));
         require(!_marketDisableOpen(args.marketId), MarketTradeDisabled(args.marketId));
         if (!_isPositionAccountExist(args.positionId)) {

@@ -54,8 +54,8 @@ contract CollateralPoolComputed is CollateralPoolStore {
         require(oracleId != bytes32(0), IErrors.EssentialConfigNotSet("MM_ORACLE_ID"));
     }
 
-    function _isCollateralEnabled(address token) internal view returns (bool isEnabled) {
-        (isEnabled, ) = IFacetReader(_core).getCollateralToken(token);
+    function _isCollateralExist(address token) internal view returns (bool isExist) {
+        (isExist, ) = IFacetReader(_core).getCollateralToken(token);
     }
 
     function _adlReserveRate(bytes32 marketId) internal view returns (uint256 rate) {
@@ -144,8 +144,8 @@ contract CollateralPoolComputed is CollateralPoolStore {
     }
 
     function _toWad(address token, uint256 rawAmount) internal view returns (uint256) {
-        (bool enabled, uint8 decimals) = IFacetReader(_core).getCollateralToken(token);
-        require(enabled, IErrors.CollateralTokenDisabled(token));
+        (bool isExist, uint8 decimals) = IFacetReader(_core).getCollateralToken(token);
+        require(isExist, IErrors.CollateralNotExist(token));
         if (decimals <= 18) {
             return rawAmount * (10 ** (18 - decimals));
         } else {
@@ -154,8 +154,8 @@ contract CollateralPoolComputed is CollateralPoolStore {
     }
 
     function _toRaw(address token, uint256 wadAmount) internal view returns (uint256) {
-        (bool enabled, uint8 decimals) = IFacetReader(_core).getCollateralToken(token);
-        require(enabled, IErrors.CollateralTokenDisabled(token));
+        (bool isExist, uint8 decimals) = IFacetReader(_core).getCollateralToken(token);
+        require(isExist, IErrors.CollateralNotExist(token));
         if (decimals <= 18) {
             return wadAmount / 10 ** (18 - decimals);
         } else {

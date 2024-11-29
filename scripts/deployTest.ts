@@ -148,9 +148,7 @@ async function main(deployer: Deployer) {
 
   // collateral
   await ensureFinished(core.addCollateralToken(usdc, 6))
-  await ensureFinished(core.setCollateralTokenStatus(usdc, true))
   await ensureFinished(core.addCollateralToken(weth, 18))
-  await ensureFinished(core.setCollateralTokenStatus(weth, true))
   await ensureFinished(core.setStrictStableId(a2b(usdc), true))
 
   // pool 1: usdc, normal, support all
@@ -311,9 +309,8 @@ async function main(deployer: Deployer) {
     swapper.setSwapPath(weth, usdc, [weth + UNI_FEE_030 + usdc.slice(2), weth + UNI_FEE_005 + usdc.slice(2)])
   )
 
-  // susds oracle
+  // susds
   await ensureFinished(susdsOracleL2.initialize(susdsOracleL1))
-
   // aum reader
   // https://docs.chain.link/data-feeds/price-feeds/addresses/?network=arbitrum&amp%3Bpage=1&page=1
   await ensureFinished(collateralPoolAumReader.initialize())

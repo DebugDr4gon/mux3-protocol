@@ -56,7 +56,7 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
 
     function withdraw(WithdrawArgs memory args) external onlyRole(ORDER_BOOK_ROLE) {
         WithdrawMemory memory mem;
-        require(_isPositionAccountExist(args.positionId), PositionAccountNotExists(args.positionId));
+        require(_isPositionAccountExist(args.positionId), PositionAccountNotExist(args.positionId));
         PositionAccountInfo storage positionAccount = _positionAccounts[args.positionId];
         // update borrowing fee for all markets
         mem.allBorrowingFeeUsd = _updateBorrowingForAllMarkets(
@@ -98,7 +98,7 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
 
     function withdrawAll(WithdrawAllArgs memory args) external onlyRole(ORDER_BOOK_ROLE) {
         WithdrawAllMemory memory mem;
-        require(_isPositionAccountExist(args.positionId), PositionAccountNotExists(args.positionId));
+        require(_isPositionAccountExist(args.positionId), PositionAccountNotExist(args.positionId));
         PositionAccountInfo storage positionAccount = _positionAccounts[args.positionId];
         // all positions should be closed
         require(positionAccount.activeMarkets.length() == 0, PositionNotClosed(args.positionId));
@@ -146,7 +146,7 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
 
     function withdrawUsd(WithdrawUsdArgs memory args) external onlyRole(ORDER_BOOK_ROLE) {
         WithdrawUsdMemory memory mem;
-        require(_isPositionAccountExist(args.positionId), PositionAccountNotExists(args.positionId));
+        require(_isPositionAccountExist(args.positionId), PositionAccountNotExist(args.positionId));
         PositionAccountInfo storage positionAccount = _positionAccounts[args.positionId];
         // update borrowing fee for all markets
         mem.allBorrowingFeeUsd = _updateBorrowingForAllMarkets(

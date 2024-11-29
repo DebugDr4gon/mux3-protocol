@@ -29,14 +29,13 @@ interface IErrors {
     error UnauthorizedCaller(address caller);
 
     // collateral
-    error CollateralAlreadyExists(address tokenAddress);
-    error CollateralNotExists(address tokenAddress);
-    error CollateralTokenDisabled(address token);
+    error CollateralAlreadyExist(address tokenAddress);
+    error CollateralNotExist(address tokenAddress);
 
     // market
     error InvalidMarketId(bytes32 marketId);
     error MarketNotExists(bytes32 marketId);
-    error MarketAlreadyExists(bytes32 marketId);
+    error MarketAlreadyExist(bytes32 marketId);
     error MarketTradeDisabled(bytes32 marketId);
 
     // pool
@@ -47,8 +46,8 @@ interface IErrors {
     error CreateProxyFailed();
 
     // account
-    error PositionAccountAlreadyExists(bytes32 positionId);
-    error PositionAccountNotExists(bytes32 positionId);
+    error PositionAccountAlreadyExist(bytes32 positionId);
+    error PositionAccountNotExist(bytes32 positionId);
     error UnsafePositionAccount(bytes32 positionId, uint256 safeType);
     error SafePositionAccount(bytes32 positionId, uint256 safeType);
     error InsufficientCollateralBalance(address collateralToken, uint256 balance, uint256 requiredAmount);

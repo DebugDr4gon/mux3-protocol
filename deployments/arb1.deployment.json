@@ -38,32 +38,32 @@
   "FacetManagement": {
     "type": "plain",
     "name": "FacetManagement",
-    "address": "0x6a1c455c8F0Ad2508440fF44B7Ba92Ca82c22A2d",
-    "deployedAt": 278732595
+    "address": "0x8BB093D2e0B68DcD89c5803a3B0138357B199C90",
+    "deployedAt": 279482425
   },
   "FacetReader": {
     "type": "plain",
     "name": "FacetReader",
-    "address": "0x5d9c97452Db59F6d059F4B6A3fd8c6c312d7D801",
-    "deployedAt": 277347489
+    "address": "0xA9f6Fe8daCC1BDCac8c02BDFBAe7721128FbbFf2",
+    "deployedAt": 279482458
   },
   "FacetOpen": {
     "type": "plain",
     "name": "FacetOpen",
-    "address": "0x77C57cDD3b2A3324E5eb32C83ec4Be9e129B5e75",
-    "deployedAt": 277347545
+    "address": "0xC21e2e25380b5D69Bf35f977Bb4A3f085Efb4644",
+    "deployedAt": 279482493
   },
   "FacetClose": {
     "type": "plain",
     "name": "FacetClose",
-    "address": "0x292BFFbE767Fec8aB4306a851e5BC4950dA7C410",
-    "deployedAt": 277347578
+    "address": "0xae3B917985E6583e3828b126ab40850d8Ed75147",
+    "deployedAt": 279482524
   },
   "FacetPositionAccount": {
     "type": "plain",
     "name": "FacetPositionAccount",
-    "address": "0xC3F59776419a95367b1Fd129692d6239C71E31c5",
-    "deployedAt": 277347622
+    "address": "0x0831319D1D4d717D0B21F78f61Af90Fb60b0d874",
+    "deployedAt": 279482559
   },
   "Mux3": {
     "type": "diamond",
@@ -95,7 +95,7 @@
         ]
       },
       "facetManagement": {
-        "address": "0x6a1c455c8F0Ad2508440fF44B7Ba92Ca82c22A2d",
+        "address": "0x8BB093D2e0B68DcD89c5803a3B0138357B199C90",
         "selectors": [
           "0xb9faeaec",
           "0x0606fd4f",
@@ -105,12 +105,10 @@
           "0xca15c873",
           "0x2f2ff15d",
           "0x91d14854",
-          "0x875d9a7c",
           "0x5c60da1b",
           "0xc4d66de8",
           "0xd547741f",
           "0xab02b870",
-          "0x172990d7",
           "0xd1fd27b3",
           "0x3e13fdb6",
           "0x47f391de",
@@ -120,7 +118,7 @@
         ]
       },
       "facetReader": {
-        "address": "0x5d9c97452Db59F6d059F4B6A3fd8c6c312d7D801",
+        "address": "0xA9f6Fe8daCC1BDCac8c02BDFBAe7721128FbbFf2",
         "selectors": [
           "0x32404484",
           "0x5252f3a2",
@@ -144,20 +142,20 @@
         ]
       },
       "facetOpen": {
-        "address": "0x77C57cDD3b2A3324E5eb32C83ec4Be9e129B5e75",
+        "address": "0xC21e2e25380b5D69Bf35f977Bb4A3f085Efb4644",
         "selectors": [
           "0x5876dfce"
         ]
       },
       "facetClose": {
-        "address": "0x292BFFbE767Fec8aB4306a851e5BC4950dA7C410",
+        "address": "0xae3B917985E6583e3828b126ab40850d8Ed75147",
         "selectors": [
           "0x98118013",
           "0xd713d5a3"
         ]
       },
       "facetPositionAccount": {
-        "address": "0xC3F59776419a95367b1Fd129692d6239C71E31c5",
+        "address": "0x0831319D1D4d717D0B21F78f61Af90Fb60b0d874",
         "selectors": [
           "0xd954863c",
           "0x42ac97a1",
@@ -172,8 +170,8 @@
   "CollateralPool__implementation": {
     "type": "plain",
     "name": "CollateralPool__implementation",
-    "address": "0x17BAECDb2E7F59900651E4088Ab01a2083958148",
-    "deployedAt": 277347339
+    "address": "0xb82d9105D37B9fA5D5163785B70aF9CEc1B0f422",
+    "deployedAt": 279482182
   },
   "OrderBook": {
     "type": "upgradeable",

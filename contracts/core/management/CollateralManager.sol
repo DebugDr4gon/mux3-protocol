@@ -11,21 +11,13 @@ contract CollateralManager is Mux3FacetBase {
 
     function _addCollateralToken(address token, uint8 decimals) internal {
         require(token != address(0), InvalidAddress(token));
-        require(_collateralTokens[token].enabled == Enabled.Invalid, CollateralAlreadyExists(token));
-        _collateralTokens[token] = CollateralTokenInfo({
-            enabled: Enabled.Enabled,
-            decimals: _retrieveDecimals(token, decimals)
-        });
+        require(!_isCollateralExist(token), CollateralAlreadyExist(token));
+        _collateralTokens[token] = CollateralTokenInfo({ isExist: true, decimals: _retrieveDecimals(token, decimals) });
         require(
             _collateralTokenList.length < MAX_COLLATERAL_TOKENS,
             CapacityExceeded(MAX_COLLATERAL_TOKENS, _collateralTokenList.length, 1)
         );
         _collateralTokenList.push(token);
-    }
-
-    function _setCollateralTokenEnable(address token, bool enabled) internal {
-        require(_isCollateralExists(token), CollateralNotExists(token));
-        _collateralTokens[token].enabled = enabled ? Enabled.Enabled : Enabled.Disabled;
     }
 
     function _setStrictStableId(bytes32 oracleId, bool strictStable) internal {

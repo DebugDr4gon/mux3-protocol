@@ -11,7 +11,7 @@ contract MarketManager is Mux3FacetBase {
 
     function _createMarket(bytes32 marketId, string memory symbol, bool isLong) internal {
         require(marketId != bytes32(0), InvalidMarketId(marketId));
-        require(!_isMarketExists(marketId), MarketAlreadyExists(marketId));
+        require(!_isMarketExist(marketId), MarketAlreadyExist(marketId));
         // create market
         _markets[marketId].symbol = symbol;
         _markets[marketId].isLong = isLong;
@@ -20,7 +20,7 @@ contract MarketManager is Mux3FacetBase {
     }
 
     function _appendBackedPoolsToMarket(bytes32 marketId, address[] memory backedPools) internal {
-        require(_isMarketExists(marketId), MarketNotExists(marketId));
+        require(_isMarketExist(marketId), MarketNotExists(marketId));
         require(backedPools.length > 0, InvalidArrayLength(backedPools.length, 0));
         uint256 count = backedPools.length;
         MarketInfo storage market = _markets[marketId];
@@ -41,7 +41,7 @@ contract MarketManager is Mux3FacetBase {
     }
 
     function _setMarketConfig(bytes32 marketId, bytes32 key, bytes32 value) internal {
-        require(_isMarketExists(marketId), MarketNotExists(marketId));
+        require(_isMarketExist(marketId), MarketNotExists(marketId));
         _markets[marketId].configs.setBytes32(key, value);
     }
 }

@@ -29,24 +29,20 @@ contract Mux3Computed is Mux3Store, IErrors {
         require(price > 0, MissingPrice(oracleId));
     }
 
-    function _isPoolExist(address pool) internal view returns (bool isExist) {
-        isExist = _collateralPoolList.contains(pool);
-    }
-
     function _isOracleProvider(address oracleProvider) internal view returns (bool isProvider) {
         isProvider = _oracleProviders[oracleProvider];
     }
 
-    function _isCollateralEnabled(address token) internal view returns (bool isEnabled) {
-        isEnabled = _collateralTokens[token].enabled == Enabled.Enabled;
+    function _isPoolExist(address pool) internal view returns (bool isExist) {
+        isExist = _collateralPoolList.contains(pool);
     }
 
-    function _isCollateralExists(address token) internal view returns (bool isExists) {
-        isExists = _collateralTokens[token].enabled != Enabled.Invalid;
+    function _isCollateralExist(address token) internal view returns (bool isExist) {
+        isExist = _collateralTokens[token].isExist;
     }
 
-    function _isMarketExists(bytes32 marketId) internal view returns (bool isExists) {
-        isExists = _marketList.contains(marketId);
+    function _isMarketExist(bytes32 marketId) internal view returns (bool isExist) {
+        isExist = _marketList.contains(marketId);
     }
 
     function _collateralToWad(address collateralToken, uint256 rawAmount) internal view returns (uint256 wadAmount) {

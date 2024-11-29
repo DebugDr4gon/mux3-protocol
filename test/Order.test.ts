@@ -15,7 +15,15 @@ import {
   parseWithdrawalOrder,
 } from "../scripts/deployUtils"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { ERC20PresetMinterPauser, MockCollateralPool, MockMux3, OrderBook, WETH9, MockUniswapV3, Swapper } from "../typechain"
+import {
+  ERC20PresetMinterPauser,
+  MockCollateralPool,
+  MockMux3,
+  OrderBook,
+  WETH9,
+  MockUniswapV3,
+  Swapper,
+} from "../typechain"
 import { time } from "@nomicfoundation/hardhat-network-helpers"
 import { BigNumber } from "ethers"
 
@@ -64,7 +72,6 @@ describe("Order", () => {
     core = (await createContract("MockMux3", [])) as MockMux3
     await core.initialize(weth.address)
     await core.addCollateralToken(token0.address, 18)
-    await core.setCollateralTokenStatus(token0.address, true)
     await core.setConfig(ethers.utils.id("MC_BORROWING_BASE_APY"), u2b(toWei("0.10")))
     await core.setConfig(ethers.utils.id("MC_BORROWING_INTERVAL"), u2b(ethers.BigNumber.from(3600)))
 
@@ -692,8 +699,6 @@ describe("Order", () => {
     }
   })
 
-
-
   it("placeLiquidityOrder - broker fee", async () => {
     await orderBook.setConfig(ethers.utils.id("MCO_ORDER_GAS_FEE_GWEI"), u2b(BigNumber.from("1000000")))
     await token0.mint(user0.address, toWei("1000"))
@@ -721,7 +726,9 @@ describe("Order", () => {
       const receipt = await tx.wait()
       const gasUsed = receipt.gasUsed
       const gasPrice = receipt.effectiveGasPrice
-      expect(await waffle.provider.getBalance(user0.address)).to.equal(balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice)))
+      expect(await waffle.provider.getBalance(user0.address)).to.equal(
+        balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice))
+      )
     }
 
     await token0.mint(user0.address, toWei("1000"))
@@ -740,7 +747,9 @@ describe("Order", () => {
       const receipt = await tx.wait()
       const gasUsed = receipt.gasUsed
       const gasPrice = receipt.effectiveGasPrice
-      expect(await waffle.provider.getBalance(broker.address)).to.equal(balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice)))
+      expect(await waffle.provider.getBalance(broker.address)).to.equal(
+        balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice))
+      )
     }
   })
 
@@ -788,7 +797,9 @@ describe("Order", () => {
       const receipt = await tx.wait()
       const gasUsed = receipt.gasUsed
       const gasPrice = receipt.effectiveGasPrice
-      expect(await waffle.provider.getBalance(user0.address)).to.equal(balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice)))
+      expect(await waffle.provider.getBalance(user0.address)).to.equal(
+        balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice))
+      )
     }
 
     await token0.mint(user0.address, toWei("1000"))
@@ -807,12 +818,13 @@ describe("Order", () => {
       const receipt = await tx.wait()
       const gasUsed = receipt.gasUsed
       const gasPrice = receipt.effectiveGasPrice
-      expect(await waffle.provider.getBalance(broker.address)).to.equal(balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice)))
+      expect(await waffle.provider.getBalance(broker.address)).to.equal(
+        balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice))
+      )
     }
   })
 
   it("withdraw order - broker fee", async () => {
-
     // swapper
     const uniswap = (await createContract("MockUniswapV3", [
       zeroAddress,
@@ -832,27 +844,30 @@ describe("Order", () => {
     await weth.deposit({ value: toUnit("1", 6 + 9) })
     await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
     await orderBook.depositGas(toUnit("1", 6 + 9))
-    await orderBook.placePositionOrder({
-      positionId,
-      marketId: mid0,
-      size: toWei("1"),
-      flags: PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder,
-      limitPrice: toWei("3000"),
-      expiration: timestampOfTest + 1000 + 86400 * 2,
-      lastConsumedToken: zeroAddress,
-      collateralToken: token0.address,
-      collateralAmount: toWei("1"),
-      withdrawUsd: toWei("0"),
-      withdrawSwapToken: zeroAddress,
-      withdrawSwapSlippage: toWei("0"),
-      tpPriceDiff: toWei("1.005"),
-      slPriceDiff: toWei("0.995"),
-      tpslExpiration: timestampOfTest + 2000 + 86400 * 3,
-      tpslFlags:
-        PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.WithdrawProfit + PositionOrderFlags.UnwrapEth,
-      tpslWithdrawSwapToken: token0.address,
-      tpslWithdrawSwapSlippage: toWei("0"),
-    }, refCode)
+    await orderBook.placePositionOrder(
+      {
+        positionId,
+        marketId: mid0,
+        size: toWei("1"),
+        flags: PositionOrderFlags.OpenPosition + PositionOrderFlags.MarketOrder,
+        limitPrice: toWei("3000"),
+        expiration: timestampOfTest + 1000 + 86400 * 2,
+        lastConsumedToken: zeroAddress,
+        collateralToken: token0.address,
+        collateralAmount: toWei("1"),
+        withdrawUsd: toWei("0"),
+        withdrawSwapToken: zeroAddress,
+        withdrawSwapSlippage: toWei("0"),
+        tpPriceDiff: toWei("1.005"),
+        slPriceDiff: toWei("0.995"),
+        tpslExpiration: timestampOfTest + 2000 + 86400 * 3,
+        tpslFlags:
+          PositionOrderFlags.WithdrawAllIfEmpty + PositionOrderFlags.WithdrawProfit + PositionOrderFlags.UnwrapEth,
+        tpslWithdrawSwapToken: token0.address,
+        tpslWithdrawSwapSlippage: toWei("0"),
+      },
+      refCode
+    )
     await time.increaseTo(timestampOfTest + 10)
 
     {
@@ -864,7 +879,9 @@ describe("Order", () => {
       const receipt = await tx.wait()
       const gasUsed = receipt.gasUsed
       const gasPrice = receipt.effectiveGasPrice
-      expect(await waffle.provider.getBalance(user0.address)).to.equal(balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice)))
+      expect(await waffle.provider.getBalance(user0.address)).to.equal(
+        balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice))
+      )
     }
 
     const args = {
@@ -874,13 +891,12 @@ describe("Order", () => {
       isUnwrapWeth: false,
       lastConsumedToken: zeroAddress,
       withdrawSwapToken: zeroAddress,
-      withdrawSwapSlippage: 0
+      withdrawSwapSlippage: 0,
     }
     await weth.deposit({ value: toUnit("1", 6 + 9) })
     await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
     await orderBook.depositGas(toUnit("1", 6 + 9))
     await orderBook.placeWithdrawalOrder(args)
-
 
     {
       await time.increaseTo(timestampOfTest + 20)
@@ -892,7 +908,9 @@ describe("Order", () => {
       const receipt = await tx.wait()
       const gasUsed = receipt.gasUsed
       const gasPrice = receipt.effectiveGasPrice
-      expect(await waffle.provider.getBalance(user0.address)).to.equal(balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice)))
+      expect(await waffle.provider.getBalance(user0.address)).to.equal(
+        balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice))
+      )
     }
 
     await token0.mint(user0.address, toWei("1000"))
@@ -911,9 +929,9 @@ describe("Order", () => {
       const receipt = await tx.wait()
       const gasUsed = receipt.gasUsed
       const gasPrice = receipt.effectiveGasPrice
-      expect(await waffle.provider.getBalance(broker.address)).to.equal(balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice)))
+      expect(await waffle.provider.getBalance(broker.address)).to.equal(
+        balance.add(toUnit("1", 6 + 9)).sub(gasUsed.mul(gasPrice))
+      )
     }
   })
-
 })
-

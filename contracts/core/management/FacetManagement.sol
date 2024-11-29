@@ -47,11 +47,6 @@ contract FacetManagement is
         emit SetStrictStableId(oracleId, strictStable);
     }
 
-    function setCollateralTokenStatus(address token, bool enabled) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _setCollateralTokenEnable(token, enabled);
-        emit SetCollateralTokenEnabled(token, enabled);
-    }
-
     function setOracleProvider(address oracleProvider, bool isValid) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setOracleProvider(oracleProvider, isValid);
         emit SetOracleProvider(oracleProvider, isValid);
@@ -63,7 +58,7 @@ contract FacetManagement is
         address collateralToken,
         uint256 oldPoolCount // expected pools count before creating. this is to prevent from submitting tx twice
     ) external onlyRole(DEFAULT_ADMIN_ROLE) returns (address) {
-        require(_isCollateralExists(collateralToken), CollateralNotExists(collateralToken));
+        require(_isCollateralExist(collateralToken), CollateralNotExist(collateralToken));
         address pool = _createCollateralPool(name, symbol, collateralToken, oldPoolCount);
         emit CreateCollateralPool(name, symbol, collateralToken, _collateralTokens[collateralToken].decimals, pool);
         return pool;

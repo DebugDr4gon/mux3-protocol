@@ -5,13 +5,7 @@ import "../interfaces/IFacetTrade.sol";
 import "../interfaces/IFacetManagement.sol";
 import "../interfaces/IFacetReader.sol";
 
-enum Enabled {
-    Invalid,
-    Enabled,
-    Disabled
-}
-
 struct CollateralTokenInfo {
-    Enabled enabled;
+    bool isExist;
     uint8 decimals;
 }

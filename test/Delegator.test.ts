@@ -63,7 +63,6 @@ describe("Delegator", () => {
     core = (await createContract("TestMux3", [])) as TestMux3
     await core.initialize(weth.address)
     await core.addCollateralToken(usdc.address, 6)
-    await core.setCollateralTokenStatus(usdc.address, true)
 
     // orderBook
     const libOrderBook = await createContract("LibOrderBook")
@@ -75,7 +74,12 @@ describe("Delegator", () => {
     // collateral pool
     const emitter = await createContract("CollateralPoolEventEmitter")
     await emitter.initialize(core.address)
-    imp = (await createContract("CollateralPool", [core.address, orderBook.address, weth.address, emitter.address])) as CollateralPool
+    imp = (await createContract("CollateralPool", [
+      core.address,
+      orderBook.address,
+      weth.address,
+      emitter.address,
+    ])) as CollateralPool
     await core.setCollateralPoolImplementation(imp.address)
 
     // pool 1

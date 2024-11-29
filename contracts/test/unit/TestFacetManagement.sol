@@ -32,30 +32,22 @@ contract TestFacetManagement is FacetManagement, TestSuit {
     }
 
     function test_CollateralManager_addCollateralToken() external {
-        assertEq(_isCollateralExists(address(d6)), false, "E01");
-        assertEq(_isCollateralEnabled(address(d6)), false, "E02");
-        assertEq(_isCollateralExists(address(d18)), false, "E03");
-        assertEq(_isCollateralEnabled(address(d18)), false, "E04");
+        assertEq(_isCollateralExist(address(d6)), false, "E01");
+        assertEq(_isCollateralExist(address(d6)), false, "E02");
+        assertEq(_isCollateralExist(address(d18)), false, "E03");
+        assertEq(_isCollateralExist(address(d18)), false, "E04");
 
         _addCollateralToken(address(d6), 6);
-        assertEq(_isCollateralExists(address(d6)), true, "E05");
-        assertEq(_isCollateralEnabled(address(d6)), true, "E06");
-        assertEq(_isCollateralExists(address(d18)), false, "E07");
-        assertEq(_isCollateralEnabled(address(d18)), false, "E08");
+        assertEq(_isCollateralExist(address(d6)), true, "E05");
+        assertEq(_isCollateralExist(address(d6)), true, "E06");
+        assertEq(_isCollateralExist(address(d18)), false, "E07");
+        assertEq(_isCollateralExist(address(d18)), false, "E08");
 
         _addCollateralToken(address(d18), 18);
-        assertEq(_isCollateralExists(address(d6)), true, "E08");
-        assertEq(_isCollateralEnabled(address(d6)), true, "E10");
-        assertEq(_isCollateralExists(address(d18)), true, "E11");
-        assertEq(_isCollateralEnabled(address(d18)), true, "E12");
-
-        _setCollateralTokenEnable(address(d6), false);
-        assertEq(_isCollateralExists(address(d6)), true, "E13");
-        assertEq(_isCollateralEnabled(address(d6)), false, "E14");
-
-        _setCollateralTokenEnable(address(d6), true);
-        assertEq(_isCollateralExists(address(d6)), true, "E15");
-        assertEq(_isCollateralEnabled(address(d6)), true, "E16");
+        assertEq(_isCollateralExist(address(d6)), true, "E08");
+        assertEq(_isCollateralExist(address(d6)), true, "E10");
+        assertEq(_isCollateralExist(address(d18)), true, "E11");
+        assertEq(_isCollateralExist(address(d18)), true, "E12");
     }
 
     function test_MarketManager_createMarket() external {
@@ -72,22 +64,22 @@ contract TestFacetManagement is FacetManagement, TestSuit {
         bytes32 marketId0 = bytes32(uint256(0x1));
         bytes32 marketId1 = bytes32(uint256(0x2));
         {
-            assertEq(_isMarketExists(marketId0), false, "E01");
+            assertEq(_isMarketExist(marketId0), false, "E01");
             address[] memory pools = new address[](2);
             pools[0] = fakePool0;
             pools[1] = fakePool1;
             _createMarket(marketId0, "M0", true);
             _appendBackedPoolsToMarket(marketId0, pools);
-            assertEq(_isMarketExists(marketId0), true, "E02");
+            assertEq(_isMarketExist(marketId0), true, "E02");
         }
         {
-            assertEq(_isMarketExists(marketId1), false, "E03");
+            assertEq(_isMarketExist(marketId1), false, "E03");
             address[] memory pools = new address[](2);
             pools[0] = fakePool1;
             pools[1] = fakePool2;
             _createMarket(marketId1, "M1", false);
             _appendBackedPoolsToMarket(marketId1, pools);
-            assertEq(_isMarketExists(marketId1), true, "E04");
+            assertEq(_isMarketExist(marketId1), true, "E04");
         }
         assertEq(_markets[marketId0].pools.length, 2, "E05");
         assertEq(_markets[marketId0].pools[0].backedPool, fakePool0, "E06");
