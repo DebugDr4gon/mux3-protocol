@@ -290,8 +290,8 @@ contract Mux3FeeDistributor is Initializable, AccessControlEnumerableUpgradeable
         }
     }
 
-    function _isCollateralPool(address pool) internal view returns (bool) {
-        return IFacetReader(mux3Facet).getCollateralPool(pool);
+    function _isCollateralPool(address pool) internal view returns (bool isExist) {
+        isExist = IFacetReader(mux3Facet).getCollateralPool(pool);
     }
 
     function _validateCollateral(address collateral) internal view {

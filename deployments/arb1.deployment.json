@@ -308,5 +308,37 @@
     "name": "LibOrderBook",
     "address": "0xC4285891A9B6723916c991b882e4bF7f2e79abb4",
     "deployedAt": 278026761
+  },
+  "SusdsOracleL2__implementation": {
+    "type": "plain",
+    "name": "SusdsOracleL2__implementation",
+    "address": "0x2F1831BE0c1ab4Aa888884827aBF79F68e1dfd50",
+    "deployedAt": 279133847
+  },
+  "SusdsOracleL2": {
+    "type": "upgradeable",
+    "name": "SusdsOracleL2",
+    "address": "0xcD83AA02D1e7e384aDb708A74706c398c8Fe4202",
+    "dependencies": {
+      "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
+      "implementation": "0x2F1831BE0c1ab4Aa888884827aBF79F68e1dfd50"
+    },
+    "deployedAt": 279113697
+  },
+  "CollateralPoolAumReader__implementation": {
+    "type": "plain",
+    "name": "CollateralPoolAumReader__implementation",
+    "address": "0x6Ca989bE5e44A10e93b33752c5aa93d953938c04",
+    "deployedAt": 279142157
+  },
+  "CollateralPoolAumReader": {
+    "type": "upgradeable",
+    "name": "CollateralPoolAumReader",
+    "address": "0x90faED583D40F3B654E4aE54DAEcd95E537145C2",
+    "dependencies": {
+      "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
+      "implementation": "0x6Ca989bE5e44A10e93b33752c5aa93d953938c04"
+    },
+    "deployedAt": 279142174
   }
 }

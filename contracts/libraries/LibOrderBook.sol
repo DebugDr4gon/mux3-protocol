@@ -934,8 +934,8 @@ library LibOrderBook {
     }
 
     function _validatePool(OrderBookStorage storage orderBook, address poolAddress) private view {
-        bool enabled = IFacetReader(orderBook.mux3Facet).getCollateralPool(poolAddress);
-        require(enabled, "Invalid pool");
+        bool isExist = IFacetReader(orderBook.mux3Facet).getCollateralPool(poolAddress);
+        require(isExist, "Invalid pool");
     }
 
     function _isBroker(address msgSender) private view returns (bool) {

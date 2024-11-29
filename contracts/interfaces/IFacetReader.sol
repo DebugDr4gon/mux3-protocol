@@ -69,7 +69,7 @@ interface IFacetReader {
     /**
      * @dev Get CollateralPool config
      */
-    function getCollateralPool(address pool) external view returns (bool enabled);
+    function getCollateralPool(address pool) external view returns (bool isExist);
 
     /**
      * @dev List CollateralPool addresses

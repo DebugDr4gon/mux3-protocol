@@ -1,0 +1,24 @@
+{
+  "ProxyAdmin": {
+    "type": "plain",
+    "name": "ProxyAdmin",
+    "address": "0x32272D27E656446D64C880Fa0d543b9c3DD9B5bC",
+    "deployedAt": 21284575
+  },
+  "SusdsOracleL1__implementation": {
+    "type": "plain",
+    "name": "SusdsOracleL1__implementation",
+    "address": "0x5E250d7fd315a55B0c53281Dfd03A9b91327701F",
+    "deployedAt": 21284725
+  },
+  "SusdsOracleL1": {
+    "type": "upgradeable",
+    "name": "SusdsOracleL1",
+    "address": "0x437CEa956B415e97517020490205c07f4a845168",
+    "dependencies": {
+      "admin": "0x32272D27E656446D64C880Fa0d543b9c3DD9B5bC",
+      "implementation": "0x5E250d7fd315a55B0c53281Dfd03A9b91327701F"
+    },
+    "deployedAt": 21284643
+  }
+}

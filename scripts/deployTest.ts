@@ -4,11 +4,13 @@ import { restorableEnviron } from "./deployer/environ"
 import { encodePoolMarketKey, toBytes32, toWei, ensureFinished } from "./deployUtils"
 import {
   ChainlinkStreamProvider,
+  CollateralPoolAumReader,
   CollateralPoolEventEmitter,
   Delegator,
   Mux3,
   Mux3FeeDistributor,
   OrderBook,
+  SusdsOracleL2,
   Swapper,
 } from "../typechain"
 import { deployDiamondOrSkip } from "./diamondTools"
@@ -44,6 +46,10 @@ async function main(deployer: Deployer) {
   let proxyAdmin = deployer.addressOf("ProxyAdmin")
   let usdc = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
   let weth = "0x82af49447d8a07e3bd95bd0d56f35241523fbab1"
+  let wbtc = "0x2f2a2543b76a4166549f7aab2e75bef0aefc5b0f"
+  const arb = "0x912ce59144191c1204e64559fe8253a0e49e6548"
+  const susds = "0x688c202577670fa1ae186c433965d178f26347f9"
+  const susdsOracleL1 = "0x437CEa956B415e97517020490205c07f4a845168"
 
   const diamondInit = await deployer.deployOrSkip("DiamondInit", "DiamondInit")
   const facets = {
@@ -91,8 +97,20 @@ async function main(deployer: Deployer) {
     proxyAdmin
   )
   const swapper = (await deployer.deployUpgradeableOrSkip("Swapper", "Swapper", proxyAdmin)) as Swapper
+  const susdsOracleL2 = (await deployer.deployUpgradeableOrSkip(
+    "SusdsOracleL2",
+    "SusdsOracleL2",
+    proxyAdmin
+  )) as SusdsOracleL2
+  const collateralPoolAumReader = (await deployer.deployUpgradeableOrSkip(
+    "CollateralPoolAumReader",
+    "CollateralPoolAumReader",
+    proxyAdmin
+  )) as CollateralPoolAumReader
   const lEthMarketId = toBytes32("LongETH")
   const sEthMarketId = toBytes32("ShortETH")
+  const lBtcMarketId = toBytes32("LongBTC")
+  const sBtcMarketId = toBytes32("ShortBTC")
 
   // core
   await ensureFinished(core.initialize(weth))
@@ -124,6 +142,9 @@ async function main(deployer: Deployer) {
   await ensureFinished(orderBook.setConfig(ethers.utils.id("MCO_CANCEL_COOL_DOWN"), u2b(ethers.BigNumber.from(5))))
   await ensureFinished(orderBook.setConfig(ethers.utils.id("MCO_REFERRAL_MANAGER"), a2b(testReferralManager.address))) // change me to muxReferralManager when release
   await ensureFinished(orderBook.grantRole(ethers.utils.id("DELEGATOR_ROLE"), delegator.address))
+  await ensureFinished(
+    orderBook.setConfig(ethers.utils.id("MCO_ORDER_GAS_FEE_GWEI"), u2b(ethers.BigNumber.from("5882")))
+  ) // 0.02 / 3400 * 1e18 / 1e9
 
   // collateral
   await ensureFinished(core.addCollateralToken(usdc, 6))
@@ -133,7 +154,7 @@ async function main(deployer: Deployer) {
   await ensureFinished(core.setStrictStableId(a2b(usdc), true))
 
   // pool 1: usdc, normal, support all
-  await ensureFinished(core.createCollateralPool("MUX3 USDC Pool 1", "LP1", usdc, 0))
+  await ensureFinished(core.createCollateralPool("MUX Elemental Pool 1", "MEP-1", usdc, 0))
   const pool1 = (await core.listCollateralPool())[0]
   console.log("pool1Addr", pool1)
   await ensureFinished(
@@ -145,7 +166,7 @@ async function main(deployer: Deployer) {
   await ensureFinished(core.setPoolConfig(pool1, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001"))))
 
   // pool 2: usdc, normal, support eth
-  await ensureFinished(core.createCollateralPool("MUX3 USDC Pool 2", "LP2", usdc, 1))
+  await ensureFinished(core.createCollateralPool("MUX Elemental Pool 2", "MEP-2", usdc, 1))
   const pool2 = (await core.listCollateralPool())[1]
   console.log("pool2Addr", pool2)
   await ensureFinished(
@@ -289,6 +310,22 @@ async function main(deployer: Deployer) {
   await ensureFinished(
     swapper.setSwapPath(weth, usdc, [weth + UNI_FEE_030 + usdc.slice(2), weth + UNI_FEE_005 + usdc.slice(2)])
   )
+
+  // susds oracle
+  await ensureFinished(susdsOracleL2.initialize(susdsOracleL1))
+
+  // aum reader
+  // https://docs.chain.link/data-feeds/price-feeds/addresses/?network=arbitrum&amp%3Bpage=1&page=1
+  await ensureFinished(collateralPoolAumReader.initialize())
+  await collateralPoolAumReader.setMarketPriceProvider(lEthMarketId, "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612")
+  await collateralPoolAumReader.setMarketPriceProvider(sEthMarketId, "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612")
+  await collateralPoolAumReader.setTokenPriceProvider(weth, "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612")
+  await collateralPoolAumReader.setMarketPriceProvider(lBtcMarketId, "0x6ce185860a4963106506C203335A2910413708e9")
+  await collateralPoolAumReader.setMarketPriceProvider(sBtcMarketId, "0x6ce185860a4963106506C203335A2910413708e9")
+  await collateralPoolAumReader.setTokenPriceProvider(wbtc, "0x6ce185860a4963106506C203335A2910413708e9")
+  await collateralPoolAumReader.setTokenPriceProvider(usdc, "0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3")
+  await collateralPoolAumReader.setTokenPriceProvider(arb, "0xb2A824043730FE05F3DA2efaFa1CBbe83fa548D6")
+  await collateralPoolAumReader.setTokenPriceProvider(susds, susdsOracleL2.address)
 }
 
 restorableEnviron(ENV, main)

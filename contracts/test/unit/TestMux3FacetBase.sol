@@ -10,9 +10,9 @@ import "../TestSuit.sol";
 contract TestMux3FacetBase is FacetManagement, TestSuit {
     address pool;
 
-    // mock pool address validater
-    function getCollateralPool(address) public view returns (bool) {
-        return true;
+    // mock pool address validator
+    function getCollateralPool(address) public view returns (bool isExist) {
+        isExist = true;
     }
 
     function setup() external {

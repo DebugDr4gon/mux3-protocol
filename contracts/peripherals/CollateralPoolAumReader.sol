@@ -16,8 +16,6 @@ contract CollateralPoolAumReader is Initializable, OwnableUpgradeable {
 
     uint256 public constant PRICE_EXPIRATION = 86400; // 1 day
 
-    address public immutable core;
-
     uint256 public priceExpiration;
     mapping(bytes32 => address) public marketPriceProviders;
     mapping(address => address) public tokenPriceProviders;
@@ -25,10 +23,6 @@ contract CollateralPoolAumReader is Initializable, OwnableUpgradeable {
     event SetTokenPriceProvider(address token, address oracleProvider);
     event SetMarketPriceProvider(bytes32 marketId, address oracleProvider);
     event SetPriceExpiration(uint256 priceExpiration);
-
-    constructor(address core_) {
-        core = core_;
-    }
 
     function initialize() public initializer {
         __Ownable_init();
@@ -72,15 +66,25 @@ contract CollateralPoolAumReader is Initializable, OwnableUpgradeable {
         aum = upnl > 0 ? uint256(upnl) : 0;
     }
 
+    function getTokenPrice(address token) external view returns (uint256 price, uint256 timestamp) {
+        address provider = tokenPriceProviders[token];
+        require(provider != address(0), "OracleProviderNotSet");
+        return _getOraclePrice(provider);
+    }
+
+    function getMarketPrice(bytes32 marketId) external view returns (uint256 price, uint256 timestamp) {
+        address provider = marketPriceProviders[marketId];
+        require(provider != address(0), "OracleProviderNotSet");
+        return _getOraclePrice(provider);
+    }
+
     function _priceOf(bytes32 marketId) internal view returns (uint256 price) {
-        // similar to IFacetReader(core).priceOf(marketId). but read from on-chain oracle
         address oracleProvider = marketPriceProviders[marketId];
         require(oracleProvider != address(0), "OracleProviderNotSet");
         (price, ) = _getOraclePrice(oracleProvider);
     }
 
     function _priceOf(address token) internal view returns (uint256 price) {
-        // similar to IFacetReader(core).priceOf(token). but read from on-chain oracle
         address oracleProvider = tokenPriceProviders[token];
         require(oracleProvider != address(0), "OracleProviderNotSet");
         (price, ) = _getOraclePrice(oracleProvider);
@@ -126,13 +130,17 @@ contract CollateralPoolAumReader is Initializable, OwnableUpgradeable {
         }
     }
 
-    function _getOraclePrice(address feeder) internal view returns (uint256, uint256) {
+    function _getOraclePrice(address feeder) internal view returns (uint256 price, uint256 timestamp) {
         AggregatorV2V3Interface aggregator = AggregatorV2V3Interface(feeder);
         uint8 decimals = aggregator.decimals();
-        (, int256 _price, , uint256 timestamp, ) = aggregator.latestRoundData();
-        require(_price > 0, "InvalidPrice");
+        int256 rawPrice;
+        (, rawPrice, , timestamp, ) = aggregator.latestRoundData();
+        require(rawPrice > 0, "InvalidPrice");
         require(timestamp + priceExpiration >= block.timestamp, "PriceExpired");
-        uint256 price = uint256(_price) * (10 ** (18 - decimals)); // decimals => 18
-        return (price, timestamp);
+        if (decimals <= 18) {
+            price = uint256(rawPrice) * (10 ** (18 - decimals));
+        } else {
+            price = uint256(rawPrice) / (10 ** (decimals - 18));
+        }
     }
 }

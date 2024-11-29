@@ -70,8 +70,8 @@ contract FacetReader is Mux3FacetBase, PositionAccount, IFacetReader {
     /**
      * @dev Get CollateralPool config
      */
-    function getCollateralPool(address pool) public view returns (bool enabled) {
-        enabled = _isPoolExist(pool);
+    function getCollateralPool(address pool) public view returns (bool isExist) {
+        isExist = _isPoolExist(pool);
     }
 
     /**

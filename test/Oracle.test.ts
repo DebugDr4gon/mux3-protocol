@@ -102,4 +102,9 @@ describe("Oracle", () => {
     )
     await expect(tester.test_muxPriceProvider_error(signer.address, signature)).to.be.revertedWith("InvalidSignature")
   })
+
+  it("test_collateralPoolAumReader", async () => {
+    const readerTester = await createContract("TestCollateralPoolAumReader", [])
+    await readerTester.test_getPrice()
+  })
 })
