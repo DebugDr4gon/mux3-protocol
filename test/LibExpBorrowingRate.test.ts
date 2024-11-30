@@ -32,6 +32,7 @@ describe("LibExpBorrowingRate", () => {
       expect(allocations[2]).to.equal(toWei("3"))
     }
   })
+
   it("alignAllocationToLotSize:round(0.5) = 1", async () => {
     {
       const allocations = await testLibExpBorrowingRate.testAlignAllocationToLotSize(
@@ -44,6 +45,7 @@ describe("LibExpBorrowingRate", () => {
       expect(allocations[2]).to.equal(toWei("0"))
     }
   })
+
   it("alignAllocationToLotSize: size > sum(allocation)", async () => {
     {
       const allocations = await testLibExpBorrowingRate.testAlignAllocationToLotSize(
@@ -56,6 +58,7 @@ describe("LibExpBorrowingRate", () => {
       expect(allocations[2]).to.equal(toWei("0.3"))
     }
   })
+
   it("alignAllocationToLotSize: size < sum(allocation)", async () => {
     {
       const allocations = await testLibExpBorrowingRate.testAlignAllocationToLotSize(
@@ -68,6 +71,7 @@ describe("LibExpBorrowingRate", () => {
       expect(allocations[2]).to.equal(toWei("0.3"))
     }
   })
+
   it("alignAllocationToLotSize: size << sum(allocation), we ignore it", async () => {
     {
       const allocations = await testLibExpBorrowingRate.testAlignAllocationToLotSize(
@@ -116,6 +120,7 @@ describe("LibExpBorrowingRate", () => {
       poolSizeUsd: toWei("100000000"),
       reservedUsd: toWei("0"),
       reserveRate: toWei("1.00"),
+      isDraining: false,
     }
     for (const c of cases) {
       const [fr] = await testLibExpBorrowingRate.getBorrowingRates(global, [{ ...pool, reservedUsd: toWei(c.r) }])
@@ -159,6 +164,7 @@ describe("LibExpBorrowingRate", () => {
       poolSizeUsd: toWei("100000000"),
       reservedUsd: toWei("0"),
       reserveRate: toWei("1.00"),
+      isDraining: false,
     }
     for (const c of cases) {
       const [fr] = await testLibExpBorrowingRate.getBorrowingRates(global, [{ ...pool, reservedUsd: toWei(c.r) }])
@@ -176,6 +182,7 @@ describe("LibExpBorrowingRate", () => {
         poolSizeUsd: toWei("30000000"),
         reservedUsd: toWei("0"),
         reserveRate: toWei("1.00"),
+        isDraining: false,
       },
       {
         poolId: toWei("2"),
@@ -184,6 +191,7 @@ describe("LibExpBorrowingRate", () => {
         poolSizeUsd: toWei("30000000"),
         reservedUsd: toWei("0"),
         reserveRate: toWei("1.00"),
+        isDraining: false,
       },
       {
         poolId: toWei("3"),
@@ -192,6 +200,7 @@ describe("LibExpBorrowingRate", () => {
         poolSizeUsd: toWei("30000000"),
         reservedUsd: toWei("0"),
         reserveRate: toWei("1.00"),
+        isDraining: false,
       },
     ]
     // case 1
@@ -230,6 +239,7 @@ describe("LibExpBorrowingRate", () => {
         reservedUsd: toWei("0"),
         poolId: toWei("1"),
         reserveRate: toWei("1.00"),
+        isDraining: false,
       },
       {
         k: toWei("3.46024"),
@@ -238,6 +248,7 @@ describe("LibExpBorrowingRate", () => {
         reservedUsd: toWei("0"),
         poolId: toWei("2"),
         reserveRate: toWei("1.00"),
+        isDraining: false,
       },
       {
         k: toWei("1.92131"),
@@ -246,6 +257,7 @@ describe("LibExpBorrowingRate", () => {
         reservedUsd: toWei("0"),
         poolId: toWei("3"),
         reserveRate: toWei("1.00"),
+        isDraining: false,
       },
     ]
     // case 1
@@ -376,6 +388,7 @@ describe("LibExpBorrowingRate", () => {
         reservedUsd: toWei("0"),
         poolId: toWei("1"),
         reserveRate: toWei("1.00"),
+        isDraining: false,
       },
       {
         k: toWei("6"),
@@ -384,6 +397,7 @@ describe("LibExpBorrowingRate", () => {
         reservedUsd: toWei("0"),
         poolId: toWei("2"),
         reserveRate: toWei("1.00"),
+        isDraining: false,
       },
       {
         k: toWei("10"),
@@ -392,6 +406,7 @@ describe("LibExpBorrowingRate", () => {
         reservedUsd: toWei("0"),
         poolId: toWei("3"),
         reserveRate: toWei("1.00"),
+        isDraining: false,
       },
     ]
     const cases = [
@@ -706,7 +721,7 @@ describe("LibExpBorrowingRate", () => {
     }
 
     // insufficient liquidity
-    await expect(testLibExpBorrowingRate.allocate(pools, toWei("3000001"))).to.be.revertedWith("ExpBorrow: full")
+    await expect(testLibExpBorrowingRate.allocate(pools, toWei("3000001"))).to.be.revertedWith("MarketFull")
   })
 
   it("full allocate: consume step by step. reserveRate = 100%", async () => {
@@ -718,6 +733,7 @@ describe("LibExpBorrowingRate", () => {
         reservedUsd: toWei("0"),
         poolId: toWei("1"),
         reserveRate: toWei("1.00"),
+        isDraining: false,
       },
       {
         k: toWei("6"),
@@ -726,6 +742,7 @@ describe("LibExpBorrowingRate", () => {
         reservedUsd: toWei("0"),
         poolId: toWei("2"),
         reserveRate: toWei("1.00"),
+        isDraining: false,
       },
       {
         k: toWei("10"),
@@ -734,6 +751,7 @@ describe("LibExpBorrowingRate", () => {
         reservedUsd: toWei("0"),
         poolId: toWei("3"),
         reserveRate: toWei("1.00"),
+        isDraining: false,
       },
     ]
     const cases = [
@@ -2098,7 +2116,7 @@ describe("LibExpBorrowingRate", () => {
       pools[0].reservedUsd = toWei("1000000")
       pools[1].reservedUsd = toWei("1000000")
       pools[2].reservedUsd = toWei("1000000")
-      await expect(testLibExpBorrowingRate.allocate(pools, toWei("1"))).to.be.revertedWith("ExpBorrow: full")
+      await expect(testLibExpBorrowingRate.allocate(pools, toWei("1"))).to.be.revertedWith("MarketFull")
     }
   })
 
@@ -2111,6 +2129,7 @@ describe("LibExpBorrowingRate", () => {
         reservedUsd: toWei("0"),
         poolId: toWei("1"),
         reserveRate: toWei("1.25"),
+        isDraining: false,
       },
       {
         k: toWei("6"),
@@ -2119,6 +2138,7 @@ describe("LibExpBorrowingRate", () => {
         reservedUsd: toWei("0"),
         poolId: toWei("2"),
         reserveRate: toWei("1.00"),
+        isDraining: false,
       },
       {
         k: toWei("10"),
@@ -2127,6 +2147,7 @@ describe("LibExpBorrowingRate", () => {
         reservedUsd: toWei("0"),
         poolId: toWei("3"),
         reserveRate: toWei("0.80"),
+        isDraining: false,
       },
     ]
     const cases = [
@@ -3491,7 +3512,7 @@ describe("LibExpBorrowingRate", () => {
       pools[0].reservedUsd = toWei("1250000")
       pools[1].reservedUsd = toWei("1000000")
       pools[2].reservedUsd = toWei("800000")
-      await expect(testLibExpBorrowingRate.allocate(pools, toWei("1"))).to.be.revertedWith("ExpBorrow: full")
+      await expect(testLibExpBorrowingRate.allocate(pools, toWei("1"))).to.be.revertedWith("MarketFull")
     }
   })
 })

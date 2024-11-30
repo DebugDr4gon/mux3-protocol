@@ -50,7 +50,7 @@
   "FacetOpen": {
     "type": "plain",
     "name": "FacetOpen",
-    "address": "0xC21e2e25380b5D69Bf35f977Bb4A3f085Efb4644",
+    "address": "0xb43Ca5050201387ed74dcc9a60cFf2574F3AaA06",
     "deployedAt": 279482493
   },
   "FacetClose": {
@@ -142,7 +142,7 @@
         ]
       },
       "facetOpen": {
-        "address": "0xC21e2e25380b5D69Bf35f977Bb4A3f085Efb4644",
+        "address": "0xb43Ca5050201387ed74dcc9a60cFf2574F3AaA06",
         "selectors": [
           "0x5876dfce"
         ]
@@ -170,8 +170,8 @@
   "CollateralPool__implementation": {
     "type": "plain",
     "name": "CollateralPool__implementation",
-    "address": "0xEcB6f25a5e1266D9e8670Ae35971292730838492",
-    "deployedAt": 279506959
+    "address": "0x80327C11AC09543C6A4090247A040274c6cB399E",
+    "deployedAt": 279752824
   },
   "OrderBook": {
     "type": "upgradeable",

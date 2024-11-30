@@ -5,7 +5,7 @@ library LibTypeCast {
     bytes32 private constant ADDRESS_GUARD_MASK = 0x0000000000000000000000000000000000000000ffffffffffffffffffffffff;
 
     function toAddress(bytes32 v) internal pure returns (address) {
-        require(v & ADDRESS_GUARD_MASK == 0, "LibTypeCast::INVALID");
+        require(v & ADDRESS_GUARD_MASK == 0, "LibTypeCast::INVALID_ADDRESS");
         return address(bytes20(v));
     }
 
@@ -36,7 +36,7 @@ library LibTypeCast {
 
     function toBoolean(bytes32 v) internal pure returns (bool) {
         uint256 n = toUint256(v);
-        require(n == 0 || n == 1, "LibTypeCast::INVALID");
+        require(n == 0 || n == 1, "LibTypeCast::INVALID_BOOLEAN");
         return n == 1;
     }
 

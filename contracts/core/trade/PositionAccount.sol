@@ -40,9 +40,9 @@ contract PositionAccount is Mux3FacetBase {
         address collateralToken,
         uint256 rawCollateralAmount // token.decimals
     ) internal {
-        require(positionId != bytes32(0), InvalidId(positionId));
+        require(positionId != bytes32(0), InvalidId("positionId"));
         require(_isCollateralExist(collateralToken), CollateralNotExist(collateralToken));
-        require(rawCollateralAmount != 0, InvalidAmount(rawCollateralAmount));
+        require(rawCollateralAmount != 0, InvalidAmount("rawCollateralAmount"));
         PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         uint256 collateralAmount = _collateralToWad(collateralToken, rawCollateralAmount);
         positionAccount.collaterals[collateralToken] += collateralAmount;
@@ -64,9 +64,9 @@ contract PositionAccount is Mux3FacetBase {
         uint256 withdrawSwapSlippage,
         bool isUnwrapWeth
     ) internal returns (bool isSwapSuccess, uint256 rawSwapOut) {
-        require(positionId != bytes32(0), InvalidId(positionId));
+        require(positionId != bytes32(0), InvalidId("positionId"));
         require(_isCollateralExist(collateralToken), CollateralNotExist(collateralToken));
-        require(collateralAmount != 0, InvalidAmount(collateralAmount));
+        require(collateralAmount != 0, InvalidAmount("collateralAmount"));
         PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         // deduct collateral
         require(

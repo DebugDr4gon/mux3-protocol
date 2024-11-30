@@ -8,8 +8,8 @@ interface IErrors {
     error UnexpectedState(uint256 expected, uint256 actual);
 
     // params
-    error InvalidId(bytes32 id);
-    error InvalidAmount(uint256 amount);
+    error InvalidId(string key);
+    error InvalidAmount(string key);
     error InvalidAddress(address addr);
     error InvalidArrayLength(uint256 a, uint256 b);
     error InvalidLotSize(uint256 positionSize, uint256 lotSize);
@@ -37,6 +37,7 @@ interface IErrors {
     error MarketNotExists(bytes32 marketId);
     error MarketAlreadyExist(bytes32 marketId);
     error MarketTradeDisabled(bytes32 marketId);
+    error MarketFull();
 
     // pool
     error InsufficientLiquidity(uint256 requiredLiquidity, uint256 liquidityBalance); // 1e18, 1e18
@@ -62,6 +63,7 @@ interface IErrors {
     error AllocationLengthMismatch(uint256 len1, uint256 len2);
     error AllocationPositionMismatch(uint256 positionSize1, uint256 positionSize2);
     error OutOfBound(uint256 index, uint256 length);
+    error BadAllocation(int256 maxX, int256 xi);
 
     // oracle
     error InvalidPrice(uint256 price);

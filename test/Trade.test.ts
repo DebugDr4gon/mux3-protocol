@@ -833,7 +833,6 @@ describe("Trade", () => {
       })
 
       it("open position cause reserved > aum", async () => {
-        const positionId = encodePositionId(trader1.address, 0)
         await usdc.mint(orderBook.address, toUnit("1000000", 6))
         const args = {
           positionId,
@@ -859,12 +858,11 @@ describe("Trade", () => {
           await orderBook.connect(trader1).placePositionOrder(args, refCode)
         }
         {
-          await expect(orderBook.connect(broker).fillPositionOrder(4)).to.revertedWith("ExpBorrow: full")
+          await expect(orderBook.connect(broker).fillPositionOrder(4)).to.revertedWith("MarketFull")
         }
       })
 
       it("close long: exceeds position size", async () => {
-        const positionId = encodePositionId(trader1.address, 0)
         const args = {
           positionId,
           marketId: long1,
@@ -891,7 +889,6 @@ describe("Trade", () => {
 
       describe("the same trader longs again, allocate into 2 pools", () => {
         beforeEach(async () => {
-          const positionId = encodePositionId(trader1.address, 0)
           await usdc.mint(orderBook.address, toUnit("100000", 6))
           const args = {
             positionId,
@@ -3371,9 +3368,10 @@ describe("Trade", () => {
     }) // short a little and test more
 
     describe("deposit 2 collaterals, open long, allocated to 3 pools", () => {
+      let positionId = ""
       beforeEach(async () => {
         // deposit 2 collaterals
-        const positionId = encodePositionId(trader1.address, 0)
+        positionId = encodePositionId(trader1.address, 0)
         await usdc.connect(trader1).transfer(orderBook.address, toUnit("30000", 6))
         await arb.connect(trader1).transfer(orderBook.address, toUnit("30000", 18))
         await orderBook.connect(trader1).depositCollateral(positionId, usdc.address, toUnit("30000", 6))
@@ -3498,7 +3496,6 @@ describe("Trade", () => {
       })
 
       it("close all, take profit => the trader gets 2 types of tokens", async () => {
-        const positionId = encodePositionId(trader1.address, 0)
         await core.setMockPrice(a2b(usdc.address), toWei("1"))
         await core.setMockPrice(a2b(arb.address), toWei("3"))
         await core.setMockPrice(a2b(btc.address), toWei("60000"))
@@ -3595,7 +3592,6 @@ describe("Trade", () => {
       })
 
       it("close all, take profit => try to keep usdc and pay fees by profits", async () => {
-        const positionId = encodePositionId(trader1.address, 0)
         await core.setMockPrice(a2b(usdc.address), toWei("1"))
         await core.setMockPrice(a2b(arb.address), toWei("3"))
         await core.setMockPrice(a2b(btc.address), toWei("60000"))
@@ -3696,7 +3692,6 @@ describe("Trade", () => {
       })
 
       it("close all, realize loss => the pools get 2 types of tokens", async () => {
-        const positionId = encodePositionId(trader1.address, 0)
         await core.setMockPrice(a2b(usdc.address), toWei("1"))
         await core.setMockPrice(a2b(arb.address), toWei("1.5"))
         await core.setMockPrice(a2b(btc.address), toWei("49500"))
@@ -3784,7 +3779,6 @@ describe("Trade", () => {
       })
 
       it("close all, realize loss => try to keep usdc and pay fees and loss by arb", async () => {
-        const positionId = encodePositionId(trader1.address, 0)
         await core.setMockPrice(a2b(usdc.address), toWei("1"))
         await core.setMockPrice(a2b(arb.address), toWei("1.5"))
         await core.setMockPrice(a2b(btc.address), toWei("49500"))
@@ -3871,6 +3865,53 @@ describe("Trade", () => {
             toWei("1001718.950000000000000001")
           )
         }
+      })
+
+      it("pool2 is draining, open position allocates to pool1 + pool3", async () => {
+        await core.setPoolConfig(pool2.address, ethers.utils.id("MCP_IS_DRAINING"), u2b(ethers.BigNumber.from("1")))
+        // open long
+        {
+          const args = {
+            positionId,
+            marketId: long1,
+            size: toWei("1"),
+            flags: PositionOrderFlags.OpenPosition,
+            limitPrice: toWei("50000"),
+            expiration: timestampOfTest + 86400 * 2 + 930 + 300,
+            lastConsumedToken: zeroAddress,
+            collateralToken: zeroAddress,
+            collateralAmount: toUnit("0", 6),
+            withdrawUsd: toWei("0"),
+            withdrawSwapToken: zeroAddress,
+            withdrawSwapSlippage: toWei("0"),
+            tpPriceDiff: toWei("0"),
+            slPriceDiff: toWei("0"),
+            tpslExpiration: 0,
+            tpslFlags: 0,
+            tpslWithdrawSwapToken: zeroAddress,
+            tpslWithdrawSwapSlippage: toWei("0"),
+          }
+          await orderBook.connect(trader1).placePositionOrder(args, refCode)
+        }
+        const tx2 = await orderBook.connect(broker).fillPositionOrder(4)
+        await expect(tx2)
+          .to.emit(core, "OpenPosition")
+          .withArgs(
+            trader1.address,
+            positionId,
+            long1,
+            true,
+            toWei("1"), // size
+            toWei("50000"), // tradingPrice
+            [pool1.address, pool2.address, pool3.address], // backedPools
+            [toWei("0.1803"), toWei("0"), toWei("0.8197")], // allocations
+            [toWei("15.3792"), toWei("21.1652"), toWei("24.4556")], // newSizes
+            [toWei("50000"), toWei("50000"), toWei("50000")], // newEntryPrices
+            toWei("50"), // positionFeeUsd = 50000 * 1 * 0.1%
+            toWei("0"), // borrowingFeeUsd
+            [usdc.address, arb.address], // newCollateralTokens
+            [toWei("26950"), toWei("30000")] // newCollateralAmounts 27000 - 50, 30000
+          )
       })
     }) // 2 collaterals, open long, allocated to 3 pools
 

@@ -237,7 +237,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         AddLiquidityArgs memory args
     ) external override onlyOrderBook returns (AddLiquidityResult memory result) {
         _updateAllMarketBorrowing();
-        require(args.rawCollateralAmount != 0, InvalidAmount(args.rawCollateralAmount));
+        require(args.rawCollateralAmount != 0, InvalidAmount("rawCollateralAmount"));
         require(_isCollateralExist(_collateralToken), CollateralNotExist(_collateralToken));
         // nav
         uint256 collateralPrice = IFacetReader(_core).priceOf(_collateralToken);
@@ -293,7 +293,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         RemoveLiquidityArgs memory args
     ) external override onlyOrderBook returns (RemoveLiquidityResult memory result) {
         _updateAllMarketBorrowing();
-        require(args.shares != 0, InvalidAmount(args.shares));
+        require(args.shares != 0, InvalidAmount("shares"));
         require(_isCollateralExist(_collateralToken), CollateralNotExist(_collateralToken));
         // nav
         uint256 aumUsd = _aumUsd();
@@ -366,7 +366,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         uint256 price0 = IFacetReader(_core).priceOf(token0);
         uint256 price1 = IFacetReader(_core).priceOf(_collateralToken);
         // send token 0
-        require(rawAmount0 != 0, InvalidAmount(rawAmount0));
+        require(rawAmount0 != 0, InvalidAmount("rawAmount0"));
         uint256 amount0 = _toWad(token0, rawAmount0);
         require(amount0 <= _liquidityBalances[token0], InsufficientLiquidity(amount0, _liquidityBalances[token0]));
         _liquidityBalances[token0] -= amount0;
@@ -487,6 +487,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         poolFr.poolSizeUsd = _aumUsdWithoutPnl().toInt256();
         poolFr.reservedUsd = _reservedUsd().toInt256();
         poolFr.reserveRate = _adlReserveRate(marketId).toInt256();
+        poolFr.isDraining = _isDraining();
     }
 
     function positionPnl(

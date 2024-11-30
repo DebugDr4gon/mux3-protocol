@@ -20,6 +20,7 @@ library IBorrowingRate {
         int256 poolSizeUsd;
         int256 reservedUsd;
         int256 reserveRate;
+        bool isDraining; // whether this pool is draining (only supports deallocate, not allocate)
     }
 
     struct AllocateResult {

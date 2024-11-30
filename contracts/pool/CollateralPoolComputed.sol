@@ -41,7 +41,7 @@ contract CollateralPoolComputed is CollateralPoolStore {
 
     function _borrowingB() internal view returns (int256 b) {
         b = _configTable.getInt256(MCP_BORROWING_B);
-        // b is valid
+        // 0 is valid
     }
 
     function _feeDistributor() internal view returns (address feeDistributor) {
@@ -74,6 +74,11 @@ contract CollateralPoolComputed is CollateralPoolStore {
         bytes32 key = keccak256(abi.encodePacked(MCP_ADL_TRIGGER_RATE, marketId));
         rate = _configTable.getUint256(key);
         require(rate > 0, IErrors.EssentialConfigNotSet("MCP_ADL_TRIGGER_RATE"));
+    }
+
+    function _isDraining() internal view returns (bool isDraining) {
+        isDraining = _configTable.getBoolean(MCP_IS_DRAINING);
+        // false is valid
     }
 
     function _aumUsdWithoutPnl() internal view returns (uint256 aum) {

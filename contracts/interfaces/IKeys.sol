@@ -25,6 +25,7 @@ bytes32 constant MCP_LIQUIDITY_FEE_RATE = keccak256("MCP_LIQUIDITY_FEE_RATE");
 bytes32 constant MCP_LIQUIDITY_CAP_USD = keccak256("MCP_LIQUIDITY_CAP_USD");
 bytes32 constant MCP_BORROWING_K = keccak256("MCP_BORROWING_K");
 bytes32 constant MCP_BORROWING_B = keccak256("MCP_BORROWING_B");
+bytes32 constant MCP_IS_DRAINING = keccak256("MCP_IS_DRAINING");
 
 // pool + market
 bytes32 constant MCP_ADL_RESERVE_RATE = keccak256("MCP_ADL_RESERVE_RATE");

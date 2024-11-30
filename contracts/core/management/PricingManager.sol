@@ -13,7 +13,7 @@ contract PricingManager is Mux3FacetBase {
         address provider,
         bytes memory oracleCallData
     ) internal returns (uint256 price, uint256 timestamp) {
-        require(oracleId != bytes32(0), InvalidId(oracleId));
+        require(oracleId != bytes32(0), InvalidId("oracleId"));
         require(provider != address(0), InvalidAddress(provider));
         (price, timestamp) = IPriceProvider(provider).getOraclePrice(oracleId, oracleCallData);
         if (_strictStableIds[oracleId]) {

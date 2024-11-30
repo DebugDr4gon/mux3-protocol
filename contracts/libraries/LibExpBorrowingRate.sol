@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "../interfaces/IBorrowingRate.sol";
+import "../interfaces/IErrors.sol";
 import "../libraries/LibLogExp.sol";
 import "../libraries/LibTypeCast.sol";
 
@@ -43,7 +44,7 @@ library LibExpBorrowingRate {
         uint256 lotSize
     ) internal pure returns (uint256[] memory results) {
         results = new uint256[](allocations.length);
-        require(lotSize > 0, "lotSize = 0");
+        require(lotSize > 0, IErrors.EssentialConfigNotSet("MM_LOT_SIZE"));
 
         // round down all allocations and keep track of the largest fractional part
         uint256 sumAligned = 0;
@@ -63,8 +64,8 @@ library LibExpBorrowingRate {
         uint256 lotsToDistribute = remainder / lotSize; // should near allocations.length
         require(
             lotsToDistribute < allocations.length * 100, // loop protection
-            "lotsToDistribute too large"
-        ); // implies bug
+            IErrors.CapacityExceeded(allocations.length * 100, 0, lotsToDistribute)
+        );
         for (uint256 remain = 0; remain < lotsToDistribute; remain++) {
             // find the largest remainder
             uint256 maxDiffIndex = 0;
@@ -89,9 +90,9 @@ library LibExpBorrowingRate {
     }
 
     function initPoolState(IBorrowingRate.AllocatePool memory conf) internal pure returns (PoolState memory state) {
-        require(conf.k > 0, "initPoolState: k <= 0");
-        require(conf.poolSizeUsd > 0, "initPoolState: poolSizeUsd <= 0");
-        require(conf.reserveRate > 0, "initPoolState: reserveRate <= 0");
+        require(conf.k > 0, IErrors.EssentialConfigNotSet("MCP_BORROWING_K"));
+        require(conf.poolSizeUsd > 0, IErrors.InvalidAmount("poolSizeUsd")); // pools with no liquidity should be excluded
+        require(conf.reserveRate > 0, IErrors.EssentialConfigNotSet("MCP_ADL_RESERVE_RATE"));
         state.conf = conf;
         state.k = (conf.k * conf.reserveRate) / conf.poolSizeUsd;
         // roundUp the maxX, so that isMaxCapacityReached can be detected easily
@@ -121,14 +122,14 @@ library LibExpBorrowingRate {
     }
 
     function allocate(PoolState memory state, int256 xi) internal pure {
-        require(xi <= state.maxX, "ExpBorrow: xi too large");
+        require(xi <= state.maxX, IErrors.BadAllocation(state.maxX, xi));
         state.allocated += xi;
         state.maxX -= xi;
         recalculateB(state);
     }
 
     function deallocate(PoolState memory state, int256 xi) internal pure {
-        require(xi <= state.allocated, "ExpBorrow: xi too large");
+        require(xi <= state.allocated, IErrors.BadAllocation(state.allocated, xi));
         state.allocated -= xi;
         state.maxX += xi;
         recalculateB(state);
@@ -247,6 +248,7 @@ library LibExpBorrowingRate {
         uint256 poolLength,
         int256 xTotalUsd
     ) internal pure returns (IBorrowingRate.AllocateResult[] memory result) {
+        require(poolLength > 0, IErrors.MarketFull());
         // init
         AllocateMem memory mem;
         mem.pools = new PoolState[](poolLength);
@@ -294,7 +296,7 @@ library LibExpBorrowingRate {
                     break;
                 }
             }
-            require(!isAllFull, "ExpBorrow: full");
+            require(!isAllFull, IErrors.MarketFull());
         }
 
         // return result
@@ -318,7 +320,7 @@ library LibExpBorrowingRate {
         for (uint256 i = 0; i < confs.length; i++) {
             totalSizeInPools += confs[i].mySizeForPool;
         }
-        require(xTotal <= totalSizeInPools, "ExpBorrow: size > position size");
+        require(xTotal <= totalSizeInPools, IErrors.BadAllocation(totalSizeInPools, xTotal));
         for (uint256 i = 0; i < confs.length; i++) {
             int256 xi = 0;
             if (totalSizeInPools > 0) {

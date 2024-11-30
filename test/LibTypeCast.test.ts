@@ -22,7 +22,7 @@ describe("LibTypeCast.test", () => {
 
   it("test_typeCast_errors", async () => {
     await expect(tester.test_typeCast_uintUnderFlow()).to.be.revertedWith("UNDERFLOW")
-    await expect(tester.test_typeCast_invalidBoolean()).to.be.revertedWith("INVALID")
+    await expect(tester.test_typeCast_invalidBoolean()).to.be.revertedWith("INVALID_BOOLEAN")
     await expect(tester.test_typeCast_uint64Overflow()).to.be.revertedWith("OVERFLOW")
     await expect(tester.test_typeCast_uint96Overflow()).to.be.revertedWith("OVERFLOW")
     await expect(tester.test_typeCast_int256Overflow()).to.be.revertedWith("OVERFLOW")

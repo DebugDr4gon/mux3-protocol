@@ -55,13 +55,19 @@ contract Market is Mux3FacetBase, IMarket {
         uint256 price = _priceOf(_marketOracleId(marketId));
         // allocate pools according to sizeUsd
         IBorrowingRate.AllocatePool[] memory confs = new IBorrowingRate.AllocatePool[](backedPools.length);
-        uint256 confLength = 0; // count of non-zero aum pools
+        uint256 confLength = 0; // count of pools that participate in allocation
         for (uint256 i = 0; i < backedPools.length; i++) {
             confs[confLength] = ICollateralPool(backedPools[i].backedPool).makeBorrowingContext(marketId);
             confs[confLength].poolId = i;
-            if (confs[confLength].poolSizeUsd > 0) {
-                confLength++;
+            // skip pools with no liquidity
+            if (confs[confLength].poolSizeUsd <= 0) {
+                continue;
             }
+            // skip draining pools
+            if (confs[confLength].isDraining) {
+                continue;
+            }
+            confLength++;
         }
         uint256 sizeUsd = (size * price) / 1e18;
         IBorrowingRate.AllocateResult[] memory allocatedUsd = LibExpBorrowingRate.allocate2(
