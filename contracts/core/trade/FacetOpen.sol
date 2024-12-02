@@ -15,6 +15,8 @@ contract FacetOpen is Mux3TradeBase, IFacetOpen {
 
     /**
      * @notice The entry point for opening a position
+     * @param args The arguments for opening a position
+     * @return result The result of opening a position
      */
     function openPosition(
         OpenPositionArgs memory args
@@ -33,6 +35,8 @@ contract FacetOpen is Mux3TradeBase, IFacetOpen {
         result.tradingPrice = _priceOf(_marketOracleId(args.marketId));
         uint256[] memory allocations = _allocateLiquidity(args.marketId, args.size);
         // update borrowing fee for the current market
+        // note: we do not update borrowing fees for other markets to keep the contract simple.
+        //       mux3-broker would periodically update borrowing fees for unclosed positions.
         uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(args.marketId);
         result.borrowingFeeUsd = _updateAndDispatchBorrowingFee(
             positionAccount.owner,

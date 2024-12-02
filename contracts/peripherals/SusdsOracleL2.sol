@@ -25,7 +25,7 @@ contract SusdsOracleL2 is Initializable, OwnableUpgradeable {
     }
 
     function updateFromL1(uint192 chi_, uint64 rho_, uint256 ssr_) external payable {
-        require(undoL1ToL2Alias(msg.sender) == susdsOracleL1, "Unauthorized");
+        require(_undoL1ToL2Alias(msg.sender) == susdsOracleL1, "Unauthorized");
         chi = chi_;
         rho = rho_;
         ssr = ssr_;
@@ -112,7 +112,7 @@ contract SusdsOracleL2 is Initializable, OwnableUpgradeable {
     }
 
     // https://github.com/OffchainLabs/nitro-contracts/blob/main/src/libraries/AddressAliasHelper.sol#L24
-    function undoL1ToL2Alias(address l2Address) internal pure returns (address l1Address) {
+    function _undoL1ToL2Alias(address l2Address) internal pure returns (address l1Address) {
         unchecked {
             l1Address = address(uint160(l2Address) - ARBITRUM_ADDRESS_OFFSET);
         }

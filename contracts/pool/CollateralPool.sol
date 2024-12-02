@@ -27,16 +27,29 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
 
+    /**
+     * @notice Restricts function access to only the core contract
+     */
     modifier onlyCore() {
         require(msg.sender == address(_core), UnauthorizedCaller(msg.sender));
         _;
     }
 
+    /**
+     * @notice Restricts function access to only the order book contract
+     */
     modifier onlyOrderBook() {
         require(msg.sender == address(_orderBook), UnauthorizedCaller(msg.sender));
         _;
     }
 
+    /**
+     * @notice Contract constructor
+     * @param core_ Address of the core contract
+     * @param orderBook_ Address of the order book contract
+     * @param weth_ Address of the WETH contract
+     * @param eventEmitter_ Address of the event emitter contract
+     */
     constructor(address core_, address orderBook_, address weth_, address eventEmitter_) {
         _core = core_;
         _orderBook = orderBook_;
@@ -44,21 +57,85 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         _eventEmitter = eventEmitter_;
     }
 
+    /**
+     * @notice Initializes the collateral pool with name, symbol and collateral token
+     * @param name_ The name of the pool token
+     * @param symbol_ The symbol of the pool token
+     * @param collateralToken_ The address of the collateral token
+     * @dev Can only be called once due to initializer modifier
+     */
     function initialize(string memory name_, string memory symbol_, address collateralToken_) external initializer {
         require(collateralToken_ != address(0), InvalidAddress(collateralToken_));
         __CollateralPoolToken_init(name_, symbol_);
         __CollateralPoolStore_init(collateralToken_);
     }
 
-    // for removeLiquidity
+    /**
+     * @notice Allows the contract to receive ETH from WETH contract only
+     * @dev Required for removeLiquidity when unwrapping WETH
+     */
     receive() external payable {
         require(msg.sender == _weth, UnauthorizedCaller(msg.sender));
     }
 
+    /**
+     * @notice Returns the token name, with optional override from config
+     * @return The name of the token
+     * @dev Modifying ERC20 name is not a common practice. If we really need it, this is the only way.
+     */
+    function name() public view override returns (string memory) {
+        string memory overrideName = _configTable.getString(MCP_TOKEN_NAME);
+        return bytes(overrideName).length > 0 ? overrideName : super.name();
+    }
+
+    /**
+     * @notice Returns the token symbol, with optional override from config
+     * @return The symbol of the token
+     * @dev Modifying ERC20 symbols is not a common practice. If we really need it, this is the only way.
+     */
+    function symbol() public view override returns (string memory) {
+        string memory overrideSymbol = _configTable.getString(MCP_TOKEN_SYMBOL);
+        return bytes(overrideSymbol).length > 0 ? overrideSymbol : super.symbol();
+    }
+
+    /**
+     * @notice Gets the value for a specific configuration key
+     * @param key The configuration key to query
+     * @return The value associated with the key
+     */
+    function configValue(bytes32 key) external view returns (bytes32) {
+        return _configTable.getBytes32(key);
+    }
+
+    /**
+     * @notice Calculates the Assets Under Management (AUM) in USD without considering PnL
+     * @return The AUM value in USD (18 decimals)
+     */
+    function getAumUsdWithoutPnl() external view returns (uint256) {
+        return _aumUsdWithoutPnl();
+    }
+
+    /**
+     * @notice Calculates the total Assets Under Management (AUM) in USD including PnL
+     * @return The total AUM value in USD (18 decimals)
+     */
+    function getAumUsd() external view returns (uint256) {
+        return _aumUsd();
+    }
+
+    /**
+     * @notice Returns the address of the collateral token for this pool
+     * @return The collateral token address
+     */
     function collateralToken() external view returns (address) {
         return _collateralToken;
     }
 
+    /**
+     * @notice Returns the balances of all collateral tokens in the pool
+     * @return tokens Array of token addresses
+     * @return balances Array of corresponding token balances (18 decimals)
+     */
     function liquidityBalances() external view returns (address[] memory tokens, uint256[] memory balances) {
         tokens = IFacetReader(_core).listCollateralTokens();
         balances = new uint256[](tokens.length);
@@ -67,14 +144,28 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         }
     }
 
+    /**
+     * @notice Returns all market IDs associated with this pool
+     * @return Array of market IDs
+     */
     function markets() external view returns (bytes32[] memory) {
         return _marketIds.values();
     }
 
+    /**
+     * @notice Returns the state of a specific market
+     * @param marketId The ID of the market to query
+     * @return The market state struct
+     */
     function marketState(bytes32 marketId) external view returns (MarketState memory) {
         return _marketStates[marketId];
     }
 
+    /**
+     * @notice Returns the states of all markets
+     * @return marketIds Array of market IDs
+     * @return states Array of corresponding market states
+     */
     function marketStates() external view returns (bytes32[] memory marketIds, MarketState[] memory states) {
         marketIds = _marketIds.values();
         states = new MarketState[](marketIds.length);
@@ -84,6 +175,12 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         }
     }
 
+    /**
+     * @notice Returns configuration values for all markets given key prefixes
+     * @param keyPrefixes Array of configuration key prefixes to query
+     * @return marketIds Array of market IDs
+     * @return values 2D array of configuration values for each market and key prefix
+     */
     function marketConfigs(
         bytes32[] memory keyPrefixes
     ) external view returns (bytes32[] memory marketIds, bytes32[][] memory values) {
@@ -107,45 +204,86 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         return fr.toUint256();
     }
 
+    /**
+     * @dev This is a helper for borrowing rate calculation or pool allocation.
+     *
+     *      note: do NOT rely on this function outside MUX3 contracts. we probably modify the return value when necessary.
+     */
+    function makeBorrowingContext(bytes32 marketId) public view returns (IBorrowingRate.AllocatePool memory poolFr) {
+        poolFr.poolId = uint256(uint160(address(this)));
+        poolFr.k = _borrowingK();
+        poolFr.b = _borrowingB();
+        poolFr.poolSizeUsd = _aumUsdWithoutPnl().toInt256();
+        poolFr.reservedUsd = _reservedUsd().toInt256();
+        poolFr.reserveRate = _adlReserveRate(marketId).toInt256();
+        poolFr.isDraining = _isDraining();
+    }
+
+    /**
+     * @notice Calculates the position PnL for given parameters
+     * @param marketId The ID of the market
+     * @param size Position size
+     * @param entryPrice Entry price of the position
+     * @param marketPrice Current market price
+     * @return pnlUsd Uncapped PnL in USD
+     * @return cappedPnlUsd PnL in USD after applying caps
+     */
+    function positionPnl(
+        bytes32 marketId,
+        uint256 size,
+        uint256 entryPrice,
+        uint256 marketPrice
+    ) external view returns (int256 pnlUsd, int256 cappedPnlUsd) {
+        if (size == 0) {
+            return (0, 0);
+        }
+        require(marketPrice > 0, MissingPrice(_marketOracleId(marketId)));
+        MarketState storage market = _marketStates[marketId];
+        int256 priceDelta = marketPrice.toInt256() - entryPrice.toInt256();
+        if (!market.isLong) {
+            priceDelta = -priceDelta;
+        }
+        pnlUsd = (priceDelta * size.toInt256()) / 1e18;
+        cappedPnlUsd = pnlUsd;
+        if (pnlUsd > 0) {
+            // cap the trader upnl
+            // note that this is not strictly identical to deleverage all positions. this is just an estimated
+            //      value when the price increases dramatically.
+            uint256 maxPnlRate = _adlMaxPnlRate(marketId);
+            uint256 maxPnlUsd = (size * entryPrice) / 1e18;
+            maxPnlUsd = (maxPnlUsd * maxPnlRate) / 1e18;
+            cappedPnlUsd = MathUpgradeable.min(uint256(pnlUsd), maxPnlUsd).toInt256();
+        }
+    }
+
+    /**
+     * @notice Sets up a new market in the pool
+     * @param marketId The ID of the new market
+     * @param isLong Whether this is a long market
+     * @dev Can only be called by core contract
+     */
     function setMarket(bytes32 marketId, bool isLong) external onlyCore {
         require(!_marketIds.contains(marketId), MarketAlreadyExist(marketId));
         require(_marketIds.add(marketId), ArrayAppendFailed());
         _marketStates[marketId].isLong = isLong;
     }
 
+    /**
+     * @notice Sets a configuration value
+     * @param key The configuration key
+     * @param value The configuration value
+     * @dev Can only be called by core contract
+     */
     function setConfig(bytes32 key, bytes32 value) external onlyCore {
         _configTable.setBytes32(key, value);
         ICollateralPoolEventEmitter(_eventEmitter).emitSetConfig(key, value);
     }
 
     /**
-     * @dev Modifying ERC20 name is not a common practice. If we really need it, this is the only way.
+     * @notice Open a position in the market.
+     * @param marketId The ID of the market
+     * @param size The size of the position
      */
-    function name() public view override returns (string memory) {
-        string memory overrideName = _configTable.getString(MCP_TOKEN_NAME);
-        return bytes(overrideName).length > 0 ? overrideName : super.name();
-    }
-
-    /**
-     * @dev Modifying ERC20 symbols is not a common practice. If we really need it, this is the only way.
-     */
-    function symbol() public view override returns (string memory) {
-        string memory overrideSymbol = _configTable.getString(MCP_TOKEN_SYMBOL);
-        return bytes(overrideSymbol).length > 0 ? overrideSymbol : super.symbol();
-    }
-
-    function configValue(bytes32 key) external view returns (bytes32) {
-        return _configTable.getBytes32(key);
-    }
-
-    function getAumUsdWithoutPnl() external view returns (uint256) {
-        return _aumUsdWithoutPnl();
-    }
-
-    function getAumUsd() external view returns (uint256) {
-        return _aumUsd();
-    }
-
     function openPosition(bytes32 marketId, uint256 size) external override onlyCore {
         MarketState storage data = _marketStates[marketId];
         uint256 marketPrice = IFacetReader(_core).priceOf(_marketOracleId(marketId));
@@ -160,6 +298,12 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         );
     }
 
+    /**
+     * @notice Close a position in the market.
+     * @param marketId The ID of the market
+     * @param size The size of the position
+     * @param entryPrice The entry price of the position
+     */
     function closePosition(bytes32 marketId, uint256 size, uint256 entryPrice) external override onlyCore {
         MarketState storage data = _marketStates[marketId];
         require(size <= data.totalSize, AllocationPositionMismatch(size, data.totalSize));
@@ -175,7 +319,10 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     }
 
     /**
-     * @dev A trader takes profit. the pool pays the profit to the market.
+     * @notice A trader takes profit. the pool pays the profit to the market.
+     * @param pnlUsd The PnL in USD
+     * @return token The token address
+     * @return wad The amount of tokens to be paid
      */
     function realizeProfit(
         uint256 pnlUsd
@@ -199,10 +346,12 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     }
 
     /**
-     * @dev A trader realize loss
+     * @notice A trader realize loss
      *
-     *      note: the received token might not the collateral token.
-     *      note: core should send tokens to this contract.
+     *         note: the received token might not the collateral token.
+     *         note: core should send tokens to this contract.
+     * @param token The token address
+     * @param rawAmount The amount of tokens to be received
      */
     function realizeLoss(
         address token,
@@ -215,10 +364,12 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     }
 
     /**
-     * @dev Get fees from FeeDistributor => OrderBook => CollateralPool
+     * @notice Get fees from FeeDistributor => OrderBook => CollateralPool
      *
-     *      note: the received token might not the collateral token.
-     *      note: orderBook should send fee to this contract.
+     *         note: the received token might not the collateral token.
+     *         note: orderBook should send fee to this contract.
+     * @param token The token address
+     * @param rawAmount The amount of tokens to be received
      */
     function receiveFee(address token, uint256 rawAmount) external onlyOrderBook {
         uint256 wad = _toWad(token, rawAmount);
@@ -229,9 +380,11 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     }
 
     /**
-     * @dev Add liquidity to the pool and returns shares to the lp.
+     * @notice Add liquidity to the pool and returns shares to the lp.
      *
-     *      note: orderBook should transfer rawCollateralAmount to this contract
+     *         note: orderBook should transfer rawCollateralAmount to this contract
+     * @param args The arguments for adding liquidity
+     * @return result The result of adding liquidity
      */
     function addLiquidity(
         AddLiquidityArgs memory args
@@ -285,9 +438,10 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     }
 
     /**
-     * @dev Remove liquidity from the pool and returns collateral tokens to the lp.
-     *
-     *      note: orderBook should transfer share token to this contract
+     * @notice Remove liquidity from the pool and returns collateral tokens to the lp
+     *         orderBook should transfer `shares` share token to this contract before removing
+     * @param args The arguments for removing liquidity
+     * @return result The result of removing liquidity
      */
     function removeLiquidity(
         RemoveLiquidityArgs memory args
@@ -347,9 +501,15 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     }
 
     /**
-     * @dev  Rebalance pool liquidity. Swap token0 in this pool into pool.collateralToken.
+     * @notice Rebalance pool liquidity. Swap token0 in this pool into pool.collateralToken
+     *         rebalancer must implement IMux3RebalancerCallback
      *
-     *       rebalancer must implement IMux3RebalancerCallback.
+     * @param rebalancer The address of the rebalancer contract
+     * @param token0 The address of the token0 to be swapped
+     * @param rawAmount0 The amount of token0 to be swapped
+     * @param maxRawAmount1 The maximum amount of collateralToken to be swapped
+     * @param userData The user data for the rebalancer callback
+     * @return rawAmount1 The amount of collateralToken to be swapped
      */
     function rebalance(
         address rebalancer,
@@ -410,9 +570,18 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     }
 
     /**
+     * @notice Update the borrowing state.
+     * @param marketId The ID of the market to update
+     * @return newCumulatedBorrowingPerUsd The new cumulative borrowing per USD
+     */
+    function updateMarketBorrowing(bytes32 marketId) external onlyCore returns (uint256 newCumulatedBorrowingPerUsd) {
+        return _updateMarketBorrowing(marketId);
+    }
+
+    /**
      * @dev Distribute fee to fee distributor
      *
-     *      note: we assume the fee is not added to _liquidityBalances
+     *         note: we assume the fee is not added to _liquidityBalances
      */
     function _distributeFee(
         address lp,
@@ -431,13 +600,6 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
             rawFee,
             isUnwrapWeth
         );
-    }
-
-    /**
-     * @dev Update the borrowing state.
-     */
-    function updateMarketBorrowing(bytes32 marketId) external onlyCore returns (uint256 newCumulatedBorrowingPerUsd) {
-        return _updateMarketBorrowing(marketId);
     }
 
     function _updateMarketBorrowing(bytes32 marketId) internal returns (uint256 newCumulatedBorrowingPerUsd) {
@@ -472,49 +634,6 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         for (uint256 i = 0; i < marketCount; i++) {
             bytes32 marketId = _marketIds.at(i);
             _updateMarketBorrowing(marketId);
-        }
-    }
-
-    /**
-     * @dev This is a helper for borrowing rate calculation or pool allocation.
-     *
-     *      note: do NOT rely on this function outside MUX3 contracts. we probably modify the return value when necessary.
-     */
-    function makeBorrowingContext(bytes32 marketId) public view returns (IBorrowingRate.AllocatePool memory poolFr) {
-        poolFr.poolId = uint256(uint160(address(this)));
-        poolFr.k = _borrowingK();
-        poolFr.b = _borrowingB();
-        poolFr.poolSizeUsd = _aumUsdWithoutPnl().toInt256();
-        poolFr.reservedUsd = _reservedUsd().toInt256();
-        poolFr.reserveRate = _adlReserveRate(marketId).toInt256();
-        poolFr.isDraining = _isDraining();
-    }
-
-    function positionPnl(
-        bytes32 marketId,
-        uint256 size,
-        uint256 entryPrice,
-        uint256 marketPrice
-    ) external view returns (int256 pnlUsd, int256 cappedPnlUsd) {
-        if (size == 0) {
-            return (0, 0);
-        }
-        require(marketPrice > 0, MissingPrice(_marketOracleId(marketId)));
-        MarketState storage market = _marketStates[marketId];
-        int256 priceDelta = marketPrice.toInt256() - entryPrice.toInt256();
-        if (!market.isLong) {
-            priceDelta = -priceDelta;
-        }
-        pnlUsd = (priceDelta * size.toInt256()) / 1e18;
-        cappedPnlUsd = pnlUsd;
-        if (pnlUsd > 0) {
-            // cap the trader upnl
-            // note that this is not strictly identical to deleverage all positions. this is just an estimated
-            //      value when the price increases dramatically.
-            uint256 maxPnlRate = _adlMaxPnlRate(marketId);
-            uint256 maxPnlUsd = (size * entryPrice) / 1e18;
-            maxPnlUsd = (maxPnlUsd * maxPnlRate) / 1e18;
-            cappedPnlUsd = MathUpgradeable.min(uint256(pnlUsd), maxPnlUsd).toInt256();
         }
     }
 }

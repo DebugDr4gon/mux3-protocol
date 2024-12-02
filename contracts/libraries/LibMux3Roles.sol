@@ -67,7 +67,7 @@ contract Mux3RolesStore is Initializable {
 contract Mux3RolesAdmin is Mux3RolesStore {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
-    function __LibMux3Roles_init_unchained() internal onlyInitializing {}
+    function __Mux3RolesAdmin_init_unchained() internal onlyInitializing {}
 
     function grantRole(bytes32 role, address account) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _grantRole(role, account);

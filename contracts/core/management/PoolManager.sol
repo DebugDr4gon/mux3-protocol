@@ -20,14 +20,14 @@ contract PoolManager is Mux3FacetBase {
         string memory name,
         string memory symbol,
         address collateralToken,
-        uint256 oldPoolCount // expected pools count before creating. this is to prevent from submitting tx twice
+        uint256 expectedPoolCount // the expected number of pools before creating
     ) internal returns (address) {
         require(collateralToken != address(0), InvalidAddress(collateralToken));
         address pool = _createPoolProxy(name, symbol, collateralToken);
         require(address(pool) != address(0), InvalidAddress(pool));
         require(
-            _collateralPoolList.length() == oldPoolCount,
-            UnexpectedState(oldPoolCount, _collateralPoolList.length())
+            _collateralPoolList.length() == expectedPoolCount,
+            UnexpectedState(_collateralPoolList.length(), expectedPoolCount)
         );
         require(
             _collateralPoolList.length() < MAX_COLLATERAL_POOLS,

@@ -10,38 +10,75 @@ import "../interfaces/IMux3Core.sol";
 import "../interfaces/ICollateralPool.sol";
 import "../libraries/LibTypeCast.sol";
 
+/**
+ * @notice CollateralPoolAumReader is used to read the AUM of a collateral pool.
+ *
+ *         this contract is NOT part of MUX3 protocol and MUX contracts never reads from CollateralPoolAumReader.
+ *         if you are developing external contracts for MUX3, such as lending CollateralPool LP tokens,
+ *         you can reference price from this contract.
+ */
 contract CollateralPoolAumReader is Initializable, OwnableUpgradeable {
     using LibTypeCast for uint256;
     using LibTypeCast for bytes32;
 
+    /** @notice Default price expiration period in seconds */
     uint256 public constant PRICE_EXPIRATION = 86400; // 1 day
 
+    /** @notice Current price expiration period in seconds */
     uint256 public priceExpiration;
+
+    /** @notice Maps market IDs to their price oracle provider addresses */
     mapping(bytes32 => address) public marketPriceProviders;
+
+    /** @notice Maps token addresses to their price oracle provider addresses */
     mapping(address => address) public tokenPriceProviders;
 
+    /** @notice Emitted when a token's price provider is set */
     event SetTokenPriceProvider(address token, address oracleProvider);
+    /** @notice Emitted when a market's price provider is set */
     event SetMarketPriceProvider(bytes32 marketId, address oracleProvider);
+    /** @notice Emitted when price expiration period is updated */
     event SetPriceExpiration(uint256 priceExpiration);
 
+    /**
+     * @notice Initializes the contract with default settings
+     * @dev Sets the initial price expiration period to PRICE_EXPIRATION (1 day)
+     */
     function initialize() public initializer {
         __Ownable_init();
 
         priceExpiration = PRICE_EXPIRATION;
     }
 
+    /**
+     * @notice Sets the price provider for a market
+     * @param marketId The unique identifier of the market
+     * @param oracleProvider The address of the oracle provider
+     * @dev Only callable by owner. Provider address cannot be zero
+     */
     function setMarketPriceProvider(bytes32 marketId, address oracleProvider) public onlyOwner {
         require(oracleProvider != address(0), "InvalidAddress");
         marketPriceProviders[marketId] = oracleProvider;
         emit SetMarketPriceProvider(marketId, oracleProvider);
     }
 
+    /**
+     * @notice Sets the price provider for a token
+     * @param token The address of the token
+     * @param oracleProvider The address of the oracle provider
+     * @dev Only callable by owner. Provider address cannot be zero
+     */
     function setTokenPriceProvider(address token, address oracleProvider) public onlyOwner {
         require(oracleProvider != address(0), "InvalidAddress");
         tokenPriceProviders[token] = oracleProvider;
         emit SetTokenPriceProvider(token, oracleProvider);
     }
 
+    /**
+     * @notice Updates the price expiration period
+     * @param _priceExpiration New expiration period in seconds
+     * @dev Only callable by owner
+     */
     function setPriceExpiration(uint256 _priceExpiration) public onlyOwner {
         priceExpiration = _priceExpiration;
         emit SetPriceExpiration(_priceExpiration);
@@ -53,6 +90,8 @@ contract CollateralPoolAumReader is Initializable, OwnableUpgradeable {
      *
      *         this function is not used inner MUX3 contracts. other contacts can use this value to
      *         estimate the value of LP token.
+     * @param pool The address of the collateral pool
+     * @return aum The estimated AUM in USD (18 decimals)
      */
     function estimatedAumUsd(address pool) public view returns (uint256 aum) {
         // get all market ids
@@ -66,18 +105,35 @@ contract CollateralPoolAumReader is Initializable, OwnableUpgradeable {
         aum = upnl > 0 ? uint256(upnl) : 0;
     }
 
+    /**
+     * @notice Gets the current price and timestamp for a token
+     * @param token The address of the token
+     * @return price The current price (18 decimals)
+     * @return timestamp The timestamp of the price
+     */
     function getTokenPrice(address token) external view returns (uint256 price, uint256 timestamp) {
         address provider = tokenPriceProviders[token];
         require(provider != address(0), "OracleProviderNotSet");
         return _getOraclePrice(provider);
     }
 
+    /**
+     * @notice Gets the current price and timestamp for a market
+     * @param marketId The unique identifier of the market
+     * @return price The current price (18 decimals)
+     * @return timestamp The timestamp of the price
+     */
     function getMarketPrice(bytes32 marketId) external view returns (uint256 price, uint256 timestamp) {
         address provider = marketPriceProviders[marketId];
         require(provider != address(0), "OracleProviderNotSet");
         return _getOraclePrice(provider);
     }
 
+    /**
+     * @notice Gets the current price for a market
+     * @param marketId The unique identifier of the market
+     * @return price The current price (18 decimals)
+     */
     function _priceOf(bytes32 marketId) internal view returns (uint256 price) {
         address oracleProvider = marketPriceProviders[marketId];
         require(oracleProvider != address(0), "OracleProviderNotSet");

@@ -13,6 +13,38 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
     using LibConfigMap for mapping(bytes32 => bytes32);
 
+    struct WithdrawMemory {
+        uint256 allBorrowingFeeUsd;
+        uint256 collateralAmount;
+        bool isSwapSuccess;
+        uint256 rawSwapOut;
+    }
+
+    struct WithdrawAllMemory {
+        address[] collaterals;
+        uint256 collateralAmount;
+        bool isSwapSuccess;
+        uint256 rawSwapOut;
+    }
+
+    struct WithdrawUsdMemory {
+        uint256 allBorrowingFeeUsd;
+        address[] collaterals;
+        uint256 remainUsd;
+        bool isSwapSuccess;
+        uint256 rawSwapOut;
+        uint256 tokenPrice;
+        uint256 payingUsd;
+        uint256 payingCollateral;
+    }
+
+    /**
+     * @notice Sets the initial leverage for a position
+     * @param positionId The unique identifier of the position
+     * @param marketId The market identifier
+     * @param leverage The initial leverage value to set
+     * @dev Creates position account if it doesn't exist. Only callable by ORDER_BOOK_ROLE
+     */
     function setInitialLeverage(
         bytes32 positionId,
         bytes32 marketId,
@@ -28,6 +60,13 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
         emit SetInitialLeverage(positionAccount.owner, positionId, marketId, leverage);
     }
 
+    /**
+     * @notice Deposits collateral into a position account
+     * @param positionId The unique identifier of the position
+     * @param collateralToken The address of the collateral token to deposit
+     * @param rawAmount The amount to deposit in token's native decimals
+     * @dev Creates position account if it doesn't exist. Only callable by ORDER_BOOK_ROLE
+     */
     function deposit(
         bytes32 positionId,
         address collateralToken,
@@ -47,13 +86,18 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
         );
     }
 
-    struct WithdrawMemory {
-        uint256 allBorrowingFeeUsd;
-        uint256 collateralAmount;
-        bool isSwapSuccess;
-        uint256 rawSwapOut;
-    }
-
+    /**
+     * @notice Withdraws collateral from a position account
+     * @param args The withdrawal arguments containing:
+     *        - positionId: The position identifier
+     *        - collateralToken: Token to withdraw
+     *        - amount: Amount to withdraw
+     *        - withdrawSwapToken: Token to swap to (if swapping)
+     *        - withdrawSwapSlippage: Maximum allowed slippage for swap
+     *        - lastConsumedToken: Last token consumed for borrowing fees
+     *        - isUnwrapWeth: Whether to unwrap WETH to ETH
+     * @dev Only callable by ORDER_BOOK_ROLE. Checks leverage safety after withdrawal
+     */
     function withdraw(WithdrawArgs memory args) external onlyRole(ORDER_BOOK_ROLE) {
         WithdrawMemory memory mem;
         require(_isPositionAccountExist(args.positionId), PositionAccountNotExist(args.positionId));
@@ -89,13 +133,15 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
         _dumpForDepositWithdrawEvent(args.positionId, mem.allBorrowingFeeUsd);
     }
 
-    struct WithdrawAllMemory {
-        address[] collaterals;
-        uint256 collateralAmount;
-        bool isSwapSuccess;
-        uint256 rawSwapOut;
-    }
-
+    /**
+     * @notice Withdraws all collateral from a position account
+     * @param args The withdrawal arguments containing:
+     *        - positionId: The position identifier
+     *        - withdrawSwapToken: Token to swap to (if swapping)
+     *        - withdrawSwapSlippage: Maximum allowed slippage for swap
+     *        - isUnwrapWeth: Whether to unwrap WETH to ETH
+     * @dev Only callable by ORDER_BOOK_ROLE. All positions must be closed first
+     */
     function withdrawAll(WithdrawAllArgs memory args) external onlyRole(ORDER_BOOK_ROLE) {
         WithdrawAllMemory memory mem;
         require(_isPositionAccountExist(args.positionId), PositionAccountNotExist(args.positionId));
@@ -106,8 +152,8 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
         for (uint256 i = 0; i < mem.collaterals.length; i++) {
             mem.collateralAmount = positionAccount.collaterals[mem.collaterals[i]];
             if (mem.collateralAmount == 0) {
-                // usually we do not protect collateralAmount == 0 and the contract should ensure empty collaterals are removed.
-                // but since this is usually the last step of trading, we allow withdrawing 0 for better fault tolerance
+                // usually we do not allow collateralAmount == 0 as an argument. caller should ensure not to withdraw 0.
+                // since this is the last step of trading, we allow withdrawing 0 to make execution simpler and more fault tolerant
                 continue;
             }
             (mem.isSwapSuccess, mem.rawSwapOut) = _withdrawFromAccount(
@@ -133,17 +179,17 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
         );
     }
 
-    struct WithdrawUsdMemory {
-        uint256 allBorrowingFeeUsd;
-        address[] collaterals;
-        uint256 remainUsd;
-        bool isSwapSuccess;
-        uint256 rawSwapOut;
-        uint256 tokenPrice;
-        uint256 payingUsd;
-        uint256 payingCollateral;
-    }
-
+    /**
+     * @notice Withdraws a specific USD value of collateral from a position account
+     * @param args The withdrawal arguments containing:
+     *        - positionId: The position identifier
+     *        - collateralUsd: USD value to withdraw
+     *        - withdrawSwapToken: Token to swap to (if swapping)
+     *        - withdrawSwapSlippage: Maximum allowed slippage for swap
+     *        - lastConsumedToken: Last token consumed for borrowing fees
+     *        - isUnwrapWeth: Whether to unwrap WETH to ETH
+     * @dev Only callable by ORDER_BOOK_ROLE. Checks leverage safety after withdrawal
+     */
     function withdrawUsd(WithdrawUsdArgs memory args) external onlyRole(ORDER_BOOK_ROLE) {
         WithdrawUsdMemory memory mem;
         require(_isPositionAccountExist(args.positionId), PositionAccountNotExist(args.positionId));
@@ -194,8 +240,12 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
     }
 
     /**
-     * @dev Updates the borrowing fee for a position and market,
-     *      allowing LPs to collect fees even if the position remains open.
+     * @notice Updates the borrowing fee for a specific position and market
+     * @param positionId The position identifier
+     * @param marketId The market identifier
+     * @param lastConsumedToken The last token consumed for borrowing fees
+     * @param isUnwrapWeth Whether to unwrap WETH to ETH
+     * @dev Allows LPs to collect fees even if position remains open. Only callable by ORDER_BOOK_ROLE
      */
     function updateBorrowingFee(
         bytes32 positionId,

@@ -13,6 +13,9 @@ import "../interfaces/IMux3Core.sol";
 import "../interfaces/IOrderBook.sol";
 import "../libraries/LibEthUnwrapper.sol";
 
+/**
+ * @notice Mux3FeeDistributor is used to distribute protocol income to LP holders and veMUX holders.
+ */
 contract Mux3FeeDistributor is Initializable, AccessControlEnumerableUpgradeable, IMux3FeeDistributor {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 

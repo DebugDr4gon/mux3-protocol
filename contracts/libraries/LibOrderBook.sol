@@ -1008,6 +1008,10 @@ library LibOrderBook {
         }
     }
 
+    /**
+     * @dev When an order is executed, a fixed gas fee is charged from the Trader/LP regardless of order
+     *      complexity (e.g. tp/sl orders, swaps, etc). this is to simplify the contract.
+     */
     function _deductGasFee(OrderBookStorage storage orderBook, address trader, uint64 gasFeeGwei) internal {
         if (gasFeeGwei > 0) {
             uint256 gasFee = gasFeeGwei * 1 gwei;

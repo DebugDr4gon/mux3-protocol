@@ -18,11 +18,18 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
 
+    /**
+     * @notice Restricts function access when specific order type is paused
+     * @param orderType The type of order to check
+     */
     modifier whenNotPaused(OrderType orderType) {
         require(!_isOrderPaused(orderType), "Paused");
         _;
     }
 
+    /**
+     * @notice Updates the sequence number after function execution
+     */
     modifier updateSequence() {
         _;
         unchecked {
@@ -31,6 +38,12 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         emit UpdateSequence(_storage.sequence);
     }
 
+    /**
+     * @notice Initializes the OrderBook contract
+     * @param mux3Facet The address of the Mux3 Facet contract
+     * @param weth The address of the WETH contract
+     * @dev Can only be called once due to initializer modifier
+     */
     function initialize(address mux3Facet, address weth) external initializer {
         __AccessControlEnumerable_init();
         _storage.mux3Facet = mux3Facet;
@@ -39,11 +52,17 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         _grantRole(MAINTAINER_ROLE, msg.sender);
     }
 
+    /**
+     * @notice Allows contract to receive ETH from WETH contract only
+     */
     receive() external payable {
         require(msg.sender == _storage.weth, "WETH");
     }
 
     /**
+     * @notice Executes multiple function calls in a single transaction
+     * @param proxyCalls Array of function calls to execute
+     * @return results Array of return values from each call
      * @dev Trader/LP can wrap ETH to OrderBook, transfer ERC20 to OrderBook, placeOrders
      *
      *      example for collateral = USDC:
@@ -71,7 +90,9 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @dev Trader/LP can wrap ETH to OrderBook
+     * @notice Trader/LP can wrap native ETH to WETH and WETH will stay in OrderBook for subsequent commands
+     * @param amount Amount of ETH to wrap
+     * @dev Amount must be greater than 0 and less than or equal to msg.value
      */
     function wrapNative(uint256 amount) external payable nonReentrant {
         require(amount > 0 && amount <= msg.value, "Invalid wrap amount");
@@ -79,14 +100,19 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @dev Trader/LP can transfer ERC20 to OrderBook
+     * @notice Trader/LP transfer ERC20 tokens to the OrderBook
+     * @param token Address of the token to transfer
+     * @param amount Amount of tokens to transfer
      */
     function transferToken(address token, uint256 amount) external payable nonReentrant {
         IERC20Upgradeable(token).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     /**
-     * @dev Delegator can transfer ERC20 from Trader/LP to OrderBook
+     * @notice Allows Delegator to transfer tokens from Trader/LP to OrderBook
+     * @param from Address to transfer tokens from
+     * @param token Address of the token to transfer
+     * @param amount Amount of tokens to transfer
      */
     function transferTokenFrom(address from, address token, uint256 amount) external payable nonReentrant {
         require(_isDelegator(msg.sender), "Delegator only");
@@ -94,19 +120,19 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @dev Trader/LP should pay for gas for their orders
-     *
-     *      you should pay configValue(MCO_ORDER_GAS_FEE_GWEI) * 1e9 / 1e18 ETH for each order
+     * @notice Trader/LP should pay for gas for their orders
+     *         you should pay at least configValue(MCO_ORDER_GAS_FEE_GWEI) * 1e9 / 1e18 ETH for each order
+     * @param amount The amount of gas to deposit
      */
     function depositGas(uint256 amount) external payable nonReentrant {
         LibOrderBook.depositGas(_storage, amount, msg.sender);
     }
 
     /**
-     * @dev Trader/LP can withdraw gas
-     *
+     * @notice Trader/LP can withdraw gas
      *      usually your deposited gas should be consumed by your orders immediately,
      *      but if you want to withdraw it, you can call this function
+     * @param amount The amount of gas to withdraw
      */
     function withdrawGas(uint256 amount) external nonReentrant {
         LibOrderBook.withdrawGas(_storage, amount, msg.sender);
@@ -114,6 +140,9 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
 
     /**
      * @notice A trader should set initial leverage at least once before open-position
+     * @param positionId The ID of the position
+     * @param marketId The ID of the market
+     * @param initialLeverage The initial leverage to set
      */
     function setInitialLeverage(
         bytes32 positionId,
@@ -129,9 +158,10 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
 
     /**
      * @notice A Trader can open/close position
-     *
      *         Market order will expire after marketOrderTimeout seconds.
      *         Limit/Trigger order will expire after deadline.
+     * @param orderParams The parameters for the position order
+     * @param referralCode The referral code for the position order
      */
     function placePositionOrder(
         PositionOrderParams memory orderParams,
@@ -152,8 +182,8 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
 
     /**
      * @notice A LP can add/remove liquidity to a CollateralPool
-     *
      *         Can be filled after liquidityLockPeriod seconds.
+     * @param orderParams The parameters for the liquidity order
      */
     function placeLiquidityOrder(
         LiquidityOrderParams memory orderParams
@@ -163,8 +193,8 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
 
     /**
      * @notice A Trader can withdraw collateral
-     *
      *         This order will expire after marketOrderTimeout seconds.
+     * @param orderParams The parameters for the withdrawal order
      */
     function placeWithdrawalOrder(
         WithdrawalOrderParams memory orderParams
@@ -178,6 +208,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
 
     /**
      * @notice A Trader can withdraw all collateral only when position = 0
+     * @param orderParams The parameters for the withdrawal order
      */
     function withdrawAllCollateral(
         WithdrawAllOrderParams memory orderParams
@@ -191,8 +222,8 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
 
     /**
      * @notice A Rebalancer can rebalance pool liquidity by swap token0 for pool.collateralToken
-     *
      *         msg.sender must implement IMux3RebalancerCallback.
+     * @param orderParams The parameters for the rebalance order
      */
     function placeRebalanceOrder(
         RebalanceOrderParams memory orderParams
@@ -202,7 +233,8 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @dev Open/close a position. called by Broker
+     * @notice Open/close a position. called by Broker
+     * @param orderId The ID of the order to fill
      */
     function fillPositionOrder(
         uint64 orderId
@@ -218,7 +250,9 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @dev Add/remove liquidity. called by Broker
+     * @notice Add/remove liquidity. called by Broker
+     * @param orderId The ID of the order to fill
+     * @return outAmount The amount of output tokens
      */
     function fillLiquidityOrder(
         uint64 orderId
@@ -234,7 +268,11 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @dev Similar to fillLiquidityOrder with an add-liquidity order, but no share minted
+     * @notice Similar to fillLiquidityOrder, but no share minted.
+     * @param poolAddress The address of the pool
+     * @param collateralAddress The address of the collateral token
+     * @param rawAmount The amount of collateral token in token decimals
+     * @dev Usually used to send trading fees to CollateralPool
      */
     function donateLiquidity(
         address poolAddress,
@@ -245,7 +283,8 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @dev Withdraw collateral. called by Broker
+     * @notice Withdraw collateral. called by Broker
+     * @param orderId The ID of the order to fill
      */
     function fillWithdrawalOrder(
         uint64 orderId
@@ -254,7 +293,8 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @dev Swap token0 for pool.collateralToken of a pool. called by Broker
+     * @notice Swap token0 for pool.collateralToken of a pool. called by Broker
+     * @param orderId The ID of the order to fill
      */
     function fillRebalanceOrder(
         uint64 orderId
@@ -265,6 +305,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     /**
      * @notice A Trader/LP can cancel an Order by orderId after a cool down period.
      *         A Broker can also cancel an Order after expiration.
+     * @param orderId The ID of the order to cancel
      */
     function cancelOrder(uint64 orderId) external nonReentrant updateSequence {
         LibOrderBook.cancelOrder(_storage, orderId, _blockTimestamp(), msg.sender);
@@ -272,6 +313,9 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
 
     /**
      * @notice A Trader can deposit collateral into a PositionAccount
+     * @param positionId The ID of the position
+     * @param collateralToken The address of the collateral token
+     * @param collateralAmount The amount of collateral token
      */
     function depositCollateral(
         bytes32 positionId,
@@ -282,7 +326,13 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @dev Liquidate a position. called by Broker
+     * @notice Liquidate a position. called by Broker
+     * @param positionId The ID of the position
+     * @param marketId The ID of the market
+     * @param lastConsumedToken The address of the last consumed token
+     * @param isWithdrawAll Set false so that collaterals will remain in the position account.
+     * @param isUnwrapWeth Whether to unwrap WETH
+     * @return tradingPrice The trading price
      */
     function liquidate(
         bytes32 positionId,
@@ -310,7 +360,13 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @dev Deleverage a position. called by Broker
+     * @notice Deleverage a position. called by Broker
+     * @param positionId The ID of the position
+     * @param marketId The ID of the market
+     * @param lastConsumedToken The address of the last consumed token
+     * @param isWithdrawAll Whether to withdraw all collateral
+     * @param isUnwrapWeth Whether to unwrap WETH
+     * @return tradingPrice The trading price
      */
     function fillAdlOrder(
         bytes32 positionId,
@@ -331,8 +387,12 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @dev Updates the borrowing fee for a position and market,
-     *      allowing LPs to collect fees even if the position remains open.
+     * @notice Updates the borrowing fee for a position and market,
+     *         allowing LPs to collect fees even if the position remains open.
+     * @param positionId The ID of the position
+     * @param marketId The ID of the market
+     * @param lastConsumedToken The address of the last consumed token
+     * @param isUnwrapWeth Whether to unwrap WETH
      */
     function updateBorrowingFee(
         bytes32 positionId,

@@ -241,7 +241,10 @@ library LibExpBorrowingRate {
      * @dev This is the entry point for allocate xTotalUsd into all pools,
      *      considering borrowing rate equalization, and liquidity capacity.
      *
-     *      `xTotalUsd` and `pools[].poolSizeUsd` should be USD.
+     *      note:
+     *      1. `xTotalUsd` and `pools[].poolSizeUsd` should be USD.
+     *      2. the returned allocation may slightly exceed pool capacity (because of rounding). this is acceptable.
+     *      3. you can apply alignAllocationToLotSize outside this function if needed.
      */
     function allocate2(
         IBorrowingRate.AllocatePool[] memory pools, // only pools[:poolLength] are valid
@@ -309,7 +312,9 @@ library LibExpBorrowingRate {
     /**
      * @dev This is the entry point for deallocate xTotal from all pools.
      *
-     *      `xTotal` is NOT necessarily USD. we do not care about the unit.
+     *      note:
+     *      1. `xTotal` is NOT necessarily USD. we do not care about the unit.
+     *      2. you can apply alignAllocationToLotSize outside this function if needed.
      */
     function deallocate2(
         IBorrowingRate.DeallocatePool[] memory confs,

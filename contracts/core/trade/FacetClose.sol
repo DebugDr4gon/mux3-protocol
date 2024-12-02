@@ -13,8 +13,16 @@ contract FacetClose is Mux3TradeBase, IFacetClose {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
     using LibConfigMap for mapping(bytes32 => bytes32);
 
+    struct LiquidatePositionMemory {
+        uint256 size;
+        uint256[] allocations;
+        uint256[] cumulatedBorrowingPerUsd;
+    }
+
     /**
      * @notice The entry point for closing a position
+     * @param args The arguments for closing a position
+     * @return result The result of closing a position
      */
     function closePosition(
         ClosePositionArgs memory args
@@ -31,7 +39,9 @@ contract FacetClose is Mux3TradeBase, IFacetClose {
         // allocation
         uint256[] memory allocations = _deallocateLiquidity(args.positionId, args.marketId, args.size);
         // update borrowing fee for the current market
-        // borrowing fee should be updated before pnl, because profit/loss will affect aum
+        // note: we do not update borrowing fees for other markets to keep the contract simple.
+        //       mux3-broker would periodically update borrowing fees for unclosed positions.
+        // note: borrowing fee should be updated before pnl, because profit/loss will affect aum
         uint256[] memory cumulatedBorrowingPerUsd = _updateMarketBorrowing(args.marketId);
         // pnl
         result.poolPnlUsds = _positionPnlUsd(
@@ -110,14 +120,10 @@ contract FacetClose is Mux3TradeBase, IFacetClose {
         }
     }
 
-    struct LiquidatePositionMemory {
-        uint256 size;
-        uint256[] allocations;
-        uint256[] cumulatedBorrowingPerUsd;
-    }
-
     /**
      * @notice Liquidate a position (of all pool allocations) in a position account. Leave other positions in this position account.
+     * @param args The arguments for liquidating a position
+     * @return result The result of liquidating a position
      */
     function liquidatePosition(
         LiquidatePositionArgs memory args
@@ -131,7 +137,9 @@ contract FacetClose is Mux3TradeBase, IFacetClose {
         // allocation (just copy the existing sizes)
         (mem.size, mem.allocations) = _copyPoolSizeAsAllocation(args.positionId, args.marketId);
         // update borrowing fee for the current market
-        // borrowing fee should be updated before pnl, because profit/loss will affect aum
+        // note: we do not update borrowing fees for other markets to keep the contract simple.
+        //       mux3-broker would periodically update borrowing fees for unclosed positions.
+        // note: borrowing fee should be updated before pnl, because profit/loss will affect aum
         mem.cumulatedBorrowingPerUsd = _updateMarketBorrowing(args.marketId);
         // should mm unsafe
         {

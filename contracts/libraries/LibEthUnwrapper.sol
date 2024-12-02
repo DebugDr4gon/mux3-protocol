@@ -22,7 +22,21 @@ library LibEthUnwrapper {
         IWETH9(weth).withdraw(rawAmount);
 
         // send
-        (bool success, ) = to.call{ value: rawAmount, gas: DEFAULT_GAS_LIMIT }("");
+        bool success;
+        // use an assembly call to avoid loading large data into memory
+        // input mem[in…(in+insize)]
+        // output area mem[out…(out+outsize))]
+        assembly {
+            success := call(
+                DEFAULT_GAS_LIMIT, // gas limit
+                to, // receiver
+                rawAmount, // value
+                0, // in
+                0, // insize
+                0, // out
+                0 // outsize
+            )
+        }
         if (success) {
             return true;
         }
