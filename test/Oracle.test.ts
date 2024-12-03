@@ -2,6 +2,7 @@ import { ethers, network } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
 import { expect } from "chai"
 import { toWei, createContract, getMuxSignature, getMuxPriceData } from "../scripts/deployUtils"
+import { BigNumber } from "ethers"
 
 describe("Oracle", () => {
   let tester: any
@@ -21,6 +22,10 @@ describe("Oracle", () => {
       forked = false
     }
   })
+
+  const u2b = (u) => {
+    return ethers.utils.hexZeroPad(u.toTwos(256).toHexString(), 32)
+  }
 
   async function hardhatSetArbERC20Balance(tokenAddress: any, account: any, balance: any) {
     const balanceSlot = 51
@@ -76,28 +81,33 @@ describe("Oracle", () => {
     //   )
     // )
     // const signature = await signer.signMessage(ethers.utils.arrayify(message))
+    const oracleId = u2b(BigNumber.from("0x1234"))
     const signature = await getMuxSignature(
-      { chainid: 31337, contractAddress: await tester.mpp(), seq: 12, price: toWei("2000"), timestamp: 17295938660 },
-      signer
-    )
-    await tester.test_muxPriceProvider(signer.address, signature)
-
-    await getMuxSignature(
       {
-        chainid: 42161,
-        contractAddress: "0x384b3384CC4cE9CEf6fBa182F2f2e5Fe76f8D280",
-        seq: 1,
-        price: toWei("3100"),
-        timestamp: 1731293409,
+        oracleId: oracleId,
+        chainid: 31337,
+        contractAddress: await tester.mpp(),
+        seq: 12,
+        price: toWei("2000"),
+        timestamp: 17295938660,
       },
       signer
     )
+    await tester.test_muxPriceProvider(signer.address, signature)
   })
 
   it("test_muxPriceProvider_error", async () => {
+    const oracleId = u2b(BigNumber.from("0x1234"))
     const signer = await ethers.Wallet.createRandom()
     const signature = await getMuxSignature(
-      { chainid: 31337, contractAddress: await tester.mpp(), seq: 12, price: toWei("2000"), timestamp: 17295938660 },
+      {
+        oracleId: oracleId,
+        chainid: 31337,
+        contractAddress: await tester.mpp(),
+        seq: 12,
+        price: toWei("2000"),
+        timestamp: 17295938660,
+      },
       signer
     )
     await expect(tester.test_muxPriceProvider_error(signer.address, signature)).to.be.revertedWith("InvalidSignature")

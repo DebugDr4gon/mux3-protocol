@@ -159,16 +159,29 @@ export function getSelectors(contract: Contract): { [method: string]: string } {
 }
 
 export async function getMuxSignature(
-  priceData: { chainid: number; contractAddress: string; seq: number; price: number; timestamp: number },
+  priceData: {
+    oracleId: string
+    chainid: number
+    contractAddress: string
+    seq: number
+    price: number
+    timestamp: number
+  },
   signer: any
 ) {
   const message = ethers.utils.keccak256(
     ethers.utils.solidityPack(
-      ["uint256", "address", "uint256", "uint256", "uint256"],
-      [priceData.chainid, priceData.contractAddress, priceData.seq, priceData.price, priceData.timestamp]
+      ["uint256", "uint256", "address", "uint256", "uint256", "uint256"],
+      [
+        priceData.oracleId,
+        priceData.chainid,
+        priceData.contractAddress,
+        priceData.seq,
+        priceData.price,
+        priceData.timestamp,
+      ]
     )
   )
-  console.log("generated message", message)
   return await signer.signMessage(ethers.utils.arrayify(message))
 }
 
@@ -185,8 +198,15 @@ export async function getMuxPriceData(
 ) {
   const message = ethers.utils.keccak256(
     ethers.utils.solidityPack(
-      ["uint256", "address", "uint256", "uint256", "uint256"],
-      [priceData.chainid, priceData.contractAddress, priceData.seq, priceData.price, priceData.timestamp]
+      ["uint256", "uint256", "address", "uint256", "uint256", "uint256"],
+      [
+        priceData.oracleId,
+        priceData.chainid,
+        priceData.contractAddress,
+        priceData.seq,
+        priceData.price,
+        priceData.timestamp,
+      ]
     )
   )
   const signature = await signer.signMessage(ethers.utils.arrayify(message))

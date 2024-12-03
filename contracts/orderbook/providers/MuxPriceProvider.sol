@@ -54,6 +54,7 @@ contract MuxPriceProvider is OwnableUpgradeable {
         bytes32 message = ECDSAUpgradeable.toEthSignedMessageHash(
             keccak256(
                 abi.encodePacked(
+                    oracleId,
                     block.chainid,
                     address(this),
                     oracleData.sequence,
