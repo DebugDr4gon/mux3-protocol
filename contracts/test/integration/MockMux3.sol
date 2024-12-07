@@ -46,8 +46,8 @@ contract MockMux3 is FacetManagement, FacetReader, IFacetOpen, IFacetClose, IFac
         _mockCache[key] = price;
     }
 
-    function setPrice(bytes32 key, address, bytes memory oralceCalldata) external override {
-        uint256 price = abi.decode(oralceCalldata, (uint256));
+    function setPrice(bytes32 key, address, bytes memory oracleCalldata) external override {
+        uint256 price = abi.decode(oracleCalldata, (uint256));
         _mockCache[key] = price;
     }
 

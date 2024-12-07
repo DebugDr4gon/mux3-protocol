@@ -80,7 +80,7 @@ contract FacetManagement is
      * @notice Sets the oracle provider whitelist
      * @param oracleProvider The address of the oracle provider
      * @param isValid Boolean indicating if the provider is valid
-     * @dev An oralce provider provides validation and normalization of the price from external sources
+     * @dev An oracle provider provides validation and normalization of the price from external sources
      */
     function setOracleProvider(address oracleProvider, bool isValid) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setOracleProvider(oracleProvider, isValid);
