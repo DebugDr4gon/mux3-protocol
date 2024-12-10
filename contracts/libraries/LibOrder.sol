@@ -110,7 +110,7 @@ library LibOrder {
         return (orderParams.flags & POSITION_MARKET_ORDER) != 0;
     }
 
-    function isWithdrawIfEmpty(PositionOrderParams memory orderParams) internal pure returns (bool) {
+    function isWithdrawAllIfEmpty(PositionOrderParams memory orderParams) internal pure returns (bool) {
         return (orderParams.flags & POSITION_WITHDRAW_ALL_IF_EMPTY) != 0;
     }
 

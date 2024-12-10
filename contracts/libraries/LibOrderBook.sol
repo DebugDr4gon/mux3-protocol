@@ -457,7 +457,7 @@ library LibOrderBook {
         // is the position completely closed
         if (_isPositionAccountFullyClosed(orderBook, orderParams.positionId)) {
             // auto withdraw
-            if (LibOrder.isWithdrawIfEmpty(orderParams)) {
+            if (LibOrder.isWithdrawAllIfEmpty(orderParams)) {
                 IFacetPositionAccount(orderBook.mux3Facet).withdrawAll(
                     IFacetPositionAccount.WithdrawAllArgs({
                         positionId: orderParams.positionId,
@@ -479,7 +479,7 @@ library LibOrderBook {
         bytes32 positionId,
         bytes32 marketId,
         address lastConsumedToken,
-        bool isWithdrawAll,
+        bool isWithdrawAllIfEmpty,
         bool isUnwrapWeth
     ) external returns (uint256 tradingPrice) {
         // close
@@ -492,19 +492,23 @@ library LibOrderBook {
             })
         );
         tradingPrice = result.tradingPrice;
-        // auto withdraw, equivalent to POSITION_WITHDRAW_ALL_IF_EMPTY
-        if (isWithdrawAll) {
-            // default values of isUnwrapWeth, withdrawSwapToken, withdrawSwapSlippage
-            // so that mux3 looks like mux1
-            IFacetPositionAccount(orderBook.mux3Facet).withdrawAll(
-                IFacetPositionAccount.WithdrawAllArgs({
-                    positionId: positionId,
-                    isUnwrapWeth: true,
-                    withdrawSwapToken: address(0),
-                    withdrawSwapSlippage: 0
-                })
-            );
+        // is the position completely closed
+        if (_isPositionAccountFullyClosed(orderBook, positionId)) {
+            // auto withdraw, equivalent to POSITION_WITHDRAW_ALL_IF_EMPTY
+            if (isWithdrawAllIfEmpty) {
+                // default values of isUnwrapWeth, withdrawSwapToken, withdrawSwapSlippage
+                // so that mux3 looks like mux1
+                IFacetPositionAccount(orderBook.mux3Facet).withdrawAll(
+                    IFacetPositionAccount.WithdrawAllArgs({
+                        positionId: positionId,
+                        isUnwrapWeth: true,
+                        withdrawSwapToken: address(0),
+                        withdrawSwapSlippage: 0
+                    })
+                );
+            }
         }
+
         // cancel activated tp/sl orders
         _cancelActivatedTpslOrders(orderBook, positionId, marketId);
     }
@@ -594,7 +598,7 @@ library LibOrderBook {
         bytes32 positionId,
         bytes32 marketId,
         address lastConsumedToken,
-        bool isWithdrawAll,
+        bool isWithdrawAllIfEmpty,
         bool isUnwrapWeth
     ) external returns (uint256 tradingPrice) {
         // pre-check
@@ -630,18 +634,21 @@ library LibOrderBook {
                 })
             );
         }
-        // auto withdraw, equivalent to POSITION_WITHDRAW_ALL_IF_EMPTY
-        if (isWithdrawAll) {
-            // default values of isUnwrapWeth, withdrawSwapToken, withdrawSwapSlippage
-            // so that mux3 looks like mux1
-            IFacetPositionAccount(orderBook.mux3Facet).withdrawAll(
-                IFacetPositionAccount.WithdrawAllArgs({
-                    positionId: positionId,
-                    isUnwrapWeth: isUnwrapWeth,
-                    withdrawSwapToken: address(0),
-                    withdrawSwapSlippage: 0
-                })
-            );
+        // is the position completely closed
+        if (_isPositionAccountFullyClosed(orderBook, positionId)) {
+            // auto withdraw, equivalent to POSITION_WITHDRAW_ALL_IF_EMPTY
+            if (isWithdrawAllIfEmpty) {
+                // default values of isUnwrapWeth, withdrawSwapToken, withdrawSwapSlippage
+                // so that mux3 looks like mux1
+                IFacetPositionAccount(orderBook.mux3Facet).withdrawAll(
+                    IFacetPositionAccount.WithdrawAllArgs({
+                        positionId: positionId,
+                        isUnwrapWeth: isUnwrapWeth,
+                        withdrawSwapToken: address(0),
+                        withdrawSwapSlippage: 0
+                    })
+                );
+            }
         }
 
         // cancel activated tp/sl orders

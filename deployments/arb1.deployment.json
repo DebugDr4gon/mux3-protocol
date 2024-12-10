@@ -179,7 +179,7 @@
     "address": "0xE3A2028aB6eE109DC76c67fa4584E829a6A3E7F8",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x650cEA77D3Af757F794c84F2a3e4C180E840dB8d"
+      "implementation": "0x96d3b67fA7A25c78767e2ba8F0c9eE60d1298E4e"
     },
     "deployedAt": 265067381
   },
@@ -189,7 +189,7 @@
     "address": "0x57a01cf961B076def0A62fB42Da1956635Ff9E33",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x10564472D18B7e338D683CEEF57e2228a4A18fE1"
+      "implementation": "0x52E5d19f038772cF5f71D7462Bb73A24B0Ff58b1"
     },
     "deployedAt": 265077992
   },
@@ -212,14 +212,14 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0x650cEA77D3Af757F794c84F2a3e4C180E840dB8d",
-    "deployedAt": 279576798
+    "address": "0x96d3b67fA7A25c78767e2ba8F0c9eE60d1298E4e",
+    "deployedAt": 283276341
   },
   "Delegator__implementation": {
     "type": "plain",
     "name": "Delegator__implementation",
-    "address": "0x10564472D18B7e338D683CEEF57e2228a4A18fE1",
-    "deployedAt": 267791165
+    "address": "0x52E5d19f038772cF5f71D7462Bb73A24B0Ff58b1",
+    "deployedAt": 282416551
   },
   "ChainlinkStreamProvider__implementation": {
     "type": "plain",
@@ -240,8 +240,8 @@
   "MuxPriceProvider__implementation": {
     "type": "plain",
     "name": "MuxPriceProvider__implementation",
-    "address": "0x4586769A59BFE5D7EBC492BFB195e6d767E4ca0a",
-    "deployedAt": 278876745
+    "address": "0xA715e9434C078E8Ead8a78e235c4487c0C73463E",
+    "deployedAt": 280831369
   },
   "MuxPriceProvider": {
     "type": "upgradeable",
@@ -249,7 +249,7 @@
     "address": "0x384b3384CC4cE9CEf6fBa182F2f2e5Fe76f8D280",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x4586769A59BFE5D7EBC492BFB195e6d767E4ca0a"
+      "implementation": "0xA715e9434C078E8Ead8a78e235c4487c0C73463E"
     },
     "deployedAt": 269763501
   },
@@ -301,12 +301,6 @@
     },
     "deployedAt": 275085984
   },
-  "LibOrderBook": {
-    "type": "plain",
-    "name": "LibOrderBook",
-    "address": "0xC4285891A9B6723916c991b882e4bF7f2e79abb4",
-    "deployedAt": 278026761
-  },
   "SusdsOracleL2__implementation": {
     "type": "plain",
     "name": "SusdsOracleL2__implementation",
@@ -338,5 +332,11 @@
       "implementation": "0x6Ca989bE5e44A10e93b33752c5aa93d953938c04"
     },
     "deployedAt": 279142174
+  },
+  "LibOrderBook": {
+    "type": "plain",
+    "name": "LibOrderBook",
+    "address": "0x64C6296c2ce2aaf7533D6D591266e9085c124A38",
+    "deployedAt": 283276324
   }
 }
