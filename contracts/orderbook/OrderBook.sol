@@ -91,6 +91,9 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
 
     /**
      * @notice Trader/LP can wrap native ETH to WETH and WETH will stay in OrderBook for subsequent commands
+     *
+     *         note: wrapNative is intended to be used as part of a multicall. If it is called directly
+     *               the caller would end up losing the funds.
      * @param amount Amount of ETH to wrap
      * @dev Amount must be greater than 0 and less than or equal to msg.value
      */
@@ -101,6 +104,9 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
 
     /**
      * @notice Trader/LP transfer ERC20 tokens to the OrderBook
+     *
+     *         note: transferToken is intended to be used as part of a multicall. If it is called directly
+     *               the caller would end up losing the funds.
      * @param token Address of the token to transfer
      * @param amount Amount of tokens to transfer
      */
