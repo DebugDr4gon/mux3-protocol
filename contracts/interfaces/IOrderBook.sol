@@ -212,16 +212,18 @@ interface IOrderBook {
     function placeWithdrawalOrder(WithdrawalOrderParams memory orderParams) external payable;
 
     /**
+     * @notice A Trader can deposit collateral into a PositionAccount
+     */
+    function depositCollateral(
+        bytes32 positionId,
+        address collateralToken,
+        uint256 collateralAmount // token decimals
+    ) external payable;
+
+    /**
      * @notice A Trader can withdraw all collateral only when position = 0
      */
     function withdrawAllCollateral(WithdrawAllOrderParams memory orderParams) external;
-
-    /**
-     * @notice A Rebalancer can rebalance pool liquidity by swap token 0 for token 1
-     *
-     *         msg.sender must implement IMux3RebalancerCallback.
-     */
-    function placeRebalanceOrder(RebalanceOrderParams memory orderParams) external;
 
     /**
      * @notice A Trader/LP can cancel an Order by orderId after a cool down period.
@@ -230,13 +232,11 @@ interface IOrderBook {
     function cancelOrder(uint64 orderId) external;
 
     /**
-     * @notice A Trader can deposit collateral into a PositionAccount
+     * @notice A Rebalancer can rebalance pool liquidity by swap token 0 for token 1
+     *
+     *         msg.sender must implement IMux3RebalancerCallback.
      */
-    function depositCollateral(
-        bytes32 positionId,
-        address collateralToken,
-        uint256 collateralAmount // token decimals
-    ) external;
+    function placeRebalanceOrder(RebalanceOrderParams memory orderParams) external;
 
     /**
      * @notice Add liquidity to a CollateralPool without mint shares

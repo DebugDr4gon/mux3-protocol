@@ -207,6 +207,20 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
+     * @notice A Trader can deposit collateral into a PositionAccount
+     * @param positionId The ID of the position
+     * @param collateralToken The address of the collateral token
+     * @param collateralAmount The amount of collateral token
+     */
+    function depositCollateral(
+        bytes32 positionId,
+        address collateralToken,
+        uint256 collateralAmount // token decimals
+    ) external payable updateSequence nonReentrant {
+        LibOrderBook.depositCollateral(_storage, positionId, collateralToken, collateralAmount);
+    }
+
+    /**
      * @notice A Trader can withdraw all collateral only when position = 0
      * @param orderParams The parameters for the withdrawal order
      */
@@ -218,6 +232,15 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
             require(positionAccount == msg.sender, "Not authorized");
         }
         LibOrderBook.withdrawAllCollateral(_storage, orderParams);
+    }
+
+    /**
+     * @notice A Trader/LP can cancel an Order by orderId after a cool down period.
+     *         A Broker can also cancel an Order after expiration.
+     * @param orderId The ID of the order to cancel
+     */
+    function cancelOrder(uint64 orderId) external nonReentrant updateSequence {
+        LibOrderBook.cancelOrder(_storage, orderId, _blockTimestamp(), msg.sender);
     }
 
     /**
@@ -268,21 +291,6 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @notice Similar to fillLiquidityOrder, but no share minted.
-     * @param poolAddress The address of the pool
-     * @param collateralAddress The address of the collateral token
-     * @param rawAmount The amount of collateral token in token decimals
-     * @dev Usually used to send trading fees to CollateralPool
-     */
-    function donateLiquidity(
-        address poolAddress,
-        address collateralAddress,
-        uint256 rawAmount // token.decimals
-    ) external updateSequence {
-        LibOrderBook.donateLiquidity(_storage, poolAddress, collateralAddress, rawAmount);
-    }
-
-    /**
      * @notice Withdraw collateral. called by Broker
      * @param orderId The ID of the order to fill
      */
@@ -300,29 +308,6 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         uint64 orderId
     ) external onlyRole(BROKER_ROLE) nonReentrant whenNotPaused(OrderType.RebalanceOrder) updateSequence {
         LibOrderBook.fillRebalanceOrder(_storage, orderId);
-    }
-
-    /**
-     * @notice A Trader/LP can cancel an Order by orderId after a cool down period.
-     *         A Broker can also cancel an Order after expiration.
-     * @param orderId The ID of the order to cancel
-     */
-    function cancelOrder(uint64 orderId) external nonReentrant updateSequence {
-        LibOrderBook.cancelOrder(_storage, orderId, _blockTimestamp(), msg.sender);
-    }
-
-    /**
-     * @notice A Trader can deposit collateral into a PositionAccount
-     * @param positionId The ID of the position
-     * @param collateralToken The address of the collateral token
-     * @param collateralAmount The amount of collateral token
-     */
-    function depositCollateral(
-        bytes32 positionId,
-        address collateralToken,
-        uint256 collateralAmount // token decimals
-    ) external updateSequence nonReentrant {
-        LibOrderBook.depositCollateral(_storage, positionId, collateralToken, collateralAmount);
     }
 
     /**
@@ -401,6 +386,21 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         bool isUnwrapWeth
     ) external onlyRole(BROKER_ROLE) nonReentrant updateSequence {
         LibOrderBook.updateBorrowingFee(_storage, positionId, marketId, lastConsumedToken, isUnwrapWeth);
+    }
+
+    /**
+     * @notice Similar to fillLiquidityOrder, but no share minted.
+     * @param poolAddress The address of the pool
+     * @param collateralAddress The address of the collateral token
+     * @param rawAmount The amount of collateral token in token decimals
+     * @dev Usually used to send trading fees to CollateralPool
+     */
+    function donateLiquidity(
+        address poolAddress,
+        address collateralAddress,
+        uint256 rawAmount // token.decimals
+    ) external updateSequence {
+        LibOrderBook.donateLiquidity(_storage, poolAddress, collateralAddress, rawAmount);
     }
 
     function _blockTimestamp() internal view virtual returns (uint64) {
