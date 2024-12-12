@@ -223,6 +223,10 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         address collateralToken,
         uint256 collateralAmount // token decimals
     ) external payable updateSequence nonReentrant {
+        (address positionAccount, ) = LibCodec.decodePositionId(positionId);
+        if (_isDelegator(msg.sender)) {} else {
+            require(positionAccount == msg.sender, "Not authorized");
+        }
         LibOrderBook.depositCollateral(_storage, positionId, collateralToken, collateralAmount);
     }
 
