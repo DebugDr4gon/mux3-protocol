@@ -387,6 +387,9 @@ contract PositionAccount is Mux3FacetBase {
 
     /**
      * @dev Check if marginBalance >= marketPrice * size * maintenanceMarginRate
+     *
+     *      note: this function does not calculate borrowing fee. so make sure
+     *            to update borrowing fee before calling this function.
      */
     function _isMaintenanceMarginSafe(
         bytes32 positionId,
@@ -406,9 +409,6 @@ contract PositionAccount is Mux3FacetBase {
 
     /**
      * @dev Check if collateralValue >= entryPrice * size / traderMaxLeverage
-     *
-     *      note: this function does not calculate borrowing fee. so make sure
-     *            to update borrowing fee before calling this function.
      */
     function _isLeverageSafe(bytes32 positionId) internal view returns (bool) {
         uint256 positionMargin = _positionMargin(positionId, MarginType.ENTRY_LEVERAGE);
