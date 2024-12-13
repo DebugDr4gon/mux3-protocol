@@ -133,6 +133,7 @@ async function main(deployer: Deployer) {
   await ensureFinished(
     orderBook.setConfig(ethers.utils.id("MCO_LIQUIDITY_LOCK_PERIOD"), u2b(ethers.BigNumber.from(60 * 2)))
   ) // 60 * 15
+  await ensureFinished(orderBook.setConfig(ethers.utils.id("MCO_MIN_LIQUIDITY_ORDER_USD"), u2b(toWei("0.1"))))
   await ensureFinished(
     orderBook.setConfig(ethers.utils.id("MCO_MARKET_ORDER_TIMEOUT"), u2b(ethers.BigNumber.from(60 * 2)))
   )

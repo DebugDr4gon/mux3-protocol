@@ -94,7 +94,15 @@ library LibOrderBook {
         OrderData memory orderData,
         LiquidityOrderParams memory orderParams
     ) internal returns (uint256 outAmount) {
+        // min order protection
         address collateralAddress = ICollateralPool(orderParams.poolAddress).collateralToken();
+        {
+            uint256 price = _priceOf(orderBook, collateralAddress);
+            uint256 value = (_collateralToWad(orderBook, collateralAddress, orderParams.rawAmount) * price) / 1e18;
+            uint256 minUsd = _minLiquidityOrderUsd(orderBook);
+            require(value >= minUsd, "Min liquidity order value");
+        }
+        // send collateral
         _transferOut(
             orderBook,
             collateralAddress, // token
@@ -102,6 +110,7 @@ library LibOrderBook {
             orderParams.rawAmount,
             false // isUnwrapWeth. CollateralPool never accepts ETH
         );
+        // add liquidity
         ICollateralPool.AddLiquidityResult memory result = ICollateralPool(orderParams.poolAddress).addLiquidity(
             ICollateralPool.AddLiquidityArgs({
                 account: orderData.account,
@@ -117,6 +126,7 @@ library LibOrderBook {
         OrderData memory orderData,
         LiquidityOrderParams memory orderParams
     ) internal returns (uint256 outAmount) {
+        // send share
         _transferOut(
             orderBook,
             orderParams.poolAddress, // mlp
@@ -124,6 +134,7 @@ library LibOrderBook {
             orderParams.rawAmount,
             false
         );
+        // remove liquidity
         ICollateralPool.RemoveLiquidityResult memory result = ICollateralPool(orderParams.poolAddress).removeLiquidity(
             ICollateralPool.RemoveLiquidityArgs({
                 account: orderData.account,
@@ -132,14 +143,23 @@ library LibOrderBook {
             })
         );
         outAmount = result.rawCollateralAmount;
+        // min order protection
+        {
+            address collateralAddress = ICollateralPool(orderParams.poolAddress).collateralToken();
+            uint256 price = _priceOf(orderBook, collateralAddress);
+            uint256 value = (_collateralToWad(orderBook, collateralAddress, outAmount) * price) / 1e18;
+            uint256 minUsd = _minLiquidityOrderUsd(orderBook);
+            require(value >= minUsd, "Min liquidity order value");
+        }
     }
 
+    // dev: can be external
     function donateLiquidity(
         OrderBookStorage storage orderBook,
         address poolAddress,
         address collateralAddress,
         uint256 rawAmount // token.decimals
-    ) external {
+    ) internal {
         require(rawAmount != 0, "Zero amount");
         _validateCollateral(orderBook, collateralAddress);
         _validatePool(orderBook, poolAddress);
@@ -282,10 +302,11 @@ library LibOrderBook {
         delete orderBook.tpslOrders[positionId][marketId];
     }
 
+    // dev: can be external
     function withdrawAllCollateral(
         OrderBookStorage storage orderBook,
         WithdrawAllOrderParams memory orderParams
-    ) external {
+    ) internal {
         require(
             _isPositionAccountFullyClosed(orderBook, orderParams.positionId),
             "Position account is not fully closed"
@@ -376,7 +397,7 @@ library LibOrderBook {
         OrderBookStorage storage orderBook,
         PositionOrderParams memory orderParams,
         uint64 blockTimestamp
-    ) internal returns (uint256 tradingPrice) {
+    ) private returns (uint256 tradingPrice) {
         // auto deposit
         if (orderParams.collateralToken != address(0) && orderParams.collateralAmount > 0) {
             // deposit collateral
@@ -414,7 +435,7 @@ library LibOrderBook {
         OrderBookStorage storage orderBook,
         PositionOrderParams memory orderParams,
         uint64 orderId
-    ) internal returns (uint256 tradingPrice) {
+    ) private returns (uint256 tradingPrice) {
         // close
         IFacetClose.ClosePositionResult memory result = IFacetClose(orderBook.mux3Facet).closePosition(
             IFacetClose.ClosePositionArgs({
@@ -513,12 +534,13 @@ library LibOrderBook {
         _cancelActivatedTpslOrders(orderBook, positionId, marketId);
     }
 
+    // dev: can be external
     function setInitialLeverage(
         OrderBookStorage storage orderBook,
         bytes32 positionId,
         bytes32 marketId,
         uint256 initialLeverage
-    ) external {
+    ) internal {
         require(initialLeverage > 0, "initialLeverage must be greater than 0");
         IFacetPositionAccount(orderBook.mux3Facet).setInitialLeverage(positionId, marketId, initialLeverage);
     }
@@ -868,25 +890,27 @@ library LibOrderBook {
         emit IOrderBook.NewPositionOrder(positionAccount, newOrderId, orderParams);
     }
 
+    // dev: can be external
     function depositCollateral(
         OrderBookStorage storage orderBook,
         bytes32 positionId,
         address collateralToken,
         uint256 collateralAmount
-    ) external {
+    ) internal {
         require(collateralAmount != 0, "Zero collateral");
         _transferIn(orderBook, collateralToken, collateralAmount);
         _transferOut(orderBook, collateralToken, address(orderBook.mux3Facet), collateralAmount, false);
         IFacetPositionAccount(orderBook.mux3Facet).deposit(positionId, collateralToken, collateralAmount);
     }
 
+    // dev: can be external
     function updateBorrowingFee(
         OrderBookStorage storage orderBook,
         bytes32 positionId,
         bytes32 marketId,
         address lastConsumedToken,
         bool isUnwrapWeth
-    ) external {
+    ) internal {
         IFacetPositionAccount(orderBook.mux3Facet).updateBorrowingFee(
             positionId,
             marketId,
@@ -895,11 +919,13 @@ library LibOrderBook {
         );
     }
 
+    // dev: can be external
     function depositGas(OrderBookStorage storage orderBook, uint256 amount, address sender) internal {
         _transferIn(orderBook, orderBook.weth, amount);
         orderBook.gasBalances[sender] += amount;
     }
 
+    // dev: can be external
     function withdrawGas(OrderBookStorage storage orderBook, uint256 amount, address sender) internal {
         require(orderBook.gasBalances[sender] >= amount, "Insufficient gas balance");
         orderBook.gasBalances[sender] -= amount;
@@ -975,12 +1001,17 @@ library LibOrderBook {
 
     function _lotSize(OrderBookStorage storage orderBook, bytes32 marketId) private view returns (uint256 lotSize) {
         lotSize = IFacetReader(orderBook.mux3Facet).marketConfigValue(marketId, MM_LOT_SIZE).toUint256();
-        require(lotSize > 0, "Lot size not set");
+        require(lotSize > 0, "MM_LOT_SIZE not set");
     }
 
     function _liquidityLockPeriod(OrderBookStorage storage orderBook) private view returns (uint64 timeout) {
         timeout = orderBook.configTable.getUint256(MCO_LIQUIDITY_LOCK_PERIOD).toUint64();
         // 0 is valid
+    }
+
+    function _minLiquidityOrderUsd(OrderBookStorage storage orderBook) private view returns (uint256 minUsd) {
+        minUsd = orderBook.configTable.getUint256(MCO_MIN_LIQUIDITY_ORDER_USD);
+        require(minUsd > 0, "MCO_MIN_LIQUIDITY_ORDER_USD not set");
     }
 
     function _isMarketLong(OrderBookStorage storage orderBook, bytes32 marketId) private view returns (bool isLong) {
@@ -1013,6 +1044,14 @@ library LibOrderBook {
         } else {
             rawAmount = wadAmount * 10 ** (decimals - 18);
         }
+    }
+
+    function _priceOf(OrderBookStorage storage orderBook, address tokenAddress) internal view returns (uint256 price) {
+        price = IFacetReader(orderBook.mux3Facet).priceOf(tokenAddress);
+    }
+
+    function _priceOf(OrderBookStorage storage orderBook, bytes32 oracleId) internal view returns (uint256 price) {
+        price = IFacetReader(orderBook.mux3Facet).priceOf(oracleId);
     }
 
     /**

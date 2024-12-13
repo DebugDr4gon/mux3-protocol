@@ -87,7 +87,9 @@ contract MockCollateralPool is
 
     function removeLiquidity(
         RemoveLiquidityArgs memory args
-    ) external override returns (RemoveLiquidityResult memory result) {}
+    ) external override returns (RemoveLiquidityResult memory result) {
+        result.rawCollateralAmount = 1e18; // in order to pass MCO_MIN_LIQUIDITY_ORDER_USD
+    }
 
     function rebalance(
         address rebalancer,

@@ -110,3 +110,6 @@ bytes32 constant MCO_CANCEL_COOL_DOWN = keccak256("MCO_CANCEL_COOL_DOWN");
 // when calling fillPositionOrder, fillLiquidityOrder, fillWithdrawalOrder, send (MCO_ORDER_GAS_FEE_GWEI * 1e9) ETH
 // to Broker as a gas compensation
 bytes32 constant MCO_ORDER_GAS_FEE_GWEI = keccak256("MCO_ORDER_GAS_FEE_GWEI");
+
+// minimum order value in USD for adding/removing liquidity
+bytes32 constant MCO_MIN_LIQUIDITY_ORDER_USD = keccak256("MCO_MIN_LIQUIDITY_ORDER_USD");

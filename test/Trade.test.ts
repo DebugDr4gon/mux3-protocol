@@ -115,6 +115,7 @@ describe("Trade", () => {
     await orderBook.setConfig(ethers.utils.id("MCO_MARKET_ORDER_TIMEOUT"), u2b(ethers.BigNumber.from(60 * 2)))
     await orderBook.setConfig(ethers.utils.id("MCO_LIMIT_ORDER_TIMEOUT"), u2b(ethers.BigNumber.from(86400 * 30)))
     await orderBook.setConfig(ethers.utils.id("MCO_CANCEL_COOL_DOWN"), u2b(ethers.BigNumber.from(5)))
+    await orderBook.setConfig(ethers.utils.id("MCO_MIN_LIQUIDITY_ORDER_USD"), u2b(toWei("0.1")))
 
     // collateral pool
     emitter = (await createContract("CollateralPoolEventEmitter")) as CollateralPoolEventEmitter
@@ -546,6 +547,29 @@ describe("Trade", () => {
       expect(await pool3.totalSupply()).to.equal(toWei("999700")) // 999800 - 100
       expect(await pool3.getAumUsd()).to.equal(toWei("799760")) // 19.994 * 40000
       expect(await aumReader.callStatic.estimatedAumUsd(pool3.address)).to.equal(toWei("799760"))
+    })
+
+    it("addLiquidity with tiny amount", async () => {
+      // pool 1
+      await usdc.mint(orderBook.address, toUnit("0.001", 6))
+      const args = {
+        poolAddress: pool1.address,
+        rawAmount: toUnit("0.001", 6),
+        isAdding: true,
+        isUnwrapWeth: false,
+      }
+      await orderBook.connect(lp1).placeLiquidityOrder(args)
+      await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 930)
+      await expect(orderBook.connect(broker).fillLiquidityOrder(3)).to.revertedWith("Min liquidity order value")
+    })
+
+    it("removeLiquidity with tiny amount", async () => {
+      // pool 1
+      const args = { poolAddress: pool1.address, rawAmount: toWei("0.001"), isAdding: false, isUnwrapWeth: false }
+      await pool1.connect(lp1).transfer(orderBook.address, toWei("0.001"))
+      await orderBook.connect(lp1).placeLiquidityOrder(args)
+      await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 930)
+      await expect(orderBook.connect(broker).fillLiquidityOrder(3)).to.revertedWith("Min liquidity order value")
     })
 
     it("open long: should set trader im before fill a position order", async () => {
