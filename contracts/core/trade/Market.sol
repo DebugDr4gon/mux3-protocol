@@ -18,6 +18,8 @@ contract Market is Mux3FacetBase, IMarket {
 
     function _openMarketPosition(bytes32 marketId, uint256[] memory allocations) internal {
         BackedPoolState[] storage backedPools = _markets[marketId].pools;
+        // open position in each pool
+        // note: allocations already implies capacity for each pool
         require(
             allocations.length == backedPools.length,
             AllocationLengthMismatch(allocations.length, backedPools.length)
@@ -27,7 +29,21 @@ contract Market is Mux3FacetBase, IMarket {
             if (allocation == 0) {
                 continue;
             }
-            ICollateralPool(backedPools[i].backedPool).openPosition(marketId, allocation);
+            address backedPool = backedPools[i].backedPool;
+            ICollateralPool(backedPool).openPosition(marketId, allocation);
+        }
+        // total position limit
+        {
+            uint256 openInterestUsd = 0;
+            for (uint256 i = 0; i < backedPools.length; i++) {
+                address backedPool = backedPools[i].backedPool;
+                MarketState memory marketForPool = ICollateralPool(backedPool).marketState(marketId);
+                uint256 price = _priceOf(_marketOracleId(marketId));
+                uint256 sizeUsd = (marketForPool.totalSize * price) / 1e18;
+                openInterestUsd += sizeUsd;
+            }
+            uint256 capUsd = _marketOpenInterestCap(marketId);
+            require(openInterestUsd <= capUsd, MarketFull());
         }
     }
 

@@ -111,6 +111,8 @@ async function main(deployer: Deployer) {
   const sEthMarketId = toBytes32("ShortETH")
   const lBtcMarketId = toBytes32("LongBTC")
   const sBtcMarketId = toBytes32("ShortBTC")
+  const lArbMarketId = toBytes32("LongARB")
+  const sArbMarketId = toBytes32("ShortARB")
 
   // core
   await ensureFinished(core.initialize(weth))
@@ -150,28 +152,30 @@ async function main(deployer: Deployer) {
   // collateral
   await ensureFinished(core.addCollateralToken(usdc, 6))
   await ensureFinished(core.addCollateralToken(weth, 18))
+  await ensureFinished(core.addCollateralToken(susds, 18))
   await ensureFinished(core.setStrictStableId(a2b(usdc), true))
 
-  // pool 1: usdc, normal, support all
-  await ensureFinished(core.createCollateralPool("MUX Elemental Pool 1", "MEP-1", usdc, 0))
-  const pool1 = (await core.listCollateralPool())[0]
-  console.log("pool1Addr", pool1)
-  await ensureFinished(core.setPoolConfig(pool1, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306"))))
-  await ensureFinished(core.setPoolConfig(pool1, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938"))))
-  await ensureFinished(core.setPoolConfig(pool1, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))
-  await ensureFinished(core.setPoolConfig(pool1, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001"))))
+  // pool 17: usdc, (remove me!)
+  await ensureFinished(core.createCollateralPool("MUX Elemental Pool 17", "MEP-17", usdc, 0))
+  const pool17 = (await core.listCollateralPool())[0]
+  console.log("pool17Addr", pool17)
+  await ensureFinished(core.setPoolConfig(pool17, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306"))))
+  await ensureFinished(core.setPoolConfig(pool17, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938"))))
+  await ensureFinished(core.setPoolConfig(pool17, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))
+  await ensureFinished(core.setPoolConfig(pool17, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001"))))
 
-  // pool 2: usdc, normal, support eth
-  await ensureFinished(core.createCollateralPool("MUX Elemental Pool 2", "MEP-2", usdc, 1))
-  const pool2 = (await core.listCollateralPool())[1]
-  console.log("pool2Addr", pool2)
-  await ensureFinished(core.setPoolConfig(pool2, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306"))))
-  await ensureFinished(core.setPoolConfig(pool2, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938"))))
-  await ensureFinished(core.setPoolConfig(pool2, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))
-  await ensureFinished(core.setPoolConfig(pool2, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001"))))
+  // pool 18: usdc, (remove me!)
+  await ensureFinished(core.createCollateralPool("MUX Elemental Pool 18", "MEP-18", usdc, 1))
+  const pool18 = (await core.listCollateralPool())[1]
+  console.log("pool18Addr", pool18)
+  await ensureFinished(core.setPoolConfig(pool18, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306"))))
+  await ensureFinished(core.setPoolConfig(pool18, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938"))))
+  await ensureFinished(core.setPoolConfig(pool18, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))
+  await ensureFinished(core.setPoolConfig(pool18, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001"))))
+  await ensureFinished(core.setPoolConfig(pool18, ethers.utils.id("MCP_IS_DRAINING"), u2b(ethers.BigNumber.from("0"))))
 
   // pool 3: weth, support eth
-  await ensureFinished(core.createCollateralPool("MUX3 ETH Pool", "LP3", weth, 2))
+  await ensureFinished(core.createCollateralPool("MUX Elemental Pool 3", "MEP-3", weth, 2))
   const pool3 = (await core.listCollateralPool())[2]
   console.log("pool3Addr", pool3)
   await ensureFinished(core.setPoolConfig(pool3, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306"))))
@@ -179,8 +183,17 @@ async function main(deployer: Deployer) {
   await ensureFinished(core.setPoolConfig(pool3, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))
   await ensureFinished(core.setPoolConfig(pool3, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001"))))
 
+  // pool 7: susds, support eth
+  await ensureFinished(core.createCollateralPool("MUX Elemental Pool 7", "MEP-7", susds, 3))
+  const pool7 = (await core.listCollateralPool())[3]
+  console.log("pool7Addr", pool7)
+  await ensureFinished(core.setPoolConfig(pool7, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306"))))
+  await ensureFinished(core.setPoolConfig(pool7, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938"))))
+  await ensureFinished(core.setPoolConfig(pool7, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))
+  await ensureFinished(core.setPoolConfig(pool7, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001"))))
+
   // markets
-  await ensureFinished(core.createMarket(lEthMarketId, "ETH", true, [pool1, pool2, pool3]))
+  await ensureFinished(core.createMarket(lEthMarketId, "ETH", true, [pool17, pool18, pool3, pool7]))
   await ensureFinished(
     core.setMarketConfig(lEthMarketId, ethers.utils.id("MM_POSITION_FEE_RATE"), u2b(toWei("0.0006")))
   )
@@ -196,34 +209,21 @@ async function main(deployer: Deployer) {
   await ensureFinished(core.setMarketConfig(lEthMarketId, ethers.utils.id("MM_LOT_SIZE"), u2b(toWei("0.001"))))
   await ensureFinished(core.setMarketConfig(lEthMarketId, ethers.utils.id("MM_ORACLE_ID"), a2b(weth)))
   await ensureFinished(
-    core.setPoolConfig(pool1, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", lEthMarketId), u2b(toWei("0.80")))
+    core.setMarketConfig(lEthMarketId, ethers.utils.id("MM_OPEN_INTEREST_CAP_USD"), u2b(toWei("10000")))
   )
-  await ensureFinished(
-    core.setPoolConfig(pool1, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", lEthMarketId), u2b(toWei("0.75")))
-  )
-  await ensureFinished(
-    core.setPoolConfig(pool1, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", lEthMarketId), u2b(toWei("0.70")))
-  )
-  await ensureFinished(
-    core.setPoolConfig(pool2, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", lEthMarketId), u2b(toWei("0.80")))
-  )
-  await ensureFinished(
-    core.setPoolConfig(pool2, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", lEthMarketId), u2b(toWei("0.75")))
-  )
-  await ensureFinished(
-    core.setPoolConfig(pool2, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", lEthMarketId), u2b(toWei("0.70")))
-  )
-  await ensureFinished(
-    core.setPoolConfig(pool3, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", lEthMarketId), u2b(toWei("0.80")))
-  )
-  await ensureFinished(
-    core.setPoolConfig(pool3, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", lEthMarketId), u2b(toWei("0.75")))
-  )
-  await ensureFinished(
-    core.setPoolConfig(pool3, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", lEthMarketId), u2b(toWei("0.70")))
-  )
+  for (const p of [pool17, pool18, pool3, pool7]) {
+    await ensureFinished(
+      core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", lEthMarketId), u2b(toWei("0.80")))
+    )
+    await ensureFinished(
+      core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", lEthMarketId), u2b(toWei("0.75")))
+    )
+    await ensureFinished(
+      core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", lEthMarketId), u2b(toWei("0.70")))
+    )
+  }
 
-  await ensureFinished(core.createMarket(sEthMarketId, "ETH", false, [pool1, pool2, pool3]))
+  await ensureFinished(core.createMarket(sEthMarketId, "ETH", false, [pool17, pool18, pool3, pool7]))
   await ensureFinished(
     core.setMarketConfig(sEthMarketId, ethers.utils.id("MM_POSITION_FEE_RATE"), u2b(toWei("0.0006")))
   )
@@ -239,32 +239,19 @@ async function main(deployer: Deployer) {
   await ensureFinished(core.setMarketConfig(sEthMarketId, ethers.utils.id("MM_LOT_SIZE"), u2b(toWei("0.001"))))
   await ensureFinished(core.setMarketConfig(sEthMarketId, ethers.utils.id("MM_ORACLE_ID"), a2b(weth)))
   await ensureFinished(
-    core.setPoolConfig(pool1, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", sEthMarketId), u2b(toWei("0.80")))
+    core.setMarketConfig(sEthMarketId, ethers.utils.id("MM_OPEN_INTEREST_CAP_USD"), u2b(toWei("10000")))
   )
-  await ensureFinished(
-    core.setPoolConfig(pool1, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", sEthMarketId), u2b(toWei("0.75")))
-  )
-  await ensureFinished(
-    core.setPoolConfig(pool1, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", sEthMarketId), u2b(toWei("0.70")))
-  )
-  await ensureFinished(
-    core.setPoolConfig(pool2, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", sEthMarketId), u2b(toWei("0.80")))
-  )
-  await ensureFinished(
-    core.setPoolConfig(pool2, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", sEthMarketId), u2b(toWei("0.75")))
-  )
-  await ensureFinished(
-    core.setPoolConfig(pool2, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", sEthMarketId), u2b(toWei("0.70")))
-  )
-  await ensureFinished(
-    core.setPoolConfig(pool3, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", sEthMarketId), u2b(toWei("0.80")))
-  )
-  await ensureFinished(
-    core.setPoolConfig(pool3, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", sEthMarketId), u2b(toWei("0.75")))
-  )
-  await ensureFinished(
-    core.setPoolConfig(pool3, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", sEthMarketId), u2b(toWei("0.70")))
-  )
+  for (const p of [pool17, pool18, pool3, pool7]) {
+    await ensureFinished(
+      core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", sEthMarketId), u2b(toWei("0.80")))
+    )
+    await ensureFinished(
+      core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", sEthMarketId), u2b(toWei("0.75")))
+    )
+    await ensureFinished(
+      core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", sEthMarketId), u2b(toWei("0.70")))
+    )
+  }
 
   // periphery
   await ensureFinished(delegator.initialize(orderBook.address))

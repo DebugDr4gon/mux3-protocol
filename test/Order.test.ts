@@ -107,6 +107,7 @@ describe("Order", () => {
     await core.createMarket(mid0, "MARKET0", true, [pool1.address])
     await core.setMarketConfig(mid0, ethers.utils.id("MM_LOT_SIZE"), u2b(toWei("0.1")))
     await core.setMarketConfig(mid0, ethers.utils.id("MM_ORACLE_ID"), a2b(token0.address))
+    await core.setMarketConfig(mid0, ethers.utils.id("MM_OPEN_INTEREST_CAP_USD"), u2b(toWei("100000000")))
 
     // prices
     await core.setMockPrice(a2b(token0.address), toWei("2"))

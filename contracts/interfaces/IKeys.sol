@@ -47,6 +47,10 @@ bytes32 constant MM_DISABLE_TRADE = keccak256("MM_DISABLE_TRADE");
 // pause openPosition of a market. if MM_DISABLE_OPEN && !MM_DISABLE_TRADE, only closePosition is allowed
 bytes32 constant MM_DISABLE_OPEN = keccak256("MM_DISABLE_OPEN");
 
+// the maximum open interest limit for a single market. the open interest is constrained by both
+// this cap and MCP_ADL_RESERVE_RATE of each pool. decimals = 18
+bytes32 constant MM_OPEN_INTEREST_CAP_USD = keccak256("MM_OPEN_INTEREST_CAP_USD");
+
 // ==================== pool ====================
 
 // if not empty, override CollateralPool ERC20 name
@@ -72,7 +76,8 @@ bytes32 constant MCP_IS_DRAINING = keccak256("MCP_IS_DRAINING");
 
 // ==================== pool + market ====================
 
-// reserve = price * positions * MCP_ADL_RESERVE_RATE. affects borrowing fee rate and whether openPosition is allowed. decimals = 18
+// reserve = price * positions * MCP_ADL_RESERVE_RATE. affects borrowing fee rate and open interest.
+// the open interest is constrained by both this rate and MM_OPEN_INTEREST_CAP_USD of the market. decimals = 18
 bytes32 constant MCP_ADL_RESERVE_RATE = keccak256("MCP_ADL_RESERVE_RATE");
 
 // position pnl is capped at entryPrice * size * MCP_ADL_MAX_PNL_RATE. decimals = 18

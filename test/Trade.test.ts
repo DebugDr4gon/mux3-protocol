@@ -187,6 +187,7 @@ describe("Trade", () => {
     await core.setMarketConfig(long1, ethers.utils.id("MM_MAINTENANCE_MARGIN_RATE"), u2b(toWei("0.005")))
     await core.setMarketConfig(long1, ethers.utils.id("MM_LOT_SIZE"), u2b(toWei("0.0001")))
     await core.setMarketConfig(long1, ethers.utils.id("MM_ORACLE_ID"), a2b(btc.address))
+    await core.setMarketConfig(long1, ethers.utils.id("MM_OPEN_INTEREST_CAP_USD"), u2b(toWei("100000000")))
 
     await core.createMarket(
       short1,
@@ -200,6 +201,7 @@ describe("Trade", () => {
     await core.setMarketConfig(short1, ethers.utils.id("MM_MAINTENANCE_MARGIN_RATE"), u2b(toWei("0.005")))
     await core.setMarketConfig(short1, ethers.utils.id("MM_LOT_SIZE"), u2b(toWei("0.0001")))
     await core.setMarketConfig(short1, ethers.utils.id("MM_ORACLE_ID"), a2b(btc.address))
+    await core.setMarketConfig(short1, ethers.utils.id("MM_OPEN_INTEREST_CAP_USD"), u2b(toWei("100000000")))
 
     // feeDistributor
     feeDistributor = (await createContract("MockMux3FeeDistributor", [core.address])) as MockMux3FeeDistributor
@@ -862,6 +864,37 @@ describe("Trade", () => {
           positionId,
           marketId: long1,
           size: toWei("75"),
+          flags: PositionOrderFlags.OpenPosition,
+          limitPrice: toWei("50000"),
+          expiration: timestampOfTest + 86400 * 2 + 930 + 300,
+          lastConsumedToken: zeroAddress,
+          collateralToken: usdc.address,
+          collateralAmount: toUnit("1000000", 6),
+          withdrawUsd: toWei("0"),
+          withdrawSwapToken: zeroAddress,
+          withdrawSwapSlippage: toWei("0"),
+          tpPriceDiff: toWei("0"),
+          slPriceDiff: toWei("0"),
+          tpslExpiration: 0,
+          tpslFlags: 0,
+          tpslWithdrawSwapToken: zeroAddress,
+          tpslWithdrawSwapSlippage: toWei("0"),
+        }
+        {
+          await orderBook.connect(trader1).placePositionOrder(args, refCode)
+        }
+        {
+          await expect(orderBook.connect(broker).fillPositionOrder(4)).to.revertedWith("MarketFull")
+        }
+      })
+
+      it("open position cause openInterest > cap", async () => {
+        await core.setMarketConfig(long1, ethers.utils.id("MM_OPEN_INTEREST_CAP_USD"), u2b(toWei("10000")))
+        await usdc.mint(orderBook.address, toUnit("1000000", 6))
+        const args = {
+          positionId,
+          marketId: long1,
+          size: toWei("1"),
           flags: PositionOrderFlags.OpenPosition,
           limitPrice: toWei("50000"),
           expiration: timestampOfTest + 86400 * 2 + 930 + 300,

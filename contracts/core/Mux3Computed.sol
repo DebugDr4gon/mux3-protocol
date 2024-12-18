@@ -83,6 +83,11 @@ contract Mux3Computed is Mux3Store, IErrors {
         require(oracleId != bytes32(0), EssentialConfigNotSet("MM_ORACLE_ID"));
     }
 
+    function _marketOpenInterestCap(bytes32 marketId) internal view returns (uint256 capUsd) {
+        capUsd = _markets[marketId].configs.getUint256(MM_OPEN_INTEREST_CAP_USD);
+        require(capUsd > 0, EssentialConfigNotSet("MM_OPEN_INTEREST_CAP_USD"));
+    }
+
     function _marketDisableTrade(bytes32 marketId) internal view returns (bool isDisabled) {
         isDisabled = _markets[marketId].configs.getBoolean(MM_DISABLE_TRADE);
     }
