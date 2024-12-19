@@ -224,7 +224,7 @@ describe("Delegator", () => {
     }
   })
 
-  it("deposit, withdraw", async () => {
+  it("deposit, withdraw, cancel withdraw", async () => {
     // set delegate
     const balance1 = await ethers.provider.getBalance(trader2.address)
     await delegator.connect(trader1).delegate(trader2.address, 0, { value: toWei("1") })
@@ -287,5 +287,7 @@ describe("Delegator", () => {
         BigNumber.from("97"),
       ])
     }
+    // cancel withdraw
+    await delegator.connect(trader2).cancelOrder(0)
   })
 })

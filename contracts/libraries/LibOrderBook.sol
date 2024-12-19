@@ -845,6 +845,8 @@ library LibOrderBook {
                 orderParams.rawAmount,
                 orderParams.isUnwrapWeth
             );
+        } else if (_isDelegator(msgSender)) {
+            // although Delegator does not support liquidity order yet, it is still safe here
         } else {
             _transferOut(
                 orderBook,
@@ -865,7 +867,7 @@ library LibOrderBook {
         if (_isBroker(msgSender)) {
             uint64 deadline = orderData.placeOrderTime + _withdrawalOrderTimeout(orderBook);
             require(blockTimestamp > deadline, "Not expired");
-        } else {
+        } else if (_isDelegator(msgSender)) {} else {
             require(msgSender == orderData.account, "Not authorized");
         }
     }
