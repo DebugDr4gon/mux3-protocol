@@ -44,8 +44,8 @@
   "FacetReader": {
     "type": "plain",
     "name": "FacetReader",
-    "address": "0xA9f6Fe8daCC1BDCac8c02BDFBAe7721128FbbFf2",
-    "deployedAt": 279482458
+    "address": "0x5b552E5B71396FBdB2B370f012825DdbEE37061f",
+    "deployedAt": 286278363
   },
   "FacetOpen": {
     "type": "plain",
@@ -119,7 +119,7 @@
         ]
       },
       "facetReader": {
-        "address": "0xA9f6Fe8daCC1BDCac8c02BDFBAe7721128FbbFf2",
+        "address": "0x5b552E5B71396FBdB2B370f012825DdbEE37061f",
         "selectors": [
           "0x32404484",
           "0x5252f3a2",
@@ -171,8 +171,8 @@
   "CollateralPool__implementation": {
     "type": "plain",
     "name": "CollateralPool__implementation",
-    "address": "0x80327C11AC09543C6A4090247A040274c6cB399E",
-    "deployedAt": 279752824
+    "address": "0x154B032AB92E3bACDCBB722F4887f05872A3CBA3",
+    "deployedAt": 286278425
   },
   "OrderBook": {
     "type": "upgradeable",

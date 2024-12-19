@@ -328,6 +328,8 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      * @param isWithdrawAll Set false so that collaterals will remain in the position account.
      * @param isUnwrapWeth Whether to unwrap WETH
      * @return tradingPrice The trading price
+     * @dev If a PositionAccount contains multiple positions, it is recommended to liquidate positions
+     *      with pnl >= 0 first, and then liquidate positions with pnl < 0
      */
     function liquidate(
         bytes32 positionId,
