@@ -192,8 +192,4 @@ contract FacetManagement is
         (uint256 price, uint256 timestamp) = _setPrice(oracleId, provider, oracleCalldata);
         emit SetPrice(oracleId, provider, oracleCalldata, price, timestamp);
     }
-
-    function hotFixSetStable(address token, bool isStable) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _collateralTokens[token].isStable = isStable;
-    }
 }
