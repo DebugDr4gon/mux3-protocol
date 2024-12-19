@@ -37,13 +37,13 @@ contract TestFacetManagement is FacetManagement, TestSuit {
         assertEq(_isCollateralExist(address(d18)), false, "E03");
         assertEq(_isCollateralExist(address(d18)), false, "E04");
 
-        _addCollateralToken(address(d6), 6);
+        _addCollateralToken(address(d6), 6, false);
         assertEq(_isCollateralExist(address(d6)), true, "E05");
         assertEq(_isCollateralExist(address(d6)), true, "E06");
         assertEq(_isCollateralExist(address(d18)), false, "E07");
         assertEq(_isCollateralExist(address(d18)), false, "E08");
 
-        _addCollateralToken(address(d18), 18);
+        _addCollateralToken(address(d18), 18, false);
         assertEq(_isCollateralExist(address(d6)), true, "E08");
         assertEq(_isCollateralExist(address(d6)), true, "E10");
         assertEq(_isCollateralExist(address(d18)), true, "E11");
@@ -137,7 +137,7 @@ contract TestFacetManagement is FacetManagement, TestSuit {
         _configs.setBytes32(MC_STRICT_STABLE_DEVIATION, bytes32(uint256(3e15))); // 0.003000000000000000
 
         // non-strict-stable token
-        _addCollateralToken(address(d6), 6);
+        _addCollateralToken(address(d6), 6, false);
         bytes32 oracleId = address(d6).toBytes32();
 
         _setStrictStableId(oracleId, false);

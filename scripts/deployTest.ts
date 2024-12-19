@@ -150,9 +150,9 @@ async function main(deployer: Deployer) {
   ) // 0.02 / 3400 * 1e18 / 1e9
 
   // collateral
-  await ensureFinished(core.addCollateralToken(usdc, 6))
-  await ensureFinished(core.addCollateralToken(weth, 18))
-  await ensureFinished(core.addCollateralToken(susds, 18))
+  await ensureFinished(core.addCollateralToken(usdc, 6, true))
+  await ensureFinished(core.addCollateralToken(weth, 18, false))
+  await ensureFinished(core.addCollateralToken(susds, 18, true))
   await ensureFinished(core.setStrictStableId(a2b(usdc), true))
 
   // pool 17: usdc, (remove me!)

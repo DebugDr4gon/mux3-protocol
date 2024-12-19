@@ -33,11 +33,13 @@ describe("Management", () => {
   })
 
   it("test_errors", async () => {
-    await expect(tester.addCollateralToken(ethers.constants.AddressZero, 18)).to.be.revertedWith("InvalidAddress")
-    await expect(tester.addCollateralToken(await tester.d6(), 18)).to.be.revertedWith("UnmatchedDecimals")
+    await expect(tester.addCollateralToken(ethers.constants.AddressZero, 18, false)).to.be.revertedWith(
+      "InvalidAddress"
+    )
+    await expect(tester.addCollateralToken(await tester.d6(), 18, false)).to.be.revertedWith("UnmatchedDecimals")
 
-    await tester.addCollateralToken(await tester.d6(), 6)
-    await expect(tester.addCollateralToken(await tester.d6(), 6)).to.be.revertedWith("CollateralAlreadyExist")
+    await tester.addCollateralToken(await tester.d6(), 6, false)
+    await expect(tester.addCollateralToken(await tester.d6(), 6, false)).to.be.revertedWith("CollateralAlreadyExist")
   })
 
   it("test_PricingManager_setPrice", async () => {

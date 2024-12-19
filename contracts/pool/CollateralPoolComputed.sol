@@ -55,7 +55,7 @@ contract CollateralPoolComputed is CollateralPoolStore {
     }
 
     function _isCollateralExist(address token) internal view returns (bool isExist) {
-        (isExist, ) = IFacetReader(_core).getCollateralToken(token);
+        (isExist, , ) = IFacetReader(_core).getCollateralToken(token);
     }
 
     function _adlReserveRate(bytes32 marketId) internal view returns (uint256 rate) {
@@ -134,22 +134,33 @@ contract CollateralPoolComputed is CollateralPoolStore {
     }
 
     /**
-     * @dev reserved = marketPrice * positions. thus the reserved changes when price changes.
+     * @dev reservedUsd represents the maximum collaterals that collateralPool reserves for potential position profits.
+     *      * When collateralPool uses stablecoin (e.g., long/short ETH with USDC as collateral),
+     *        reserved = entryPrice * size * reserveRatio
+     *      * When collateralPool uses non-stablecoin (e.g., long ETH with ETH as collateral),
+     *        reserved = marketPrice * size * reserveRatio,
+     *        note that both numerator and denominator of util contain marketPrice.
      */
     function _reservedUsd() internal view returns (uint256 reservedUsd) {
+        (, , bool isStable) = IFacetReader(_core).getCollateralToken(_collateralToken);
         uint256 length = _marketIds.length();
         for (uint256 i = 0; i < length; i++) {
             bytes32 marketId = _marketIds.at(i);
             MarketState storage data = _marketStates[marketId];
             uint256 reserveRatio = _adlReserveRate(marketId);
-            uint256 marketPrice = IFacetReader(_core).priceOf(_marketOracleId(marketId));
-            uint256 sizeUsd = (data.totalSize * marketPrice) / 1e18;
-            reservedUsd += (sizeUsd * reserveRatio) / 1e18;
+            if (isStable) {
+                uint256 sizeUsd = (data.totalSize * data.averageEntryPrice) / 1e18;
+                reservedUsd += (sizeUsd * reserveRatio) / 1e18;
+            } else {
+                uint256 marketPrice = IFacetReader(_core).priceOf(_marketOracleId(marketId));
+                uint256 sizeUsd = (data.totalSize * marketPrice) / 1e18;
+                reservedUsd += (sizeUsd * reserveRatio) / 1e18;
+            }
         }
     }
 
     function _toWad(address token, uint256 rawAmount) internal view returns (uint256) {
-        (bool isExist, uint8 decimals) = IFacetReader(_core).getCollateralToken(token);
+        (bool isExist, uint8 decimals, ) = IFacetReader(_core).getCollateralToken(token);
         require(isExist, IErrors.CollateralNotExist(token));
         if (decimals <= 18) {
             return rawAmount * (10 ** (18 - decimals));
@@ -159,7 +170,7 @@ contract CollateralPoolComputed is CollateralPoolStore {
     }
 
     function _toRaw(address token, uint256 wadAmount) internal view returns (uint256) {
-        (bool isExist, uint8 decimals) = IFacetReader(_core).getCollateralToken(token);
+        (bool isExist, uint8 decimals, ) = IFacetReader(_core).getCollateralToken(token);
         require(isExist, IErrors.CollateralNotExist(token));
         if (decimals <= 18) {
             return wadAmount / 10 ** (18 - decimals);

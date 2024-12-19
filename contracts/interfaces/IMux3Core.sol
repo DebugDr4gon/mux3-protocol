@@ -8,4 +8,5 @@ import "../interfaces/IFacetReader.sol";
 struct CollateralTokenInfo {
     bool isExist;
     uint8 decimals;
+    bool isStable;
 }

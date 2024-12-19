@@ -54,10 +54,11 @@ contract FacetReader is Mux3FacetBase, PositionAccount, IFacetReader {
     /**
      * @dev Get Collateral config
      */
-    function getCollateralToken(address token) external view returns (bool isExist, uint8 decimals) {
+    function getCollateralToken(address token) external view returns (bool isExist, uint8 decimals, bool isStable) {
         CollateralTokenInfo storage collateralToken = _collateralTokens[token];
         isExist = collateralToken.isExist;
         decimals = collateralToken.decimals;
+        isStable = collateralToken.isStable;
     }
 
     /**

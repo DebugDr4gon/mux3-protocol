@@ -59,7 +59,7 @@ interface IFacetReader {
     /**
      * @dev Get Collateral config
      */
-    function getCollateralToken(address token) external view returns (bool isExist, uint8 decimals);
+    function getCollateralToken(address token) external view returns (bool isExist, uint8 decimals, bool isStable);
 
     /**
      * @dev List collateral tokens

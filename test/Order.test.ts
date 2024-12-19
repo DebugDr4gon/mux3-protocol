@@ -71,7 +71,7 @@ describe("Order", () => {
     // core
     core = (await createContract("MockMux3", [])) as MockMux3
     await core.initialize(weth.address)
-    await core.addCollateralToken(token0.address, 18)
+    await core.addCollateralToken(token0.address, 18, false)
     await core.setConfig(ethers.utils.id("MC_BORROWING_BASE_APY"), u2b(toWei("0.10")))
     await core.setConfig(ethers.utils.id("MC_BORROWING_INTERVAL"), u2b(ethers.BigNumber.from(3600)))
 

@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 interface IFacetManagement {
-    event AddCollateralToken(address token, uint8 decimals);
+    event AddCollateralToken(address token, uint8 decimals, bool isStable);
     event SetStrictStableId(bytes32 oracleId, bool strictStable);
     event CreateCollateralPool(string name, string symbol, address collateral, uint8 collateralDecimals, address pool);
     event AppendBackedPoolsToMarket(bytes32 marketId, address[] backedPools);

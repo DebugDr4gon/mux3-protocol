@@ -47,10 +47,10 @@ contract TestMux3FacetBase is FacetManagement, TestSuit {
         address token18 = address(new MockERC20("T18", "T18", 18));
         address token30 = address(new MockERC20("T30", "T30", 30));
 
-        _addCollateralToken(token6, 6);
-        _addCollateralToken(token8, 8);
-        _addCollateralToken(token18, 18);
-        _addCollateralToken(token30, 30);
+        _addCollateralToken(token6, 6, false);
+        _addCollateralToken(token8, 8, false);
+        _addCollateralToken(token18, 18, false);
+        _addCollateralToken(token30, 30, false);
 
         assertEq(_collateralToWad(token6, 1e6), 1e18, "E01");
         assertEq(_collateralToWad(token8, 1e8), 1e18, "E02");
@@ -64,10 +64,10 @@ contract TestMux3FacetBase is FacetManagement, TestSuit {
         address token18 = address(new MockERC20("T18", "T18", 18));
         address token30 = address(new MockERC20("T30", "T30", 30));
 
-        _addCollateralToken(token6, 6);
-        _addCollateralToken(token8, 8);
-        _addCollateralToken(token18, 18);
-        _addCollateralToken(token30, 30);
+        _addCollateralToken(token6, 6, false);
+        _addCollateralToken(token8, 8, false);
+        _addCollateralToken(token18, 18, false);
+        _addCollateralToken(token30, 30, false);
 
         assertEq(_collateralToRaw(token6, 1e18), 1e6, "E01");
         assertEq(_collateralToRaw(token8, 1e18), 1e8, "E02");

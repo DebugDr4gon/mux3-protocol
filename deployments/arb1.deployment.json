@@ -38,8 +38,8 @@
   "FacetManagement": {
     "type": "plain",
     "name": "FacetManagement",
-    "address": "0x8BB093D2e0B68DcD89c5803a3B0138357B199C90",
-    "deployedAt": 279482425
+    "address": "0x3d2324873630c74227085164A83f69b2782F4AB4",
+    "deployedAt": 286053867
   },
   "FacetReader": {
     "type": "plain",
@@ -95,9 +95,9 @@
         ]
       },
       "facetManagement": {
-        "address": "0x8BB093D2e0B68DcD89c5803a3B0138357B199C90",
+        "address": "0x3d2324873630c74227085164A83f69b2782F4AB4",
         "selectors": [
-          "0xb9faeaec",
+          "0x49ffd567",
           "0x0606fd4f",
           "0x5315f030",
           "0xe1e735bd",
@@ -105,6 +105,7 @@
           "0xca15c873",
           "0x2f2ff15d",
           "0x91d14854",
+          "0x3a02dca8",
           "0x5c60da1b",
           "0xc4d66de8",
           "0xd547741f",

@@ -92,8 +92,8 @@ describe("ReferralAndFeeDistributor", () => {
     // core
     core = (await createContract("TestMux3", [])) as TestMux3
     await core.initialize(weth.address)
-    await core.addCollateralToken(usdc.address, 6)
-    await core.addCollateralToken(btc.address, 8)
+    await core.addCollateralToken(usdc.address, 6, true)
+    await core.addCollateralToken(btc.address, 8, false)
     await core.setConfig(ethers.utils.id("MC_BORROWING_BASE_APY"), u2b(toWei("0.10")))
     await core.setConfig(ethers.utils.id("MC_BORROWING_INTERVAL"), u2b(ethers.BigNumber.from(3600)))
 

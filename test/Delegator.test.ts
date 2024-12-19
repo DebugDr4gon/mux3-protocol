@@ -62,7 +62,7 @@ describe("Delegator", () => {
     // core
     core = (await createContract("TestMux3", [])) as TestMux3
     await core.initialize(weth.address)
-    await core.addCollateralToken(usdc.address, 6)
+    await core.addCollateralToken(usdc.address, 6, true)
 
     // orderBook
     const libOrderBook = await createContract("LibOrderBook")

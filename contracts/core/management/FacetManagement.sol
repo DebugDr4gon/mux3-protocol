@@ -59,9 +59,9 @@ contract FacetManagement is
      *                 The provided decimals will be verified if the token contract has `decimals()` method.
      * @dev Token cannot be duplicated and cannot be removed
      */
-    function addCollateralToken(address token, uint8 decimals) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _addCollateralToken(token, decimals);
-        emit AddCollateralToken(token, decimals);
+    function addCollateralToken(address token, uint8 decimals, bool isStable) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _addCollateralToken(token, decimals, isStable);
+        emit AddCollateralToken(token, decimals, isStable);
     }
 
     /**
@@ -191,5 +191,9 @@ contract FacetManagement is
     ) external virtual onlyRole(ORDER_BOOK_ROLE) {
         (uint256 price, uint256 timestamp) = _setPrice(oracleId, provider, oracleCalldata);
         emit SetPrice(oracleId, provider, oracleCalldata, price, timestamp);
+    }
+
+    function hotFixSetStable(address token, bool isStable) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _collateralTokens[token].isStable = isStable;
     }
 }
