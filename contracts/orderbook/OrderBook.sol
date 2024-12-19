@@ -325,7 +325,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      * @param positionId The ID of the position
      * @param marketId The ID of the market
      * @param lastConsumedToken The address of the last consumed token
-     * @param isWithdrawAll Set false so that collaterals will remain in the position account.
+     * @param isWithdrawAllIfEmpty Set false so that collaterals will remain in the position account.
      * @param isUnwrapWeth Whether to unwrap WETH
      * @return tradingPrice The trading price
      * @dev If a PositionAccount contains multiple positions, it is recommended to liquidate positions
@@ -335,7 +335,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         bytes32 positionId,
         bytes32 marketId,
         address lastConsumedToken,
-        bool isWithdrawAll,
+        bool isWithdrawAllIfEmpty,
         bool isUnwrapWeth
     )
         external
@@ -351,7 +351,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
                 positionId,
                 marketId,
                 lastConsumedToken,
-                isWithdrawAll,
+                isWithdrawAllIfEmpty,
                 isUnwrapWeth
             );
     }
@@ -361,7 +361,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      * @param positionId The ID of the position
      * @param marketId The ID of the market
      * @param lastConsumedToken The address of the last consumed token
-     * @param isWithdrawAll Whether to withdraw all collateral
+     * @param isWithdrawAllIfEmpty Whether to withdraw all collateral
      * @param isUnwrapWeth Whether to unwrap WETH
      * @return tradingPrice The trading price
      */
@@ -369,7 +369,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         bytes32 positionId,
         bytes32 marketId,
         address lastConsumedToken,
-        bool isWithdrawAll,
+        bool isWithdrawAllIfEmpty,
         bool isUnwrapWeth
     )
         external
@@ -380,7 +380,14 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         returns (uint256 tradingPrice)
     {
         return
-            LibOrderBook.fillAdlOrder(_storage, positionId, marketId, lastConsumedToken, isWithdrawAll, isUnwrapWeth);
+            LibOrderBook.fillAdlOrder(
+                _storage,
+                positionId,
+                marketId,
+                lastConsumedToken,
+                isWithdrawAllIfEmpty,
+                isUnwrapWeth
+            );
     }
 
     /**
