@@ -67,6 +67,7 @@ contract PositionAccount is Mux3FacetBase {
         require(positionId != bytes32(0), InvalidId("positionId"));
         require(_isCollateralExist(collateralToken), CollateralNotExist(collateralToken));
         require(collateralAmount != 0, InvalidAmount("collateralAmount"));
+        require(withdrawSwapSlippage <= 1e18, InvalidAmount("withdrawSwapSlippage"));
         PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         // deduct collateral
         require(

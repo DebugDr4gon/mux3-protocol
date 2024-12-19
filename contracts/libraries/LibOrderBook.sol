@@ -252,6 +252,7 @@ library LibOrderBook {
                 // close a short means buy, tp means limitPrice = tradingPrice * (1 - tpPriceDiff)
                 require(orderParams.tpPriceDiff < 1e18, "tpPriceDiff too large");
             }
+            require(orderParams.tpslWithdrawSwapSlippage <= 1e18, "tpslWithdrawSwapSlippage too large");
         }
     }
 
@@ -264,6 +265,7 @@ library LibOrderBook {
         if (orderParams.withdrawSwapToken != address(0)) {
             _validateCollateral(orderBook, orderParams.withdrawSwapToken);
         }
+        require(orderParams.withdrawSwapSlippage <= 1e18, "withdrawSwapSlippage too large");
         uint64 gasFeeGwei = _orderGasFeeGwei(orderBook);
         _appendPositionOrder(orderBook, orderParams, blockTimestamp, gasFeeGwei);
         // tp/sl strategy is not supported
@@ -311,6 +313,7 @@ library LibOrderBook {
             _isPositionAccountFullyClosed(orderBook, orderParams.positionId),
             "Position account is not fully closed"
         );
+        require(orderParams.withdrawSwapSlippage <= 1e18, "withdrawSwapSlippage too large");
         if (orderParams.withdrawSwapToken != address(0)) {
             _validateCollateral(orderBook, orderParams.withdrawSwapToken);
         }
@@ -339,6 +342,7 @@ library LibOrderBook {
             _validateCollateral(orderBook, orderParams.withdrawSwapToken);
         }
         require(orderParams.rawAmount != 0, "Zero amount");
+        require(orderParams.withdrawSwapSlippage <= 1e18, "withdrawSwapSlippage too large");
         (address withdrawAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
         uint64 newOrderId = orderBook.nextOrderId++;
         uint64 gasFeeGwei = _orderGasFeeGwei(orderBook);
