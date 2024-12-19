@@ -36,4 +36,8 @@ contract TestRebalancer is IMux3RebalancerCallback {
         require(keccak256(userData) == keccak256(bytes("TestRebalancer.userData")), "userData mismatch");
         IERC20(token1).transfer(pool, minRawAmount1);
     }
+
+    function cancelOrder(uint64 orderId) external {
+        IOrderBook(_orderBook).cancelOrder(orderId);
+    }
 }

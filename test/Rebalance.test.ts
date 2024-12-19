@@ -97,6 +97,7 @@ describe("Rebalance", () => {
     await orderBook.setConfig(ethers.utils.id("MCO_LIMIT_ORDER_TIMEOUT"), u2b(ethers.BigNumber.from(86400 * 30)))
     await orderBook.setConfig(ethers.utils.id("MCO_CANCEL_COOL_DOWN"), u2b(ethers.BigNumber.from(5)))
     await orderBook.setConfig(ethers.utils.id("MCO_MIN_LIQUIDITY_ORDER_USD"), u2b(toWei("0.1")))
+    await orderBook.setConfig(ethers.utils.id("MCO_ORDER_GAS_FEE_GWEI"), u2b(ethers.BigNumber.from("1000000")))
 
     // collateral pool
     emitter = (await createContract("CollateralPoolEventEmitter")) as CollateralPoolEventEmitter
@@ -137,22 +138,24 @@ describe("Rebalance", () => {
     await core.setMockPrice(a2b(btc.address), toWei("50000"))
   })
 
-  it("rebalance", async () => {
-    // donate some arb into the pool
-    await arb.mint(orderBook.address, toWei("10"))
-    await orderBook.donateLiquidity(pool1.address, arb.address, toWei("10"))
-    {
-      const balances = await pool1.liquidityBalances()
-      expect(balances.tokens[0]).to.equal(usdc.address)
-      expect(balances.balances[0]).to.equal(toWei("0"))
-      expect(balances.tokens[1]).to.equal(arb.address)
-      expect(balances.balances[1]).to.equal(toWei("10"))
-    }
-    {
-      expect(await pool1.getAumUsd()).to.equal(toWei("20"))
-    }
-    // rebalance - limit by maxRawAmount1
-    {
+  describe("donate some arb into the pool", () => {
+    beforeEach(async () => {
+      // donate some arb into the pool
+      await arb.mint(orderBook.address, toWei("10"))
+      await orderBook.donateLiquidity(pool1.address, arb.address, toWei("10"))
+      {
+        const balances = await pool1.liquidityBalances()
+        expect(balances.tokens[0]).to.equal(usdc.address)
+        expect(balances.balances[0]).to.equal(toWei("0"))
+        expect(balances.tokens[1]).to.equal(arb.address)
+        expect(balances.balances[1]).to.equal(toWei("10"))
+      }
+      {
+        expect(await pool1.getAumUsd()).to.equal(toWei("20"))
+      }
+    })
+
+    it("rebalance - limit by maxRawAmount1", async () => {
       await rebalancer.placeOrder({
         poolAddress: pool1.address,
         token0: arb.address,
@@ -161,8 +164,9 @@ describe("Rebalance", () => {
         userData: ethers.utils.toUtf8Bytes("TestRebalancer.userData"),
       })
       await expect(orderBook.connect(broker).fillRebalanceOrder(0)).to.be.revertedWith("LimitPriceNotMet")
-    }
-    {
+    })
+
+    it("rebalance", async () => {
       await usdc.mint(rebalancer.address, toUnit("1000000", 6))
       await rebalancer.placeOrder({
         poolAddress: pool1.address,
@@ -171,10 +175,11 @@ describe("Rebalance", () => {
         maxRawAmount1: toUnit("20", 6), // 10 * 2 / 1
         userData: ethers.utils.toUtf8Bytes("TestRebalancer.userData"),
       })
-      await orderBook.connect(broker).fillRebalanceOrder(1)
-      {
-        expect(await usdc.balanceOf(rebalancer.address)).to.equal(toUnit("999980", 6)) // 1000000 - 20
-      }
+      expect(await usdc.balanceOf(rebalancer.address)).to.equal(toUnit("1000000", 6))
+      expect(await arb.balanceOf(rebalancer.address)).to.equal(toUnit("0", 18))
+      await orderBook.connect(broker).fillRebalanceOrder(0)
+      expect(await usdc.balanceOf(rebalancer.address)).to.equal(toUnit("999980", 6)) // 1000000 - 20
+      expect(await arb.balanceOf(rebalancer.address)).to.equal(toUnit("10", 18)) // rawAmount0
       {
         const balances = await pool1.liquidityBalances()
         expect(balances.tokens[0]).to.equal(usdc.address)
@@ -185,6 +190,24 @@ describe("Rebalance", () => {
       {
         expect(await pool1.getAumUsd()).to.equal(toWei("20"))
       }
-    }
+    })
+
+    it("cancel rebalance", async () => {
+      await usdc.mint(rebalancer.address, toUnit("1000000", 6))
+      await rebalancer.placeOrder({
+        poolAddress: pool1.address,
+        token0: arb.address,
+        rawAmount0: toWei("10"),
+        maxRawAmount1: toUnit("20", 6), // 10 * 2 / 1
+        userData: ethers.utils.toUtf8Bytes("TestRebalancer.userData"),
+      })
+      expect(await usdc.balanceOf(rebalancer.address)).to.equal(toUnit("1000000", 6))
+      expect(await arb.balanceOf(rebalancer.address)).to.equal(toUnit("0", 18))
+      await time.increaseTo(timestampOfTest + 30)
+      await expect(orderBook.connect(trader1).cancelOrder(0)).to.be.revertedWith("Not authorized")
+      await rebalancer.cancelOrder(0)
+      expect(await usdc.balanceOf(rebalancer.address)).to.equal(toUnit("1000000", 6))
+      expect(await arb.balanceOf(rebalancer.address)).to.equal(toUnit("0", 18))
+    })
   })
 })

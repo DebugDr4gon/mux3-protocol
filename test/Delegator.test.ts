@@ -70,6 +70,7 @@ describe("Delegator", () => {
       "contracts/libraries/LibOrderBook.sol:LibOrderBook": libOrderBook,
     })) as OrderBook
     await orderBook.initialize(core.address, weth.address)
+    await orderBook.setConfig(ethers.utils.id("MCO_ORDER_GAS_FEE_GWEI"), u2b(BigNumber.from("1000000")))
 
     // collateral pool
     const emitter = await createContract("CollateralPoolEventEmitter")

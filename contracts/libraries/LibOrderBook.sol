@@ -787,8 +787,10 @@ library LibOrderBook {
             _cancelLiquidityOrder(orderBook, orderData, msgSender);
         } else if (orderData.orderType == OrderType.WithdrawalOrder) {
             _cancelWithdrawalOrder(orderBook, orderData, blockTimestamp, msgSender);
+        } else if (orderData.orderType == OrderType.RebalanceOrder) {
+            _cancelRebalanceOrder(orderData, msgSender);
         } else {
-            revert();
+            revert("Unsupported order type");
         }
         _refundGasFee(orderBook, orderData);
         emit IOrderBook.CancelOrder(orderData.account, orderId, orderData);
@@ -870,6 +872,10 @@ library LibOrderBook {
         } else if (_isDelegator(msgSender)) {} else {
             require(msgSender == orderData.account, "Not authorized");
         }
+    }
+
+    function _cancelRebalanceOrder(OrderData memory orderData, address msgSender) private pure {
+        require(msgSender == orderData.account, "Not authorized");
     }
 
     function _appendPositionOrder(
