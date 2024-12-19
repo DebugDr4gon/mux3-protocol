@@ -1,9 +1,10 @@
 import { ethers } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
 import { createContract } from "../scripts/deployUtils"
+import { TestMux3FacetBase } from "../typechain"
 
 describe("Mux3FacetBase", () => {
-  let tester: any
+  let tester: TestMux3FacetBase
   let user0: any
 
   before(async () => {
@@ -11,7 +12,7 @@ describe("Mux3FacetBase", () => {
   })
 
   beforeEach(async () => {
-    tester = await createContract("TestMux3FacetBase", [])
+    tester = (await createContract("TestMux3FacetBase", [])) as TestMux3FacetBase
     await tester.setup()
   })
 

@@ -2,9 +2,10 @@ import { ethers } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
 import { expect } from "chai"
 import { createContract } from "../scripts/deployUtils"
+import { TestFacetManagement } from "../typechain"
 
 describe("Management", () => {
-  let tester: any
+  let tester: TestFacetManagement
   let user0: any
 
   before(async () => {
@@ -12,7 +13,7 @@ describe("Management", () => {
   })
 
   beforeEach(async () => {
-    tester = await createContract("TestFacetManagement", [])
+    tester = (await createContract("TestFacetManagement", [])) as TestFacetManagement
     await tester.setup()
   })
 

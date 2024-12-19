@@ -1,10 +1,10 @@
 import { ethers } from "hardhat"
 import { createContract } from "../scripts/deployUtils"
+import { TestCache } from "../typechain"
 
 describe("Cache", () => {
   let user0
-
-  let cache
+  let cache: TestCache
 
   const a2b = (a) => {
     return a + "000000000000000000000000"
@@ -14,7 +14,7 @@ describe("Cache", () => {
   }
 
   beforeEach(async () => {
-    cache = await createContract("TestCache", [])
+    cache = (await createContract("TestCache", [])) as TestCache
   })
 
   it("cache", async () => {

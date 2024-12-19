@@ -1,9 +1,10 @@
 import { ethers } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
 import { createContract } from "../scripts/deployUtils"
+import { TestConfigMap } from "../typechain"
 
 describe("ConfigMap", () => {
-  let tester: any
+  let tester: TestConfigMap
   let user0: any
 
   before(async () => {
@@ -11,7 +12,7 @@ describe("ConfigMap", () => {
   })
 
   beforeEach(async () => {
-    tester = await createContract("TestConfigMap", [])
+    tester = (await createContract("TestConfigMap", [])) as TestConfigMap
   })
 
   it("test_set", async () => {

@@ -3,13 +3,14 @@ import "@nomiclabs/hardhat-waffle"
 import { expect } from "chai"
 import { toWei, createContract, getMuxSignature, getMuxPriceData } from "../scripts/deployUtils"
 import { BigNumber } from "ethers"
+import { TestOracle } from "../typechain"
 
 describe("Oracle", () => {
-  let tester: any
+  let tester: TestOracle
   let forked = false
 
   beforeEach(async () => {
-    tester = await createContract("TestOracle", [])
+    tester = (await createContract("TestOracle", [])) as TestOracle
     await tester.setup()
   })
 

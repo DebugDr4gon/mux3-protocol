@@ -2,9 +2,10 @@ import { ethers, network } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
 import { expect } from "chai"
 import { createContract } from "../scripts/deployUtils"
+import { TestLibTypeCast } from "../typechain"
 
 describe("LibTypeCast.test", () => {
-  let tester: any
+  let tester: TestLibTypeCast
   let user0: any
 
   before(async () => {
@@ -12,7 +13,7 @@ describe("LibTypeCast.test", () => {
   })
 
   beforeEach(async () => {
-    tester = await createContract("TestLibTypeCast", [])
+    tester = (await createContract("TestLibTypeCast", [])) as TestLibTypeCast
     await tester.setup()
   })
 

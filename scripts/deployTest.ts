@@ -293,15 +293,29 @@ async function main(deployer: Deployer) {
   // aum reader
   // https://docs.chain.link/data-feeds/price-feeds/addresses/?network=arbitrum&amp%3Bpage=1&page=1
   await ensureFinished(collateralPoolAumReader.initialize())
-  await collateralPoolAumReader.setMarketPriceProvider(lEthMarketId, "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612")
-  await collateralPoolAumReader.setMarketPriceProvider(sEthMarketId, "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612")
-  await collateralPoolAumReader.setTokenPriceProvider(weth, "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612")
-  await collateralPoolAumReader.setMarketPriceProvider(lBtcMarketId, "0x6ce185860a4963106506C203335A2910413708e9")
-  await collateralPoolAumReader.setMarketPriceProvider(sBtcMarketId, "0x6ce185860a4963106506C203335A2910413708e9")
-  await collateralPoolAumReader.setTokenPriceProvider(wbtc, "0x6ce185860a4963106506C203335A2910413708e9")
-  await collateralPoolAumReader.setTokenPriceProvider(usdc, "0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3")
-  await collateralPoolAumReader.setTokenPriceProvider(arb, "0xb2A824043730FE05F3DA2efaFa1CBbe83fa548D6")
-  await collateralPoolAumReader.setTokenPriceProvider(susds, susdsOracleL2.address)
+  await ensureFinished(
+    collateralPoolAumReader.setMarketPriceProvider(lEthMarketId, "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612")
+  )
+  await ensureFinished(
+    collateralPoolAumReader.setMarketPriceProvider(sEthMarketId, "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612")
+  )
+  await ensureFinished(
+    collateralPoolAumReader.setTokenPriceProvider(weth, "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612")
+  )
+  await ensureFinished(
+    collateralPoolAumReader.setMarketPriceProvider(lBtcMarketId, "0x6ce185860a4963106506C203335A2910413708e9")
+  )
+  await ensureFinished(
+    collateralPoolAumReader.setMarketPriceProvider(sBtcMarketId, "0x6ce185860a4963106506C203335A2910413708e9")
+  )
+  await ensureFinished(
+    collateralPoolAumReader.setTokenPriceProvider(wbtc, "0x6ce185860a4963106506C203335A2910413708e9")
+  )
+  await ensureFinished(
+    collateralPoolAumReader.setTokenPriceProvider(usdc, "0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3")
+  )
+  await ensureFinished(collateralPoolAumReader.setTokenPriceProvider(arb, "0xb2A824043730FE05F3DA2efaFa1CBbe83fa548D6"))
+  await ensureFinished(collateralPoolAumReader.setTokenPriceProvider(susds, susdsOracleL2.address))
 }
 
 restorableEnviron(ENV, main)

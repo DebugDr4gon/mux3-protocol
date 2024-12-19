@@ -2,14 +2,15 @@ import { ethers, waffle } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
 import { expect } from "chai"
 import { toWei, createContract, toUnit } from "../scripts/deployUtils"
+import { MockUniswapV3, Swapper } from "../typechain"
 
 describe("Swapper", () => {
   let user0: any
   let user1: any
   let user2: any
 
-  let uniswap: any
-  let swapper: any
+  let uniswap: MockUniswapV3
+  let swapper: Swapper
 
   let usdc: any
   let weth: any
@@ -32,8 +33,13 @@ describe("Swapper", () => {
     wbtc = await createContract("MockERC20", ["WBTC", "WBTC", 18])
     arb = await createContract("MockERC20", ["ARB", "ARB", 18])
 
-    uniswap = await createContract("MockUniswapV3", [usdc.address, weth.address, wbtc.address, arb.address])
-    swapper = await createContract("Swapper", [])
+    uniswap = (await createContract("MockUniswapV3", [
+      usdc.address,
+      weth.address,
+      wbtc.address,
+      arb.address,
+    ])) as MockUniswapV3
+    swapper = (await createContract("Swapper", [])) as Swapper
     await swapper.initialize(weth.address, uniswap.address, uniswap.address)
   })
 
