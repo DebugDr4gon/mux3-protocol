@@ -222,11 +222,6 @@ contract FacetReader is Mux3FacetBase, PositionAccount, IFacetReader {
 
     /**
      * @dev Check if deleverage is allowed
-     *
-     *      note: you should multicall([
-     *              updateBorrowingFee,
-     *              isDeleverageAllowed
-     *            ])
      */
     function isDeleverageAllowed(bytes32 positionId, bytes32 marketId) external view returns (bool) {
         require(_isMarketExist(marketId), MarketNotExists(marketId));

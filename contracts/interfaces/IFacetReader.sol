@@ -136,11 +136,6 @@ interface IFacetReader {
 
     /**
      * @dev Check if deleverage is allowed
-     *
-     *      note: you should multicall([
-     *              updateBorrowingFee,
-     *              isDeleverageAllowed
-     *            ])
      */
     function isDeleverageAllowed(bytes32 positionId, bytes32 marketId) external view returns (bool);
 }
