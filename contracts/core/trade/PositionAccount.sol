@@ -311,10 +311,6 @@ contract PositionAccount is Mux3FacetBase {
         }
     }
 
-    function _isAccountExist(bytes32 positionId) internal view returns (bool) {
-        return _positionAccounts[positionId].owner != address(0);
-    }
-
     function _collateralValue(bytes32 positionId) internal view returns (uint256 value) {
         PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         address[] memory collaterals = positionAccount.activeCollaterals.values();
