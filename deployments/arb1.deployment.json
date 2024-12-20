@@ -180,7 +180,7 @@
     "address": "0xE3A2028aB6eE109DC76c67fa4584E829a6A3E7F8",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0xe72B14Ba298f2d99a86fc4afa86Ca0C8538acc30"
+      "implementation": "0x1DD42B705Ba71772AABdAb548Ca6e559FD71E9c7"
     },
     "deployedAt": 265067381
   },
@@ -190,7 +190,7 @@
     "address": "0x57a01cf961B076def0A62fB42Da1956635Ff9E33",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x52E5d19f038772cF5f71D7462Bb73A24B0Ff58b1"
+      "implementation": "0x125cc18815d39698C52132E642Ff7DF41DfDAD94"
     },
     "deployedAt": 265077992
   },
@@ -213,14 +213,14 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0xe72B14Ba298f2d99a86fc4afa86Ca0C8538acc30",
-    "deployedAt": 286383606
+    "address": "0x1DD42B705Ba71772AABdAb548Ca6e559FD71E9c7",
+    "deployedAt": 286607446
   },
   "Delegator__implementation": {
     "type": "plain",
     "name": "Delegator__implementation",
-    "address": "0x52E5d19f038772cF5f71D7462Bb73A24B0Ff58b1",
-    "deployedAt": 282416551
+    "address": "0x125cc18815d39698C52132E642Ff7DF41DfDAD94",
+    "deployedAt": 286607519
   },
   "ChainlinkStreamProvider__implementation": {
     "type": "plain",

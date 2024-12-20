@@ -513,7 +513,7 @@ describe("MuxPriceMini", () => {
         .multicall(
           [
             orderBook.interface.encodeFunctionData("wrapNative", [toUnit("1", 6 + 9)]),
-            orderBook.interface.encodeFunctionData("depositGas", [toUnit("1", 6 + 9)]),
+            orderBook.interface.encodeFunctionData("depositGas", [lp1.address, toUnit("1", 6 + 9)]),
             orderBook.interface.encodeFunctionData("placeLiquidityOrder", [args]),
           ],
           {
@@ -600,7 +600,7 @@ describe("MuxPriceMini", () => {
         .multicall(
           [
             orderBook.interface.encodeFunctionData("wrapNative", [toUnit("1", 6 + 9)]),
-            orderBook.interface.encodeFunctionData("depositGas", [toUnit("1", 6 + 9)]),
+            orderBook.interface.encodeFunctionData("depositGas", [trader1.address, toUnit("1", 6 + 9)]),
             orderBook.interface.encodeFunctionData("placePositionOrder", [args, refCode]),
           ],
           {

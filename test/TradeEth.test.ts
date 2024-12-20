@@ -287,7 +287,7 @@ describe("Trade, eth collateral", () => {
     await orderBook.multicall(
       [
         orderBook.interface.encodeFunctionData("wrapNative", [toWei("0.01")]),
-        orderBook.interface.encodeFunctionData("depositGas", [toWei("0.01")]),
+        orderBook.interface.encodeFunctionData("depositGas", [admin.address, toWei("0.01")]),
       ],
       { value: toWei("0.01") }
     )

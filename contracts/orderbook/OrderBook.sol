@@ -63,7 +63,6 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      * @notice Executes multiple function calls in a single transaction
      * @param proxyCalls Array of function calls to execute
      * @return results Array of return values from each call
-     * @dev Trader/LP can wrap ETH to OrderBook, transfer ERC20 to OrderBook, placeOrders
      *
      *      example for collateral = USDC:
      *        multicall([
@@ -103,7 +102,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @notice Trader/LP transfer ERC20 tokens to the OrderBook
+     * @notice Trader/LP transfer ERC20 tokens (usually collaterals) to the OrderBook
      *
      *         note: transferToken is intended to be used as part of a multicall. If it is called directly
      *               the caller would end up losing the funds.
@@ -130,8 +129,13 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      *         you should pay at least configValue(MCO_ORDER_GAS_FEE_GWEI) * 1e9 / 1e18 ETH for each order
      * @param amount The amount of gas to deposit
      */
-    function depositGas(uint256 amount) external payable nonReentrant {
-        LibOrderBook.depositGas(_storage, amount, msg.sender);
+    function depositGas(address account, uint256 amount) external payable nonReentrant {
+        if (_isDelegator(msg.sender)) {
+            // pass
+        } else {
+            require(account == msg.sender, "Not authorized");
+        }
+        LibOrderBook.depositGas(_storage, amount, account);
     }
 
     /**
@@ -140,8 +144,13 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      *      but if you want to withdraw it, you can call this function
      * @param amount The amount of gas to withdraw
      */
-    function withdrawGas(uint256 amount) external nonReentrant {
-        LibOrderBook.withdrawGas(_storage, amount, msg.sender);
+    function withdrawGas(address account, uint256 amount) external nonReentrant {
+        if (_isDelegator(msg.sender)) {
+            // although Delegator does not support withdrawGas yet, it is still safe here
+        } else {
+            require(account == msg.sender, "Not authorized");
+        }
+        LibOrderBook.withdrawGas(_storage, amount, account);
     }
 
     /**
@@ -149,6 +158,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      * @param positionId The ID of the position
      * @param marketId The ID of the market
      * @param initialLeverage The initial leverage to set
+     * @dev do not need depositGas
      */
     function setInitialLeverage(
         bytes32 positionId,
@@ -156,7 +166,9 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         uint256 initialLeverage
     ) external payable nonReentrant updateSequence {
         (address positionAccount, ) = LibCodec.decodePositionId(positionId);
-        if (_isDelegator(msg.sender)) {} else {
+        if (_isDelegator(msg.sender)) {
+            // pass
+        } else {
             require(positionAccount == msg.sender, "Not authorized");
         }
         LibOrderBook.setInitialLeverage(_storage, positionId, marketId, initialLeverage);
@@ -168,13 +180,16 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      *         Limit/Trigger order will expire after deadline.
      * @param orderParams The parameters for the position order
      * @param referralCode The referral code for the position order
+     * @dev depositGas required (consume gas when filled)
      */
     function placePositionOrder(
         PositionOrderParams memory orderParams,
         bytes32 referralCode
     ) public payable nonReentrant whenNotPaused(OrderType.PositionOrder) {
         (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
-        if (_isDelegator(msg.sender)) {} else {
+        if (_isDelegator(msg.sender)) {
+            // pass
+        } else {
             require(positionAccount == msg.sender, "Not authorized");
         }
         // referral code
@@ -190,6 +205,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      * @notice A LP can add/remove liquidity to a CollateralPool
      *         Can be filled after liquidityLockPeriod seconds.
      * @param orderParams The parameters for the liquidity order
+     * @dev depositGas required (consume gas when filled)
      */
     function placeLiquidityOrder(
         LiquidityOrderParams memory orderParams
@@ -201,12 +217,15 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      * @notice A Trader can withdraw collateral
      *         This order will expire after marketOrderTimeout seconds.
      * @param orderParams The parameters for the withdrawal order
+     * @dev depositGas required (consume gas when filled)
      */
     function placeWithdrawalOrder(
         WithdrawalOrderParams memory orderParams
     ) external payable nonReentrant whenNotPaused(OrderType.WithdrawalOrder) {
         (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
-        if (_isDelegator(msg.sender)) {} else {
+        if (_isDelegator(msg.sender)) {
+            // pass
+        } else {
             require(positionAccount == msg.sender, "Not authorized");
         }
         LibOrderBook.placeWithdrawalOrder(_storage, orderParams, _blockTimestamp());
@@ -217,6 +236,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      * @param positionId The ID of the position
      * @param collateralToken The address of the collateral token
      * @param collateralAmount The amount of collateral token
+     * @dev do not need depositGas
      */
     function depositCollateral(
         bytes32 positionId,
@@ -224,7 +244,9 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         uint256 collateralAmount // token decimals
     ) external payable updateSequence nonReentrant {
         (address positionAccount, ) = LibCodec.decodePositionId(positionId);
-        if (_isDelegator(msg.sender)) {} else {
+        if (_isDelegator(msg.sender)) {
+            // pass
+        } else {
             require(positionAccount == msg.sender, "Not authorized");
         }
         LibOrderBook.depositCollateral(_storage, positionId, collateralToken, collateralAmount);
@@ -233,12 +255,15 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     /**
      * @notice A Trader can withdraw all collateral only when position = 0
      * @param orderParams The parameters for the withdrawal order
+     * @dev do not need depositGas
      */
     function withdrawAllCollateral(
         WithdrawAllOrderParams memory orderParams
     ) external updateSequence nonReentrant whenNotPaused(OrderType.WithdrawalOrder) {
         (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
-        if (_isDelegator(msg.sender)) {} else {
+        if (_isDelegator(msg.sender)) {
+            // pass
+        } else {
             require(positionAccount == msg.sender, "Not authorized");
         }
         LibOrderBook.withdrawAllCollateral(_storage, orderParams);
@@ -257,6 +282,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      * @notice A Rebalancer can rebalance pool liquidity by swap token0 for pool.collateralToken
      *         msg.sender must implement IMux3RebalancerCallback.
      * @param orderParams The parameters for the rebalance order
+     * @dev do not need depositGas
      */
     function placeRebalanceOrder(
         RebalanceOrderParams memory orderParams

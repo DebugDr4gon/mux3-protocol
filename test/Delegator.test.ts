@@ -184,10 +184,14 @@ describe("Delegator", () => {
       await delegator.connect(trader2).setInitialLeverage(positionId, long1, toWei("100"))
       const tx1 = await delegator
         .connect(trader2)
-        .multicall([
-          (await delegator.populateTransaction.transferToken(trader1.address, usdc.address, toUnit("1000", 6))).data!,
-          (await delegator.populateTransaction.placePositionOrder(args, refCode)).data!,
-        ])
+        .multicall(
+          [
+            delegator.interface.encodeFunctionData("depositGas", [trader1.address, toWei("0.001")]),
+            delegator.interface.encodeFunctionData("transferToken", [trader1.address, usdc.address, toUnit("1000", 6)]),
+            delegator.interface.encodeFunctionData("placePositionOrder", [args, refCode]),
+          ],
+          { value: toWei("0.001") }
+        )
       await expect(tx1)
         .to.emit(orderBook, "NewPositionOrder")
         .withArgs(trader1.address, 0, [
@@ -249,8 +253,8 @@ describe("Delegator", () => {
       const tx1 = await delegator
         .connect(trader2)
         .multicall([
-          (await delegator.populateTransaction.transferToken(trader1.address, usdc.address, toUnit("1000", 6))).data!,
-          (await delegator.populateTransaction.depositCollateral(positionId, usdc.address, toUnit("1000", 6))).data!,
+          delegator.interface.encodeFunctionData("transferToken", [trader1.address, usdc.address, toUnit("1000", 6)]),
+          delegator.interface.encodeFunctionData("depositCollateral", [positionId, usdc.address, toUnit("1000", 6)]),
         ])
       await expect(tx1).to.emit(core, "Deposit").withArgs(trader1.address, positionId, usdc.address, toUnit("1000", 6))
       await expect(tx1)
@@ -265,19 +269,23 @@ describe("Delegator", () => {
     }
     // withdraw
     {
-      const tx1 = await delegator.connect(trader2).multicall([
-        (
-          await delegator.populateTransaction.placeWithdrawalOrder({
-            positionId: positionId,
-            tokenAddress: usdc.address,
-            rawAmount: toUnit("500", 6),
-            isUnwrapWeth: false,
-            lastConsumedToken: zeroAddress,
-            withdrawSwapToken: zeroAddress,
-            withdrawSwapSlippage: toWei("0"),
-          })
-        ).data!,
-      ])
+      const tx1 = await delegator.connect(trader2).multicall(
+        [
+          delegator.interface.encodeFunctionData("depositGas", [trader1.address, toWei("0.001")]),
+          delegator.interface.encodeFunctionData("placeWithdrawalOrder", [
+            {
+              positionId: positionId,
+              tokenAddress: usdc.address,
+              rawAmount: toUnit("500", 6),
+              isUnwrapWeth: false,
+              lastConsumedToken: zeroAddress,
+              withdrawSwapToken: zeroAddress,
+              withdrawSwapSlippage: toWei("0"),
+            },
+          ]),
+        ],
+        { value: toWei("0.001") }
+      )
       await expect(tx1)
         .to.emit(orderBook, "NewWithdrawalOrder")
         .withArgs(trader1.address, 0, [positionId, usdc.address, toUnit("500", 6), false])
@@ -285,7 +293,7 @@ describe("Delegator", () => {
       expect(await core.listAccountCollaterals(positionId)).to.deep.equal([[usdc.address, toUnit("1000", 18)]])
       expect(await delegator.getDelegationByOwner(trader1.address)).to.deep.equal([
         trader2.address,
-        BigNumber.from("97"),
+        BigNumber.from("96"),
       ])
     }
     // cancel withdraw

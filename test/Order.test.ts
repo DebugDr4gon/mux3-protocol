@@ -708,7 +708,7 @@ describe("Order", () => {
     // no1 - gas fee
     await weth.deposit({ value: toUnit("1", 6 + 9) })
     await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
-    await orderBook.depositGas(toUnit("1", 6 + 9))
+    await orderBook.depositGas(user0.address, toUnit("1", 6 + 9))
     expect(await orderBook.gasBalanceOf(user0.address)).to.equal(toUnit("1", 6 + 9))
     const args = {
       poolAddress: pool1.address,
@@ -737,7 +737,7 @@ describe("Order", () => {
     await token0.transfer(orderBook.address, toWei("150"))
     await weth.deposit({ value: toUnit("1", 6 + 9) })
     await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
-    await orderBook.depositGas(toUnit("1", 6 + 9))
+    await orderBook.depositGas(user0.address, toUnit("1", 6 + 9))
     await orderBook.placeLiquidityOrder(args)
     await time.increaseTo(timestampOfTest + 86400 + 10 + 886400 + 10)
 
@@ -785,7 +785,7 @@ describe("Order", () => {
     await expect(orderBook.placePositionOrder(args, refCode)).to.be.revertedWith("Insufficient gas fee")
     await weth.deposit({ value: toUnit("1", 6 + 9) })
     await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
-    await orderBook.depositGas(toUnit("1", 6 + 9))
+    await orderBook.depositGas(user0.address, toUnit("1", 6 + 9))
     expect(await orderBook.gasBalanceOf(user0.address)).to.equal(toUnit("1", 6 + 9))
     await orderBook.placePositionOrder(args, refCode)
 
@@ -808,7 +808,7 @@ describe("Order", () => {
     await token0.transfer(orderBook.address, toWei("150"))
     await weth.deposit({ value: toUnit("1", 6 + 9) })
     await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
-    await orderBook.depositGas(toUnit("1", 6 + 9))
+    await orderBook.depositGas(user0.address, toUnit("1", 6 + 9))
     await orderBook.placePositionOrder(args, refCode)
     await time.increaseTo(timestampOfTest + 20)
 
@@ -845,7 +845,7 @@ describe("Order", () => {
     await orderBook.connect(user0).setInitialLeverage(positionId, mid0, toWei("10"))
     await weth.deposit({ value: toUnit("1", 6 + 9) })
     await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
-    await orderBook.depositGas(toUnit("1", 6 + 9))
+    await orderBook.depositGas(user0.address, toUnit("1", 6 + 9))
     await orderBook.placePositionOrder(
       {
         positionId,
@@ -897,7 +897,7 @@ describe("Order", () => {
     }
     await weth.deposit({ value: toUnit("1", 6 + 9) })
     await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
-    await orderBook.depositGas(toUnit("1", 6 + 9))
+    await orderBook.depositGas(user0.address, toUnit("1", 6 + 9))
     await orderBook.placeWithdrawalOrder(args)
 
     {
@@ -919,7 +919,7 @@ describe("Order", () => {
     await token0.transfer(orderBook.address, toWei("150"))
     await weth.deposit({ value: toUnit("1", 6 + 9) })
     await weth.transfer(orderBook.address, toUnit("1", 6 + 9))
-    await orderBook.depositGas(toUnit("1", 6 + 9))
+    await orderBook.depositGas(user0.address, toUnit("1", 6 + 9))
     await orderBook.placeWithdrawalOrder(args)
 
     {

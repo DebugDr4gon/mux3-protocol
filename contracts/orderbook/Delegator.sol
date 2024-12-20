@@ -42,7 +42,22 @@ contract Delegator is Initializable {
         }
     }
 
-    // check OrderBook for more details
+    /**
+     * @notice Executes multiple function calls in a single transaction
+     *
+     *         note: Delegator.multicall is slightly different from OrderBook.multicall,
+     *               Delegator does not support wrap ETH as collateral (WETH is supported).
+     * @param proxyCalls Array of function calls to execute
+     * @return results Array of return values from each call
+     * @dev Trader/LP can wrap ETH to OrderBook, transfer ERC20 to OrderBook, placeOrders
+     *
+     *      example for collateral = USDC or WETH:
+     *        multicall([
+     *          depositGas(gas),
+     *          transferToken(collateral),
+     *          placePositionOrder(positionOrderParams),
+     *        ])
+     */
     function multicall(bytes[] calldata proxyCalls) external payable returns (bytes[] memory results) {
         results = new bytes[](proxyCalls.length);
         for (uint256 i = 0; i < proxyCalls.length; i++) {
@@ -52,18 +67,52 @@ contract Delegator is Initializable {
         }
     }
 
-    // check OrderBook for more details
-    function transferToken(address owner, address token, uint256 amount) external {
+    /**
+     * @notice Trader should pay for gas for their orders
+     *         you should pay at least configValue(MCO_ORDER_GAS_FEE_GWEI) * 1e9 / 1e18 ETH for each order
+     *
+     *         note: Delegator.depositGas is slightly different from OrderBook.depositGas,
+     *               there is no Delegator.wrapNative, and Delegator.depositGas consumes msg.value and deposit it as gas to OrderBook.
+     */
+    function depositGas(address owner, uint256 amount) external payable {
+        _consumeDelegation(owner);
+        IOrderBook(_orderBook).wrapNative{ value: amount }(amount);
+        IOrderBook(_orderBook).depositGas(owner, amount);
+    }
+
+    /**
+     * @notice Trader transfer ERC20 tokens (usually collaterals) to the OrderBook
+     *
+     *         note: transferToken is intended to be used as part of a multicall. If it is called directly
+     *               the caller would end up losing the funds.
+     * @param owner Address of the owner of the tokens
+     * @param token Address of the token to transfer
+     * @param amount Amount of tokens to transfer
+     */
+    function transferToken(address owner, address token, uint256 amount) external payable {
         _consumeDelegation(owner);
         IOrderBook(_orderBook).transferTokenFrom(owner, token, amount);
     }
 
-    function placePositionOrder(PositionOrderParams memory orderParams, bytes32 referralCode) external {
+    /**
+     * @notice A Trader can open/close position
+     *         Market order will expire after marketOrderTimeout seconds.
+     *         Limit/Trigger order will expire after deadline.
+     * @param orderParams The parameters for the position order
+     * @param referralCode The referral code for the position order
+     * @dev depositGas required (consume gas when filled)
+     */
+    function placePositionOrder(PositionOrderParams memory orderParams, bytes32 referralCode) external payable {
         (address owner, ) = LibCodec.decodePositionId(orderParams.positionId);
         _consumeDelegation(owner);
         IOrderBook(_orderBook).placePositionOrder(orderParams, referralCode);
     }
 
+    /**
+     * @notice A Trader/LP can cancel an Order by orderId after a cool down period.
+     *         A Broker can also cancel an Order after expiration.
+     * @param orderId The ID of the order to cancel
+     */
     function cancelOrder(uint64 orderId) external {
         (OrderData memory orderData, bool exists) = IOrderBookGetter(_orderBook).getOrder(orderId);
         require(exists, "No such orderId");
@@ -72,18 +121,36 @@ contract Delegator is Initializable {
         IOrderBook(_orderBook).cancelOrder(orderId);
     }
 
-    function placeWithdrawalOrder(WithdrawalOrderParams memory orderParams) external {
+    /**
+     * @notice A Trader can withdraw collateral
+     *         This order will expire after marketOrderTimeout seconds.
+     * @param orderParams The parameters for the withdrawal order
+     * @dev depositGas required (consume gas when filled)
+     */
+    function placeWithdrawalOrder(WithdrawalOrderParams memory orderParams) external payable {
         (address owner, ) = LibCodec.decodePositionId(orderParams.positionId);
         _consumeDelegation(owner);
         IOrderBook(_orderBook).placeWithdrawalOrder(orderParams);
     }
 
+    /**
+     * @notice A Trader can withdraw all collateral only when position = 0
+     * @param orderParams The parameters for the withdrawal order
+     * @dev do not need depositGas
+     */
     function withdrawAllCollateral(WithdrawAllOrderParams memory orderParams) external {
         (address owner, ) = LibCodec.decodePositionId(orderParams.positionId);
         _consumeDelegation(owner);
         IOrderBook(_orderBook).withdrawAllCollateral(orderParams);
     }
 
+    /**
+     * @notice A Trader can deposit collateral into a PositionAccount
+     * @param positionId The ID of the position
+     * @param collateralToken The address of the collateral token
+     * @param collateralAmount The amount of collateral token
+     * @dev do not need depositGas
+     */
     function depositCollateral(
         bytes32 positionId,
         address collateralToken,
@@ -94,7 +161,14 @@ contract Delegator is Initializable {
         IOrderBook(_orderBook).depositCollateral(positionId, collateralToken, collateralAmount);
     }
 
-    function setInitialLeverage(bytes32 positionId, bytes32 marketId, uint256 initialLeverage) external {
+    /**
+     * @notice A trader should set initial leverage at least once before open-position
+     * @param positionId The ID of the position
+     * @param marketId The ID of the market
+     * @param initialLeverage The initial leverage to set
+     * @dev do not need depositGas
+     */
+    function setInitialLeverage(bytes32 positionId, bytes32 marketId, uint256 initialLeverage) external payable {
         (address owner, ) = LibCodec.decodePositionId(positionId);
         _consumeDelegation(owner);
         IOrderBook(_orderBook).setInitialLeverage(positionId, marketId, initialLeverage);

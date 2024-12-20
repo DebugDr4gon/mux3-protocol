@@ -813,7 +813,9 @@ library LibOrderBook {
                 .min(orderData.placeOrderTime + _positionOrderTimeout(orderBook, orderParams), orderParams.expiration)
                 .toUint64();
             require(blockTimestamp > deadline, "Not expired");
-        } else if (_isDelegator(msgSender)) {} else {
+        } else if (_isDelegator(msgSender)) {
+            // pass
+        } else {
             // account owner can cancel order
             require(msgSender == orderData.account, "Not authorized");
         }
@@ -873,7 +875,9 @@ library LibOrderBook {
         if (_isBroker(msgSender)) {
             uint64 deadline = orderData.placeOrderTime + _withdrawalOrderTimeout(orderBook);
             require(blockTimestamp > deadline, "Not expired");
-        } else if (_isDelegator(msgSender)) {} else {
+        } else if (_isDelegator(msgSender)) {
+            // pass
+        } else {
             require(msgSender == orderData.account, "Not authorized");
         }
     }
@@ -932,16 +936,16 @@ library LibOrderBook {
     }
 
     // dev: can be external
-    function depositGas(OrderBookStorage storage orderBook, uint256 amount, address sender) internal {
+    function depositGas(OrderBookStorage storage orderBook, uint256 amount, address account) internal {
         _transferIn(orderBook, orderBook.weth, amount);
-        orderBook.gasBalances[sender] += amount;
+        orderBook.gasBalances[account] += amount;
     }
 
     // dev: can be external
-    function withdrawGas(OrderBookStorage storage orderBook, uint256 amount, address sender) internal {
-        require(orderBook.gasBalances[sender] >= amount, "Insufficient gas balance");
-        orderBook.gasBalances[sender] -= amount;
-        _transferOut(orderBook, orderBook.weth, sender, amount, true);
+    function withdrawGas(OrderBookStorage storage orderBook, uint256 amount, address account) internal {
+        require(orderBook.gasBalances[account] >= amount, "Insufficient gas balance");
+        orderBook.gasBalances[account] -= amount;
+        _transferOut(orderBook, orderBook.weth, account, amount, true);
     }
 
     function _transferIn(OrderBookStorage storage orderBook, address tokenAddress, uint256 rawAmount) internal {

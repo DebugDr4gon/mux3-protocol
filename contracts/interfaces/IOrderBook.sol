@@ -180,7 +180,7 @@ interface IOrderBook {
      *
      *      you should pay configValue(MCO_ORDER_GAS_FEE_GWEI) * 1e9 / 1e18 ETH for each order
      */
-    function depositGas(uint256 amount) external payable;
+    function depositGas(address account, uint256 amount) external payable;
 
     /**
      * @dev Trader/LP can withdraw gas
@@ -188,7 +188,7 @@ interface IOrderBook {
      *      usually your deposited gas should be consumed by your orders immediately,
      *      but if you want to withdraw it, you can call this function
      */
-    function withdrawGas(uint256 amount) external;
+    function withdrawGas(address account, uint256 amount) external;
 
     /**
      * @notice A trader should set initial leverage at least once before open-position
