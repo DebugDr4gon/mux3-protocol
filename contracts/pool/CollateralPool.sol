@@ -451,6 +451,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         require(_isCollateralExist(_collateralToken), CollateralNotExist(_collateralToken));
         // nav
         uint256 aumUsd = _aumUsd();
+        uint256 aumUsdWithoutPnl = _aumUsdWithoutPnl(); // important: read this before remove liquidity
         uint256 lpPrice = _nav(aumUsd);
         // from pool
         uint256 collateralPrice = IFacetReader(_core).priceOf(_collateralToken);
@@ -467,10 +468,10 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         );
         {
             uint256 removedValue = (collateralPrice * collateralAmount) / 1e18;
-            if (removedValue < aumUsd) {
-                aumUsd -= removedValue;
+            if (removedValue < aumUsdWithoutPnl) {
+                aumUsdWithoutPnl -= removedValue;
             } else {
-                aumUsd = 0;
+                aumUsdWithoutPnl = 0;
             }
         }
         // fees
@@ -485,10 +486,10 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         } else {
             IERC20Upgradeable(_collateralToken).safeTransfer(args.account, result.rawCollateralAmount);
         }
-        // verify
+        // since util = reserved / aumUsdWithoutPnl, do not let new aumUsdWithoutPnl < reserved
         {
             uint256 reservedUsd = _reservedUsd();
-            require(reservedUsd <= aumUsd, InsufficientLiquidity(reservedUsd, aumUsd));
+            require(reservedUsd <= aumUsdWithoutPnl, InsufficientLiquidity(reservedUsd, aumUsdWithoutPnl));
         }
         ICollateralPoolEventEmitter(_eventEmitter).emitRemoveLiquidity(
             args.account,

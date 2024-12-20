@@ -3171,7 +3171,7 @@ describe("Trade", () => {
         }
       })
 
-      it("remove liquidity cause reserved > spotLiquidity", async () => {
+      it("remove liquidity (usdc) cause reserved > spotLiquidity, if price unchanged", async () => {
         // reserve = 50000 * 1 * 80% = 40000
         // max possible withdraw = 999900 - 40000 = 959900
         {
@@ -3204,6 +3204,49 @@ describe("Trade", () => {
         {
           expect(await pool1.getAumUsd()).to.equal(toWei("40000"))
           expect(await aumReader.callStatic.estimatedAumUsd(pool1.address)).to.equal(toWei("40000"))
+        }
+      })
+
+      it("remove liquidity (usdc) cause reserved > spotLiquidity, if price changed", async () => {
+        await core.setMockPrice(a2b(btc.address), toWei("45000"))
+        await usdcFeeder.setMockData(toUnit("1", 8), await time.latest())
+        await arbFeeder.setMockData(toUnit("2", 8), await time.latest())
+        await btcFeeder.setMockData(toUnit("45000", 8), await time.latest())
+        // aum = 999900 - (45000 - 50000) * 1 = 1004900
+        // nav = 1004900 / 999900
+        // reserve = 50000 * 1 * 80% = 40000
+        // max possible withdraw = 999900 - 40000 = 959900
+        // max possible share = 959900 / nav = 955123.9
+        {
+          expect(await pool1.callStatic.getAumUsd()).to.equal(toWei("1004900"))
+          expect(await aumReader.callStatic.estimatedAumUsd(pool1.address)).to.equal(toWei("1004900"))
+        }
+        {
+          expect(await pool1.balanceOf(lp1.address)).to.equal(toWei("999900"))
+          await pool1.connect(lp1).transfer(orderBook.address, toWei("955124"))
+          const args = { poolAddress: pool1.address, rawAmount: toWei("955124"), isAdding: false, isUnwrapWeth: false }
+          await orderBook.connect(lp1).placeLiquidityOrder(args)
+          expect(await pool1.balanceOf(lp1.address)).to.equal(toWei("44776")) // 999900 - 955124
+          await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 30 + 930)
+          await expect(orderBook.connect(broker).fillLiquidityOrder(4)).to.revertedWith("InsufficientLiquidity")
+        }
+        {
+          await orderBook.connect(lp1).cancelOrder(4)
+          expect(await pool1.balanceOf(lp1.address)).to.equal(toWei("999900"))
+        }
+        {
+          await pool1.connect(lp1).transfer(orderBook.address, toWei("955123"))
+          const args = { poolAddress: pool1.address, rawAmount: toWei("955123"), isAdding: false, isUnwrapWeth: false }
+          await orderBook.connect(lp1).placeLiquidityOrder(args)
+          await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 30 + 930 + 930)
+          await orderBook.connect(broker).fillLiquidityOrder(5)
+        }
+        expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("345.989909", 6)) // 250 + 955123 * nav * 0.0001
+        expect(await usdc.balanceOf(core.address)).to.equal(toUnit("9950", 6)) // unchanged
+        expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("40000.907392", 6)) // at least 999900 - 955123 * nav
+        {
+          expect(await pool1.getAumUsd()).to.equal(toWei("45000.907390739074385000")) // at least 999900 - (45000 - 50000) * 1 - 955123 * nav
+          expect(await aumReader.callStatic.estimatedAumUsd(pool1.address)).to.equal(toWei("45000.907390739074385000"))
         }
       })
     }) // long a little and test more

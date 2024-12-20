@@ -281,6 +281,90 @@ describe("Trade, eth collateral", () => {
         expect(balance2.sub(balance1).toString()).to.equal(toWei("1"))
       }
     })
+
+    describe("open", () => {
+      beforeEach(async () => {
+        const positionId = encodePositionId(trader1.address, 0)
+        await orderBook.connect(trader1).setInitialLeverage(positionId, long1, toWei("100"))
+        await orderBook.connect(trader1).wrapNative(toWei("1"), { value: toWei("1") })
+        {
+          const args = {
+            positionId,
+            marketId: long1,
+            size: toWei("1"),
+            flags: PositionOrderFlags.OpenPosition + PositionOrderFlags.UnwrapEth + PositionOrderFlags.MarketOrder,
+            limitPrice: toWei("50000"),
+            expiration: timestampOfTest + 86400 * 2 + 930 + 300,
+            lastConsumedToken: zeroAddress,
+            collateralToken: weth.address,
+            collateralAmount: toWei("1"),
+            withdrawUsd: toWei("0"),
+            withdrawSwapToken: zeroAddress,
+            withdrawSwapSlippage: toWei("0"),
+            tpPriceDiff: toWei("0"),
+            slPriceDiff: toWei("0"),
+            tpslExpiration: timestampOfTest + 86400 * 2 + 930 + 300,
+            tpslFlags: 0,
+            tpslWithdrawSwapToken: zeroAddress,
+            tpslWithdrawSwapSlippage: toWei("0"),
+          }
+          await orderBook.connect(trader1).placePositionOrder(args, refCode)
+          const tx1 = await orderBook.connect(broker).fillPositionOrder(1)
+          await expect(tx1)
+            .to.emit(core, "OpenPosition")
+            .withArgs(
+              trader1.address,
+              positionId,
+              long1,
+              true, // isLong
+              args.size,
+              toWei("3000"), // trading price
+              [pool1.address],
+              [toWei("1")], // allocations
+              [toWei("1")], // new size
+              [toWei("3000")], // new entry
+              toWei("3"), // positionFee = 3000 * 1 * 0.001
+              toWei("0"), // borrowingFee
+              [weth.address],
+              [toWei("0.999")] // collateral - fee = 1 - 3 / 3000
+            )
+        }
+        expect(await weth.balanceOf(feeDistributor.address)).to.equal(toWei("0.011")) // 0.01 + 3 / 3000
+      })
+
+      it("remove liquidity (eth) cause reserved > spotLiquidity, if price changed", async () => {
+        await core.setMockPrice(a2b(weth.address), toWei("2500"))
+        // aum = 99.99 * 2500 - (2500 - 3000) * 1 = 250475
+        // nav = 250475 / 299970
+        // reserve = 2500 * 1 * 80% = 2000
+        // max possible withdraw = 99.99 * 2500 - 2000 = 247975
+        // max possible share = 247975 / nav = 296975.9
+        expect(await pool1.callStatic.getAumUsd()).to.equal(toWei("250475"))
+        {
+          expect(await pool1.balanceOf(lp1.address)).to.equal(toWei("299970"))
+          await pool1.connect(lp1).transfer(orderBook.address, toWei("296976"))
+          const args = { poolAddress: pool1.address, rawAmount: toWei("296976"), isAdding: false, isUnwrapWeth: false }
+          await orderBook.connect(lp1).placeLiquidityOrder(args)
+          expect(await pool1.balanceOf(lp1.address)).to.equal(toWei("2994")) // 299970 - 296976
+          await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 30 + 930)
+          await expect(orderBook.connect(broker).fillLiquidityOrder(2)).to.revertedWith("InsufficientLiquidity")
+        }
+        {
+          await orderBook.connect(lp1).cancelOrder(2)
+          expect(await pool1.balanceOf(lp1.address)).to.equal(toWei("299970"))
+        }
+        {
+          await pool1.connect(lp1).transfer(orderBook.address, toWei("296975"))
+          const args = { poolAddress: pool1.address, rawAmount: toWei("296975"), isAdding: false, isUnwrapWeth: false }
+          await orderBook.connect(lp1).placeLiquidityOrder(args)
+          await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 30 + 930 + 930)
+          await orderBook.connect(broker).fillLiquidityOrder(3)
+        }
+        expect(await weth.balanceOf(feeDistributor.address)).to.equal(toWei("0.020918966980031336")) // 0.011 + 296975 * nav / 2500 * 0.0001
+        expect(await weth.balanceOf(pool1.address)).to.equal(toWei("0.800330199686635350")) // at least (99.99 - 296975 * nav / 2500)
+        expect(await pool1.getAumUsd()).to.equal(toWei("2500.825499216588375000")) // at least (99.99 - 296975 * nav / 2500) * 2500 - (2500 - 3000) * 1
+      })
+    })
   })
 
   it("multicall - depositGas", async () => {
