@@ -170,7 +170,7 @@ describe("Trade, eth collateral", () => {
       }
       {
         await time.increaseTo(timestampOfTest + 86400 * 2 + 930)
-        await orderBook.connect(broker).fillLiquidityOrder(0)
+        await orderBook.connect(broker).fillLiquidityOrder(0, [])
         expect(await weth.balanceOf(feeDistributor.address)).to.equal(toWei("0.01")) // fee = 100 * 0.01%
         expect(await weth.balanceOf(pool1.address)).to.equal(toWei("99.99"))
         expect(await pool1.balanceOf(lp1.address)).to.equal(toWei("299970")) // 99.99 * 3000
@@ -192,7 +192,7 @@ describe("Trade, eth collateral", () => {
       {
         const balance1 = await ethers.provider.getBalance(lp1.address)
         await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 930)
-        await orderBook.connect(broker).fillLiquidityOrder(1)
+        await orderBook.connect(broker).fillLiquidityOrder(1, [])
         const balance2 = await ethers.provider.getBalance(lp1.address)
         expect(balance2.sub(balance1).toString()).to.equal(toWei("0.9999")) // return 3000 * (1 - 0.0001) / 3000
       }
@@ -347,7 +347,7 @@ describe("Trade, eth collateral", () => {
           await orderBook.connect(lp1).placeLiquidityOrder(args)
           expect(await pool1.balanceOf(lp1.address)).to.equal(toWei("2994")) // 299970 - 296976
           await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 30 + 930)
-          await expect(orderBook.connect(broker).fillLiquidityOrder(2)).to.revertedWith("InsufficientLiquidity")
+          await expect(orderBook.connect(broker).fillLiquidityOrder(2, [])).to.revertedWith("InsufficientLiquidity")
         }
         {
           await orderBook.connect(lp1).cancelOrder(2)
@@ -358,7 +358,7 @@ describe("Trade, eth collateral", () => {
           const args = { poolAddress: pool1.address, rawAmount: toWei("296975"), isAdding: false, isUnwrapWeth: false }
           await orderBook.connect(lp1).placeLiquidityOrder(args)
           await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 30 + 930 + 930)
-          await orderBook.connect(broker).fillLiquidityOrder(3)
+          await orderBook.connect(broker).fillLiquidityOrder(3, [])
         }
         expect(await weth.balanceOf(feeDistributor.address)).to.equal(toWei("0.020918966980031336")) // 0.011 + 296975 * nav / 2500 * 0.0001
         expect(await weth.balanceOf(pool1.address)).to.equal(toWei("0.800330199686635350")) // at least (99.99 - 296975 * nav / 2500)

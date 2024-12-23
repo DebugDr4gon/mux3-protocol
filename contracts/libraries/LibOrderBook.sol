@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 
 import "../interfaces/ICollateralPool.sol";
 import "../interfaces/IMux3Core.sol";
+import "../interfaces/IMux3FeeDistributor.sol";
 import "../interfaces/IMarket.sol";
 import "../interfaces/IOrderBook.sol";
 import "../interfaces/IWETH9.sol";
@@ -69,6 +70,7 @@ library LibOrderBook {
     function fillLiquidityOrder(
         OrderBookStorage storage orderBook,
         uint64 orderId,
+        IFacetOpen.ReallocatePositionArgs[] memory reallocateArgs,
         uint64 blockTimestamp
     ) external returns (uint256 outAmount) {
         require(orderBook.orders.contains(orderId), "No such orderId");
@@ -80,9 +82,9 @@ library LibOrderBook {
         uint256 lockPeriod = _liquidityLockPeriod(orderBook);
         require(blockTimestamp >= orderData.placeOrderTime + lockPeriod, "Liquidity order is under lock period");
         if (orderParams.isAdding) {
-            outAmount = _fillAddLiquidityOrder(orderBook, orderData, orderParams);
+            outAmount = _fillAddLiquidityOrder(orderBook, orderData, orderParams, reallocateArgs);
         } else {
-            outAmount = _fillRemoveLiquidityOrder(orderBook, orderData, orderParams);
+            outAmount = _fillRemoveLiquidityOrder(orderBook, orderData, orderParams, reallocateArgs);
         }
         emit IOrderBook.FillOrder(orderData.account, orderId, orderData);
         // gas
@@ -92,8 +94,14 @@ library LibOrderBook {
     function _fillAddLiquidityOrder(
         OrderBookStorage storage orderBook,
         OrderData memory orderData,
-        LiquidityOrderParams memory orderParams
+        LiquidityOrderParams memory orderParams,
+        IFacetOpen.ReallocatePositionArgs[] memory reallocateArgs
     ) internal returns (uint256 outAmount) {
+        // reallocate
+        // when adding liquidity to a pool (called focusPool), its utilization will decrease.
+        // the focusPool is eager to receive positions from other pools.
+        // however, since this is not absolutely necessary, reallocate is temporarily not supported here for simplicity.
+        require(reallocateArgs.length == 0, "addLiquidity + reallocate is not supported");
         // min order protection
         address collateralAddress = ICollateralPool(orderParams.poolAddress).collateralToken();
         {
@@ -124,8 +132,29 @@ library LibOrderBook {
     function _fillRemoveLiquidityOrder(
         OrderBookStorage storage orderBook,
         OrderData memory orderData,
-        LiquidityOrderParams memory orderParams
+        LiquidityOrderParams memory orderParams,
+        IFacetOpen.ReallocatePositionArgs[] memory reallocateArgs
     ) internal returns (uint256 outAmount) {
+        // reallocate
+        // when removing liquidity from a pool (called focusPool), its utilization will increase.
+        // the focusPool is eager to send positions to other pools.
+        // 1. reallocate from focusPool to any pools, where `fromPool` = focusPool = orderParams.poolAddress
+        // 2. the current lp will pay the position fees of the `toPool`
+        // 3. removeLiquidity will deduct fees from returned collateral, the fees temporarily saved in `fromPool`
+        // 4. `fromPool` then transfer fees to `toPool`
+        uint256[] memory reallocateFeeCollaterals;
+        uint256 totalReallocateFeeCollateral;
+        if (reallocateArgs.length > 0) {
+            (reallocateFeeCollaterals, totalReallocateFeeCollateral) = _getReallocatePositionFees(
+                orderBook,
+                reallocateArgs,
+                orderParams.poolAddress, // focusPool
+                false
+            );
+            for (uint256 i = 0; i < reallocateArgs.length; i++) {
+                IFacetOpen(orderBook.mux3Facet).reallocatePosition(reallocateArgs[i]);
+            }
+        }
         // send share
         _transferOut(
             orderBook,
@@ -139,17 +168,83 @@ library LibOrderBook {
             ICollateralPool.RemoveLiquidityArgs({
                 account: orderData.account,
                 shares: orderParams.rawAmount,
-                isUnwrapWeth: orderParams.isUnwrapWeth
+                isUnwrapWeth: orderParams.isUnwrapWeth,
+                extraFeeCollateral: totalReallocateFeeCollateral
             })
         );
         outAmount = result.rawCollateralAmount;
         // min order protection
+        address collateralAddress = ICollateralPool(orderParams.poolAddress).collateralToken();
         {
-            address collateralAddress = ICollateralPool(orderParams.poolAddress).collateralToken();
             uint256 price = _priceOf(orderBook, collateralAddress);
             uint256 value = (_collateralToWad(orderBook, collateralAddress, outAmount) * price) / 1e18;
             uint256 minUsd = _minLiquidityOrderUsd(orderBook);
             require(value >= minUsd, "Min liquidity order value");
+        }
+        // reallocate fees are temporarily held in OrderBook, now transfer them to other pools
+        if (reallocateArgs.length > 0) {
+            uint256 rawReallocationFee = _collateralToRaw(orderBook, collateralAddress, totalReallocateFeeCollateral);
+            address feeDistributor = _feeDistributor(orderBook);
+            if (rawReallocationFee > 0) {
+                _transferIn(orderBook, collateralAddress, rawReallocationFee);
+                _transferOut(orderBook, collateralAddress, feeDistributor, rawReallocationFee, false);
+            }
+            for (uint256 i = 0; i < reallocateArgs.length; i++) {
+                address toPool = reallocateArgs[i].toPool;
+                uint256 rawFee = _collateralToRaw(orderBook, collateralAddress, reallocateFeeCollaterals[i]);
+                if (rawFee > 0) {
+                    IMux3FeeDistributor(_feeDistributor(orderBook)).updateLiquidityFees(
+                        orderData.account, // lp
+                        toPool, // pool = the other pool
+                        collateralAddress,
+                        rawFee,
+                        orderParams.isUnwrapWeth
+                    );
+                }
+            }
+        }
+    }
+
+    function _getReallocatePositionFees(
+        OrderBookStorage storage orderBook,
+        IFacetOpen.ReallocatePositionArgs[] memory reallocateArgs,
+        address focusPool,
+        bool isAdding
+    )
+        internal
+        view
+        returns (
+            uint256[] memory feeCollaterals, // 1e18
+            uint256 totalFeeCollateral // 1e18
+        )
+    {
+        // the focusPool is always paying positionFee
+        uint256 collateralPrice;
+        {
+            address collateralAddress = ICollateralPool(focusPool).collateralToken();
+            collateralPrice = _priceOf(orderBook, collateralAddress);
+        }
+        // the opposite pool
+        feeCollaterals = new uint256[](reallocateArgs.length);
+        for (uint256 i = 0; i < reallocateArgs.length; i++) {
+            IFacetOpen.ReallocatePositionArgs memory arg = reallocateArgs[i];
+            if (isAdding) {
+                require(arg.toPool == focusPool, "toPool should be the focusPool");
+            } else {
+                require(arg.fromPool == focusPool, "fromPool should be the focusPool");
+            }
+            // feeCollateral = marketPrice * size * positionFeeRate / collateralPrice
+            uint256 positionFeeCollateral = arg.size;
+            {
+                uint256 price = _priceOf(orderBook, _marketOracleId(orderBook, arg.marketId));
+                positionFeeCollateral = (positionFeeCollateral * price) / 1e18;
+            }
+            {
+                uint256 positionFeeRate = _positionFeeRate(orderBook, arg.marketId);
+                positionFeeCollateral = (positionFeeCollateral * positionFeeRate) / collateralPrice;
+            }
+            feeCollaterals[i] = positionFeeCollateral;
+            totalFeeCollateral += positionFeeCollateral;
         }
     }
 
@@ -682,6 +777,30 @@ library LibOrderBook {
         return tradingPrice;
     }
 
+    function reallocate(
+        OrderBookStorage storage orderBook,
+        bytes32 positionId,
+        bytes32 marketId,
+        address fromPool,
+        address toPool,
+        uint256 size,
+        address lastConsumedToken,
+        bool isUnwrapWeth
+    ) external returns (uint256 tradingPrice) {
+        IFacetOpen.ReallocatePositionResult memory result = IFacetOpen(orderBook.mux3Facet).reallocatePosition(
+            IFacetOpen.ReallocatePositionArgs({
+                positionId: positionId,
+                marketId: marketId,
+                fromPool: fromPool,
+                toPool: toPool,
+                size: size,
+                lastConsumedToken: lastConsumedToken,
+                isUnwrapWeth: isUnwrapWeth
+            })
+        );
+        tradingPrice = result.tradingPrice;
+    }
+
     function _placeTpslOrders(
         OrderBookStorage storage orderBook,
         PositionOrderParams memory orderParams,
@@ -1030,6 +1149,15 @@ library LibOrderBook {
         require(minUsd > 0, "MCO_MIN_LIQUIDITY_ORDER_USD not set");
     }
 
+    function _positionFeeRate(
+        OrderBookStorage storage orderBook,
+        bytes32 marketId
+    ) private view returns (uint256 positionFeeRate) {
+        positionFeeRate = IFacetReader(orderBook.mux3Facet)
+            .marketConfigValue(marketId, MM_POSITION_FEE_RATE)
+            .toUint256();
+    }
+
     function _isMarketLong(OrderBookStorage storage orderBook, bytes32 marketId) private view returns (bool isLong) {
         (, isLong) = IFacetReader(orderBook.mux3Facet).marketState(marketId);
     }
@@ -1068,6 +1196,19 @@ library LibOrderBook {
 
     function _priceOf(OrderBookStorage storage orderBook, bytes32 oracleId) internal view returns (uint256 price) {
         price = IFacetReader(orderBook.mux3Facet).priceOf(oracleId);
+    }
+
+    function _marketOracleId(
+        OrderBookStorage storage orderBook,
+        bytes32 marketId
+    ) private view returns (bytes32 oracleId) {
+        oracleId = IFacetReader(orderBook.mux3Facet).marketConfigValue(marketId, MM_ORACLE_ID);
+        require(oracleId != bytes32(0), "EssentialConfigNotSet MM_ORACLE_ID");
+    }
+
+    function _feeDistributor(OrderBookStorage storage orderBook) private view returns (address feeDistributor) {
+        feeDistributor = IFacetReader(orderBook.mux3Facet).configValue(MC_FEE_DISTRIBUTOR).toAddress();
+        require(feeDistributor != address(0), "EssentialConfigNotSet MC_FEE_DISTRIBUTOR");
     }
 
     /**

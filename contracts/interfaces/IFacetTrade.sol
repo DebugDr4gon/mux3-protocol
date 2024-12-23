@@ -21,6 +21,27 @@ interface IFacetOpen {
         uint256[] newCollateralAmounts // 1e18
     );
 
+    event ReallocatePosition(
+        address indexed owner,
+        bytes32 indexed positionId,
+        bytes32 indexed marketId,
+        bool isLong,
+        address fromPool,
+        address toPool,
+        uint256 size,
+        uint256 tradingPrice, // the price for settling between pools
+        uint256 fromPoolOldEntryPrice, // previous entry price from the fromPool
+        address[] backedPools,
+        uint256[] newSizes,
+        uint256[] newEntryPrices,
+        // reallocation doesn't settle upnl for the PositionAccount.
+        // this represents pnL settlement between pools where only the fromPool generates pnl
+        int256[] poolPnlUsds,
+        uint256 borrowingFeeUsd, // 1e18
+        address[] newCollateralTokens,
+        uint256[] newCollateralAmounts
+    );
+
     struct OpenPositionArgs {
         bytes32 positionId;
         bytes32 marketId;
@@ -35,7 +56,27 @@ interface IFacetOpen {
         uint256 positionFeeUsd;
     }
 
+    struct ReallocatePositionArgs {
+        bytes32 positionId;
+        bytes32 marketId;
+        address fromPool;
+        address toPool;
+        uint256 size;
+        address lastConsumedToken;
+        bool isUnwrapWeth;
+    }
+
+    struct ReallocatePositionResult {
+        uint256 tradingPrice;
+        uint256 borrowingFeeUsd;
+        // note: reallocate does not settle upnl for this PositionAccount
+    }
+
     function openPosition(OpenPositionArgs memory args) external returns (OpenPositionResult memory result);
+
+    function reallocatePosition(
+        ReallocatePositionArgs memory args
+    ) external returns (ReallocatePositionResult memory result);
 }
 
 interface IFacetClose {

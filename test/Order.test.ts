@@ -429,7 +429,7 @@ describe("Order", () => {
         expect(orders.totalCount).to.equal(1)
         expect(orders.orderDataArray.length).to.equal(1)
       }
-      await expect(orderBook.connect(broker).fillLiquidityOrder(1)).to.revertedWith("Order type")
+      await expect(orderBook.connect(broker).fillLiquidityOrder(1, [])).to.revertedWith("Order type")
       await expect(orderBook.connect(broker).fillWithdrawalOrder(1)).to.revertedWith("Order type")
       await orderBook.connect(broker).fillPositionOrder(1)
       {
@@ -493,11 +493,11 @@ describe("Order", () => {
         expect(orders.totalCount).to.equal(1)
         expect(orders.orderDataArray.length).to.equal(1)
       }
-      await expect(orderBook.connect(broker).fillLiquidityOrder(1)).to.revertedWith("lock period")
+      await expect(orderBook.connect(broker).fillLiquidityOrder(1, [])).to.revertedWith("lock period")
       await time.increaseTo(timestampOfTest + 86400 + 60 * 20)
       await expect(orderBook.connect(broker).fillPositionOrder(1)).to.revertedWith("Order type")
       await expect(orderBook.connect(broker).fillWithdrawalOrder(1)).to.revertedWith("Order type")
-      await orderBook.connect(broker).fillLiquidityOrder(1)
+      await orderBook.connect(broker).fillLiquidityOrder(1, [])
       {
         const orders = await orderBook.getOrders(0, 100)
         expect(orders.totalCount).to.equal(0)
@@ -523,7 +523,7 @@ describe("Order", () => {
         isUnwrapWeth: false,
       })
       await time.increaseTo(timestampOfTest + 86400 + 60 * 20)
-      await orderBook.connect(broker).fillLiquidityOrder(0)
+      await orderBook.connect(broker).fillLiquidityOrder(0, [])
     }
     expect(await pool1.balanceOf(user0.address)).to.equal(toWei("0")) // because this test uses a mocked liquidity pool
     // no1
@@ -572,7 +572,7 @@ describe("Order", () => {
         expect(orders.orderDataArray.length).to.equal(1)
       }
       await time.increaseTo(timestampOfTest + 86400 + 60 * 50)
-      await orderBook.connect(broker).fillLiquidityOrder(2)
+      await orderBook.connect(broker).fillLiquidityOrder(2, [])
       {
         const orders = await orderBook.getOrders(0, 100)
         expect(orders.totalCount).to.equal(0)
@@ -744,7 +744,7 @@ describe("Order", () => {
     {
       expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("1", 6 + 9))
       const balance = await waffle.provider.getBalance(broker.address)
-      const tx = await orderBook.connect(broker).fillLiquidityOrder(1)
+      const tx = await orderBook.connect(broker).fillLiquidityOrder(1, [])
       expect(await weth.balanceOf(orderBook.address)).to.equal(toUnit("0", 6 + 9))
       const receipt = await tx.wait()
       const gasUsed = receipt.gasUsed

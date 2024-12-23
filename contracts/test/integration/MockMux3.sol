@@ -38,6 +38,10 @@ contract MockMux3 is FacetManagement, FacetReader, IFacetOpen, IFacetClose, IFac
         LiquidatePositionArgs memory args
     ) external returns (LiquidatePositionResult memory result) {}
 
+    function reallocatePosition(
+        ReallocatePositionArgs memory args
+    ) external returns (ReallocatePositionResult memory result) {}
+
     function _priceOf(bytes32 id) internal view virtual override returns (uint256) {
         return _mockCache[id];
     }

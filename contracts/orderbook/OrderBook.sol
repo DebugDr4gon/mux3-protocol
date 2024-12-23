@@ -311,10 +311,12 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     /**
      * @notice Add/remove liquidity. called by Broker
      * @param orderId The ID of the order to fill
+     * @param reallocateArgs Arguments to reallocate positions between pools to keep a more balanced utilization (optional)
      * @return outAmount The amount of output tokens
      */
     function fillLiquidityOrder(
-        uint64 orderId
+        uint64 orderId,
+        IFacetOpen.ReallocatePositionArgs[] memory reallocateArgs
     )
         external
         onlyRole(BROKER_ROLE)
@@ -323,7 +325,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         updateSequence
         returns (uint256 outAmount)
     {
-        return LibOrderBook.fillLiquidityOrder(_storage, orderId, _blockTimestamp());
+        return LibOrderBook.fillLiquidityOrder(_storage, orderId, reallocateArgs, _blockTimestamp());
     }
 
     /**
@@ -414,6 +416,30 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
                 isWithdrawAllIfEmpty,
                 isUnwrapWeth
             );
+    }
+
+    /**
+     * @dev Reallocate a position from pool0 to pool1. called by Broker
+     */
+    function reallocate(
+        bytes32 positionId,
+        bytes32 marketId,
+        address fromPool,
+        address toPool,
+        uint256 size,
+        address lastConsumedToken,
+        bool isUnwrapWeth
+    ) external onlyRole(BROKER_ROLE) nonReentrant whenNotPaused(OrderType.PositionOrder) updateSequence {
+        LibOrderBook.reallocate(
+            _storage,
+            positionId,
+            marketId,
+            fromPool,
+            toPool,
+            size,
+            lastConsumedToken,
+            isUnwrapWeth
+        );
     }
 
     /**

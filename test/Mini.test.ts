@@ -227,7 +227,7 @@ describe("Mini", () => {
     }
     {
       await time.increaseTo(timestampOfTest + 86400 * 2 + 930)
-      const tx1 = orderBook.connect(broker).fillLiquidityOrder(0)
+      const tx1 = orderBook.connect(broker).fillLiquidityOrder(0, [])
       await expect(tx1)
         .to.emit(emitter, "AddLiquidity")
         .withArgs(
@@ -386,7 +386,7 @@ describe("Mini", () => {
     }
     {
       await time.increaseTo(timestampOfTest + 86400 * 2 + 930)
-      await orderBook.connect(broker).fillLiquidityOrder(0)
+      await orderBook.connect(broker).fillLiquidityOrder(0, [])
     }
     // append pool2 to market
     await core.appendBackedPoolsToMarket(short1, [pool2.address])
@@ -421,7 +421,7 @@ describe("Mini", () => {
     }
     {
       await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 930)
-      const tx1 = orderBook.connect(broker).fillLiquidityOrder(1)
+      const tx1 = orderBook.connect(broker).fillLiquidityOrder(1, [])
       await expect(tx1)
         .to.emit(emitter, "AddLiquidity")
         .withArgs(

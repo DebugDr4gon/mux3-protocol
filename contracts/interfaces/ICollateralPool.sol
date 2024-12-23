@@ -30,7 +30,13 @@ interface ICollateralPool {
 
     function liquidityBalances() external view returns (address[] memory tokens, uint256[] memory balances);
 
-    function openPosition(bytes32 marketId, uint256 size) external;
+    function getAumUsdWithoutPnl() external view returns (uint256);
+
+    function getAumUsd() external view returns (uint256);
+
+    function getReservedUsd() external view returns (uint256);
+
+    function openPosition(bytes32 marketId, uint256 size, uint256 entryPrice) external;
 
     function closePosition(bytes32 marketId, uint256 size, uint256 entryPrice) external;
 
@@ -64,6 +70,7 @@ interface ICollateralPool {
         address account; // lp address
         uint256 shares; // token in. 1e18
         bool isUnwrapWeth; // useful for discount
+        uint256 extraFeeCollateral; // 1e18. send to OrderBook
     }
 
     struct RemoveLiquidityResult {

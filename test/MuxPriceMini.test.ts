@@ -258,7 +258,7 @@ describe("MuxPriceMini", () => {
             { oracleId: a2b(btc.address), price: toWei("50000") },
           ]),
         ]),
-        orderBook.interface.encodeFunctionData("fillLiquidityOrder", [0]),
+        orderBook.interface.encodeFunctionData("fillLiquidityOrder", [0, []]),
       ])
       await expect(tx1)
         .to.emit(emitter, "AddLiquidity")
@@ -435,7 +435,7 @@ describe("MuxPriceMini", () => {
               { oracleId: a2b(btc.address), price: toWei("50000") },
             ]),
           ]),
-          orderBook.interface.encodeFunctionData("fillLiquidityOrder", [2]),
+          orderBook.interface.encodeFunctionData("fillLiquidityOrder", [2, []]),
         ])
         await expect(tx1)
           .to.emit(emitter, "RemoveLiquidity")
@@ -472,7 +472,7 @@ describe("MuxPriceMini", () => {
               { oracleId: a2b(btc.address), price: toWei("50000") },
             ]),
           ]),
-          orderBook.interface.encodeFunctionData("fillLiquidityOrder", [3]),
+          orderBook.interface.encodeFunctionData("fillLiquidityOrder", [3, []]),
         ])
         await expect(tx1)
           .to.emit(emitter, "RemoveLiquidity")
@@ -542,7 +542,7 @@ describe("MuxPriceMini", () => {
             { oracleId: a2b(btc.address), price: toWei("50000") },
           ]),
         ]),
-        orderBook.interface.encodeFunctionData("fillLiquidityOrder", [0]),
+        orderBook.interface.encodeFunctionData("fillLiquidityOrder", [0, []]),
       ])
       await expect(tx1)
         .to.emit(emitter, "AddLiquidity")

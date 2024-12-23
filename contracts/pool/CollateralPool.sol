@@ -124,6 +124,15 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     }
 
     /**
+    /**
+     * @notice Calculates the reserved USD which is used to ensure the pool can pay PnL
+     * @return Reserved value in USD (18 decimals)
+     */
+    function getReservedUsd() external view returns (uint256) {
+        return _reservedUsd();
+    }
+
+    /**
      * @notice Returns the address of the collateral token for this pool
      * @return The collateral token address
      */
@@ -284,12 +293,11 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
      * @param marketId The ID of the market
      * @param size The size of the position
      */
-    function openPosition(bytes32 marketId, uint256 size) external override onlyCore {
+    function openPosition(bytes32 marketId, uint256 size, uint256 entryPrice) external override onlyCore {
         MarketState storage data = _marketStates[marketId];
-        uint256 marketPrice = IFacetReader(_core).priceOf(_marketOracleId(marketId));
-        uint256 nextTotalSize = data.totalSize + size;
-        data.averageEntryPrice = (data.averageEntryPrice * data.totalSize + marketPrice * size) / nextTotalSize;
-        data.totalSize = nextTotalSize;
+        uint256 newSize = data.totalSize + size;
+        data.averageEntryPrice = (data.averageEntryPrice * data.totalSize + entryPrice * size) / newSize;
+        data.totalSize = newSize;
         ICollateralPoolEventEmitter(_eventEmitter).emitOpenPosition(
             marketId,
             size,
@@ -306,7 +314,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
      */
     function closePosition(bytes32 marketId, uint256 size, uint256 entryPrice) external override onlyCore {
         MarketState storage data = _marketStates[marketId];
-        require(size <= data.totalSize, AllocationPositionMismatch(size, data.totalSize));
+        require(size <= data.totalSize, InvalidCloseSize(size, data.totalSize));
         uint256 newSize = data.totalSize - size;
         if (newSize > 0) {
             // in order to keep nav
@@ -315,7 +323,12 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
             data.averageEntryPrice = 0;
         }
         data.totalSize = newSize;
-        ICollateralPoolEventEmitter(_eventEmitter).emitClosePosition(marketId, size, data.totalSize);
+        ICollateralPoolEventEmitter(_eventEmitter).emitClosePosition(
+            marketId,
+            size,
+            data.averageEntryPrice,
+            data.totalSize
+        );
     }
 
     /**
@@ -476,8 +489,18 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         }
         // fees
         uint256 liquidityFeeCollateral = (collateralAmount * _liquidityFeeRate()) / 1e18;
-        collateralAmount -= liquidityFeeCollateral;
+        require(
+            collateralAmount >= liquidityFeeCollateral + args.extraFeeCollateral,
+            InsufficientCollateral(collateralAmount, liquidityFeeCollateral + args.extraFeeCollateral)
+        );
+        collateralAmount -= liquidityFeeCollateral + args.extraFeeCollateral;
         _distributeFee(args.account, collateralPrice, liquidityFeeCollateral, args.isUnwrapWeth);
+        if (args.extraFeeCollateral > 0) {
+            IERC20Upgradeable(_collateralToken).safeTransfer(
+                _orderBook,
+                _toRaw(_collateralToken, args.extraFeeCollateral)
+            );
+        }
         // send tokens to lp
         _burn(address(this), args.shares);
         result.rawCollateralAmount = _toRaw(_collateralToken, collateralAmount);
@@ -495,7 +518,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
             args.account,
             _collateralToken,
             collateralPrice,
-            liquidityFeeCollateral,
+            liquidityFeeCollateral + args.extraFeeCollateral,
             lpPrice,
             args.shares
         );

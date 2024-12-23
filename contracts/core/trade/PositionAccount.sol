@@ -112,7 +112,8 @@ contract PositionAccount is Mux3FacetBase {
         bytes32 positionId,
         bytes32 marketId,
         uint256[] memory allocations, // the same size as backed pools
-        uint256[] memory cumulatedBorrowingPerUsd // the same size as backed pools
+        uint256[] memory cumulatedBorrowingPerUsd, // the same size as backed pools
+        uint256 price
     ) internal {
         // record to position
         PositionData storage positionData = _positionAccounts[positionId].positions[marketId];
@@ -123,7 +124,6 @@ contract PositionAccount is Mux3FacetBase {
             }
             address backedPool = backedPools[i].backedPool;
             PositionPoolData storage pool = positionData.pools[backedPool];
-            uint256 price = _priceOf(_marketOracleId(marketId));
             uint256 nextSize = pool.size + allocations[i];
             if (pool.size == 0) {
                 pool.entryPrice = price;
@@ -131,6 +131,7 @@ contract PositionAccount is Mux3FacetBase {
                 pool.entryPrice = (pool.entryPrice * pool.size + price * allocations[i]) / nextSize;
             }
             pool.size = nextSize;
+            // overwrite entryBorrowing, because _updateAccountBorrowingFee remains entryBorrowing if size = 0
             pool.entryBorrowing = cumulatedBorrowingPerUsd[i];
         }
         positionData.lastIncreasedTime = block.timestamp;
@@ -232,6 +233,11 @@ contract PositionAccount is Mux3FacetBase {
         deliveredFeeUsd = totalFeeUsd - remainFeeUsd;
     }
 
+    /**
+     * @dev collect borrowingFee from collateral and overwrite entryBorrowing only if size > 0
+     *
+     *      note: this function remains entryBorrowing if size = 0
+     */
     function _updateAccountBorrowingFee(
         bytes32 positionId,
         bytes32 marketId,

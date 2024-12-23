@@ -16,7 +16,7 @@ contract Market is Mux3FacetBase, IMarket {
     using LibTypeCast for int256;
     using LibTypeCast for bytes32;
 
-    function _openMarketPosition(bytes32 marketId, uint256[] memory allocations) internal {
+    function _openMarketPosition(bytes32 marketId, uint256[] memory allocations, uint256 price) internal {
         BackedPoolState[] storage backedPools = _markets[marketId].pools;
         // open position in each pool
         // note: allocations already implies capacity for each pool
@@ -30,7 +30,7 @@ contract Market is Mux3FacetBase, IMarket {
                 continue;
             }
             address backedPool = backedPools[i].backedPool;
-            ICollateralPool(backedPool).openPosition(marketId, allocation);
+            ICollateralPool(backedPool).openPosition(marketId, allocation, price);
         }
         // total position limit
         {
@@ -38,7 +38,6 @@ contract Market is Mux3FacetBase, IMarket {
             for (uint256 i = 0; i < backedPools.length; i++) {
                 address backedPool = backedPools[i].backedPool;
                 MarketState memory marketForPool = ICollateralPool(backedPool).marketState(marketId);
-                uint256 price = _priceOf(_marketOracleId(marketId));
                 uint256 sizeUsd = (marketForPool.totalSize * price) / 1e18;
                 openInterestUsd += sizeUsd;
             }
@@ -286,7 +285,7 @@ contract Market is Mux3FacetBase, IMarket {
         require(poolPnlUsd <= 0);
         address[] memory collateralAddresses = _activeCollateralsWithLastWithdraw(positionId, lastConsumedToken);
         PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
-        uint256 remainPnlUsd = poolPnlUsd.negInt256(); // always positive
+        uint256 remainPnlUsd = poolPnlUsd.negInt256(); // convert to positive wad
         for (uint256 i = 0; i < collateralAddresses.length; i++) {
             address collateral = collateralAddresses[i];
             uint256 tokenPrice = _priceOf(collateral);
@@ -317,5 +316,46 @@ contract Market is Mux3FacetBase, IMarket {
             require(remainPnlUsd == 0, InsufficientCollateralUsd(remainPnlUsd, 0));
         }
         deliveredPoolPnlUsd = poolPnlUsd + remainPnlUsd.toInt256();
+    }
+
+    /**
+    /**
+     * @dev reallocate between two pools by:
+     *      1. Close position from fromPool at market price
+     *      2. Transfer realized PnL to toPool
+     *      3. Open position in toPool at fromPool's old entry price
+     *      The two AUMs remain the same
+     */
+    function _reallocateMarketPosition(
+        bytes32 marketId,
+        address fromPool,
+        address toPool,
+        uint256 size,
+        uint256 fromPoolOldEntryPrice,
+        int256 fromPoolPnlUsd
+    ) internal {
+        // transfer positions
+        ICollateralPool(fromPool).closePosition(marketId, size, fromPoolOldEntryPrice);
+        ICollateralPool(toPool).openPosition(marketId, size, fromPoolOldEntryPrice); // usually uses market price, but in this case uses trader's other entry price
+        // settle pnl between pools
+        if (fromPoolPnlUsd == 0) {
+            // pass
+        } else if (fromPoolPnlUsd > 0) {
+            // if profit, transfer fromPool => toPool
+            (address collateralToken, uint256 wad) = ICollateralPool(fromPool).realizeProfit(
+                uint256(fromPoolPnlUsd) // positive wad
+            );
+            uint256 raw = _collateralToRaw(collateralToken, wad);
+            IERC20Upgradeable(collateralToken).safeTransfer(toPool, raw);
+            ICollateralPool(toPool).realizeLoss(collateralToken, raw);
+        } else {
+            // if loss, transfer toPool => fromPool
+            (address collateralToken, uint256 wad) = ICollateralPool(toPool).realizeProfit(
+                fromPoolPnlUsd.negInt256() // convert to positive wad
+            );
+            uint256 raw = _collateralToRaw(collateralToken, wad);
+            IERC20Upgradeable(collateralToken).safeTransfer(fromPool, raw);
+            ICollateralPool(fromPool).realizeLoss(collateralToken, raw);
+        }
     }
 }

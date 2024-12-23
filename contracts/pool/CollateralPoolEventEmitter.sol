@@ -94,8 +94,13 @@ contract CollateralPoolEventEmitter is Initializable, ICollateralPoolEventEmitte
         emit OpenPosition(msg.sender, marketId, size, averageEntryPrice, totalSize);
     }
 
-    function emitClosePosition(bytes32 marketId, uint256 size, uint256 totalSize) external onlyCollateralPool {
-        emit ClosePosition(msg.sender, marketId, size, totalSize);
+    function emitClosePosition(
+        bytes32 marketId,
+        uint256 size,
+        uint256 averageEntryPrice,
+        uint256 totalSize
+    ) external onlyCollateralPool {
+        emit ClosePosition(msg.sender, marketId, size, averageEntryPrice, totalSize);
     }
 
     function emitReceiveFee(

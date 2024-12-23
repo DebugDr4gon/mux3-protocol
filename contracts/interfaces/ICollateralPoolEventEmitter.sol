@@ -53,7 +53,13 @@ interface ICollateralPoolEventEmitter {
         uint256 averageEntryPrice,
         uint256 totalSize
     );
-    event ClosePosition(address indexed pool, bytes32 indexed marketId, uint256 size, uint256 totalSize);
+    event ClosePosition(
+        address indexed pool,
+        bytes32 indexed marketId,
+        uint256 size,
+        uint256 averageEntryPrice,
+        uint256 totalSize
+    );
     event ReceiveFee(
         address indexed pool,
         address indexed token,
@@ -107,7 +113,7 @@ interface ICollateralPoolEventEmitter {
 
     function emitOpenPosition(bytes32 marketId, uint256 size, uint256 averageEntryPrice, uint256 totalSize) external;
 
-    function emitClosePosition(bytes32 marketId, uint256 size, uint256 totalSize) external;
+    function emitClosePosition(bytes32 marketId, uint256 size, uint256 averageEntryPrice, uint256 totalSize) external;
 
     function emitReceiveFee(
         address token,

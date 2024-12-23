@@ -73,7 +73,7 @@ contract MockCollateralPool is
         return _configTable.getBytes32(key);
     }
 
-    function openPosition(bytes32 marketId, uint256 size) external override {}
+    function openPosition(bytes32 marketId, uint256 size, uint256 entryPrice) external override {}
 
     function receiveFee(address token, uint256 rawAmount) external {}
 
@@ -115,4 +115,16 @@ contract MockCollateralPool is
     ) external view returns (int256 pnlUsd, int256 cappedPnlUsd) {}
 
     function liquidityBalances() external view returns (address[] memory tokens, uint256[] memory balances) {}
+
+    function getAumUsdWithoutPnl() external view returns (uint256) {
+        return 0;
+    }
+
+    function getAumUsd() external view returns (uint256) {
+        return 0;
+    }
+
+    function getReservedUsd() external view returns (uint256) {
+        return 0;
+    }
 }
