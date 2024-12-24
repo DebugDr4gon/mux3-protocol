@@ -16,12 +16,14 @@ contract TestFacetManagement is FacetManagement, TestSuit {
 
     ERC20 public d6;
     ERC20 public d18;
+    MockStrangeERC20WithoutDecimals public oldToken;
 
     function setup() external {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
 
         d6 = new MockERC20("D6", "D6", 6);
         d18 = new MockERC20("D18", "D18", 18);
+        oldToken = new MockStrangeERC20WithoutDecimals();
     }
 
     function test_CollateralManager_retrieveDecimals() external view {
@@ -48,6 +50,8 @@ contract TestFacetManagement is FacetManagement, TestSuit {
         assertEq(_isCollateralExist(address(d6)), true, "E10");
         assertEq(_isCollateralExist(address(d18)), true, "E11");
         assertEq(_isCollateralExist(address(d18)), true, "E12");
+        _addCollateralToken(address(oldToken), 18, false);
+        assertEq(_isCollateralExist(address(oldToken)), true, "E13");
     }
 
     function test_MarketManager_createMarket() external {
@@ -171,3 +175,5 @@ contract FakeCollateralPool {
         _markets.push(keccak256(abi.encode(marketId, isLong)));
     }
 }
+
+contract MockStrangeERC20WithoutDecimals {}
