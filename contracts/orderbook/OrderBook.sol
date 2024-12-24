@@ -46,7 +46,8 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      * @dev Can only be called once due to initializer modifier
      */
     function initialize(address mux3Facet, address weth) external initializer {
-        __AccessControlEnumerable_init();
+        __OrderBookStore_init();
+        __ReentrancyGuard_init();
         _storage.mux3Facet = mux3Facet;
         _storage.weth = weth;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
