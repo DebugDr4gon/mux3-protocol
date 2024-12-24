@@ -50,6 +50,7 @@ contract TestFacetManagement is FacetManagement, TestSuit {
         assertEq(_isCollateralExist(address(d6)), true, "E10");
         assertEq(_isCollateralExist(address(d18)), true, "E11");
         assertEq(_isCollateralExist(address(d18)), true, "E12");
+
         _addCollateralToken(address(oldToken), 18, false);
         assertEq(_isCollateralExist(address(oldToken)), true, "E13");
     }

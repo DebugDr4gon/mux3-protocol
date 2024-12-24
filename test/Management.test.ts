@@ -37,6 +37,7 @@ describe("Management", () => {
     await expect(tester.addCollateralToken(ethers.constants.AddressZero, 18, false)).to.be.revertedWith(
       "InvalidAddress"
     )
+    await expect(tester.addCollateralToken("0x0000000000000000000000000000000000000001", 18, false)).to.be.reverted
     await expect(tester.addCollateralToken(await tester.d6(), 18, false)).to.be.revertedWith("UnmatchedDecimals")
 
     await tester.addCollateralToken(await tester.d6(), 6, false)
