@@ -9,6 +9,7 @@ import "../interfaces/IWETH9.sol";
 import "../interfaces/IReferralManager.sol";
 import "../libraries/LibConfigMap.sol";
 import "../libraries/LibOrderBook.sol";
+import "../libraries/LibOrderBook2.sol";
 import "../libraries/LibCodec.sol";
 import "./OrderBookStore.sol";
 import "./OrderBookGetter.sol";
@@ -210,7 +211,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     function placeLiquidityOrder(
         LiquidityOrderParams memory orderParams
     ) external payable nonReentrant whenNotPaused(OrderType.LiquidityOrder) {
-        LibOrderBook.placeLiquidityOrder(_storage, orderParams, msg.sender, _blockTimestamp());
+        LibOrderBook2.placeLiquidityOrder(_storage, orderParams, msg.sender, _blockTimestamp());
     }
 
     /**
@@ -228,7 +229,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         } else {
             require(positionAccount == msg.sender, "Not authorized");
         }
-        LibOrderBook.placeWithdrawalOrder(_storage, orderParams, _blockTimestamp());
+        LibOrderBook2.placeWithdrawalOrder(_storage, orderParams, _blockTimestamp());
     }
 
     /**
@@ -249,7 +250,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         } else {
             require(positionAccount == msg.sender, "Not authorized");
         }
-        LibOrderBook.depositCollateral(_storage, positionId, collateralToken, collateralAmount);
+        LibOrderBook2.depositCollateral(_storage, positionId, collateralToken, collateralAmount);
     }
 
     /**
@@ -266,7 +267,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         } else {
             require(positionAccount == msg.sender, "Not authorized");
         }
-        LibOrderBook.withdrawAllCollateral(_storage, orderParams);
+        LibOrderBook2.withdrawAllCollateral(_storage, orderParams);
     }
 
     /**
@@ -288,7 +289,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         RebalanceOrderParams memory orderParams
     ) external onlyRole(REBALANCER_ROLE) nonReentrant whenNotPaused(OrderType.RebalanceOrder) {
         address rebalancer = msg.sender;
-        LibOrderBook.placeRebalanceOrder(_storage, rebalancer, orderParams, _blockTimestamp());
+        LibOrderBook2.placeRebalanceOrder(_storage, rebalancer, orderParams, _blockTimestamp());
     }
 
     /**
@@ -325,7 +326,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         updateSequence
         returns (uint256 outAmount)
     {
-        return LibOrderBook.fillLiquidityOrder(_storage, orderId, reallocateArgs, _blockTimestamp());
+        return LibOrderBook2.fillLiquidityOrder(_storage, orderId, reallocateArgs, _blockTimestamp());
     }
 
     /**
@@ -335,7 +336,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     function fillWithdrawalOrder(
         uint64 orderId
     ) external onlyRole(BROKER_ROLE) nonReentrant whenNotPaused(OrderType.WithdrawalOrder) updateSequence {
-        LibOrderBook.fillWithdrawalOrder(_storage, orderId, _blockTimestamp());
+        LibOrderBook2.fillWithdrawalOrder(_storage, orderId, _blockTimestamp());
     }
 
     /**
@@ -345,7 +346,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     function fillRebalanceOrder(
         uint64 orderId
     ) external onlyRole(BROKER_ROLE) nonReentrant whenNotPaused(OrderType.RebalanceOrder) updateSequence {
-        LibOrderBook.fillRebalanceOrder(_storage, orderId);
+        LibOrderBook2.fillRebalanceOrder(_storage, orderId);
     }
 
     /**
@@ -456,7 +457,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         address lastConsumedToken,
         bool isUnwrapWeth
     ) external onlyRole(BROKER_ROLE) nonReentrant updateSequence {
-        LibOrderBook.updateBorrowingFee(_storage, positionId, marketId, lastConsumedToken, isUnwrapWeth);
+        LibOrderBook2.updateBorrowingFee(_storage, positionId, marketId, lastConsumedToken, isUnwrapWeth);
     }
 
     /**

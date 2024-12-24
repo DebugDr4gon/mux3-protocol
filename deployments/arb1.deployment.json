@@ -38,32 +38,32 @@
   "FacetManagement": {
     "type": "plain",
     "name": "FacetManagement",
-    "address": "0x3d2324873630c74227085164A83f69b2782F4AB4",
-    "deployedAt": 286053867
+    "address": "0xAd334592db47D692d57FaF85502c9B582d7D9B96",
+    "deployedAt": 287739238
   },
   "FacetReader": {
     "type": "plain",
     "name": "FacetReader",
-    "address": "0x5b552E5B71396FBdB2B370f012825DdbEE37061f",
-    "deployedAt": 286278363
+    "address": "0x4Ed7f345286CC655e51E67fdC3AEa0dA24552da5",
+    "deployedAt": 287739271
   },
   "FacetOpen": {
     "type": "plain",
     "name": "FacetOpen",
-    "address": "0xb43Ca5050201387ed74dcc9a60cFf2574F3AaA06",
-    "deployedAt": 279482493
+    "address": "0x64BE6c3D5fb5e7E32365141Dc072d1B16b7e5e03",
+    "deployedAt": 287739302
   },
   "FacetClose": {
     "type": "plain",
     "name": "FacetClose",
-    "address": "0xae3B917985E6583e3828b126ab40850d8Ed75147",
-    "deployedAt": 279482524
+    "address": "0x0067EBA29666801e93f925c09d52311C6a3D21Ef",
+    "deployedAt": 287739334
   },
   "FacetPositionAccount": {
     "type": "plain",
     "name": "FacetPositionAccount",
-    "address": "0x0831319D1D4d717D0B21F78f61Af90Fb60b0d874",
-    "deployedAt": 279482559
+    "address": "0x2b6ecf3AB004422a938674b6CBd363e253157a36",
+    "deployedAt": 287739371
   },
   "Mux3": {
     "type": "diamond",
@@ -95,7 +95,7 @@
         ]
       },
       "facetManagement": {
-        "address": "0x3d2324873630c74227085164A83f69b2782F4AB4",
+        "address": "0xAd334592db47D692d57FaF85502c9B582d7D9B96",
         "selectors": [
           "0x49ffd567",
           "0x0606fd4f",
@@ -105,7 +105,6 @@
           "0xca15c873",
           "0x2f2ff15d",
           "0x91d14854",
-          "0x3a02dca8",
           "0x5c60da1b",
           "0xc4d66de8",
           "0xd547741f",
@@ -119,7 +118,7 @@
         ]
       },
       "facetReader": {
-        "address": "0x5b552E5B71396FBdB2B370f012825DdbEE37061f",
+        "address": "0x4Ed7f345286CC655e51E67fdC3AEa0dA24552da5",
         "selectors": [
           "0x32404484",
           "0x5252f3a2",
@@ -143,20 +142,21 @@
         ]
       },
       "facetOpen": {
-        "address": "0xb43Ca5050201387ed74dcc9a60cFf2574F3AaA06",
+        "address": "0x64BE6c3D5fb5e7E32365141Dc072d1B16b7e5e03",
         "selectors": [
-          "0x5876dfce"
+          "0x5876dfce",
+          "0x7d8faddd"
         ]
       },
       "facetClose": {
-        "address": "0xae3B917985E6583e3828b126ab40850d8Ed75147",
+        "address": "0x0067EBA29666801e93f925c09d52311C6a3D21Ef",
         "selectors": [
           "0x98118013",
           "0xd713d5a3"
         ]
       },
       "facetPositionAccount": {
-        "address": "0x0831319D1D4d717D0B21F78f61Af90Fb60b0d874",
+        "address": "0x2b6ecf3AB004422a938674b6CBd363e253157a36",
         "selectors": [
           "0xd954863c",
           "0x42ac97a1",
@@ -171,8 +171,8 @@
   "CollateralPool__implementation": {
     "type": "plain",
     "name": "CollateralPool__implementation",
-    "address": "0xaF2E164d548e2Da03fDf1c79A4Bb1035A1435690",
-    "deployedAt": 286689124
+    "address": "0x4f7333C3a85161D20fE0501246Eed40e1Dc33753",
+    "deployedAt": 287707030
   },
   "OrderBook": {
     "type": "upgradeable",
@@ -180,7 +180,7 @@
     "address": "0xE3A2028aB6eE109DC76c67fa4584E829a6A3E7F8",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x1DD42B705Ba71772AABdAb548Ca6e559FD71E9c7"
+      "implementation": "0xfC00776BAb7bFCc1D30bb58fA0F65E74404f0B26"
     },
     "deployedAt": 265067381
   },
@@ -213,8 +213,8 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0x1DD42B705Ba71772AABdAb548Ca6e559FD71E9c7",
-    "deployedAt": 286607446
+    "address": "0xfC00776BAb7bFCc1D30bb58fA0F65E74404f0B26",
+    "deployedAt": 287706015
   },
   "Delegator__implementation": {
     "type": "plain",
@@ -337,7 +337,13 @@
   "LibOrderBook": {
     "type": "plain",
     "name": "LibOrderBook",
-    "address": "0x45283163B8F2bD73152EA759FD200f746dd68C32",
-    "deployedAt": 286383590
+    "address": "0xa0a0F9EDc93779281083d4fD1846C401a5A10987",
+    "deployedAt": 287705974
+  },
+  "LibOrderBook2": {
+    "type": "plain",
+    "name": "LibOrderBook2",
+    "address": "0xf684419b60600d21B049C04e85Cb6d5a45256FFb",
+    "deployedAt": 287705995
   }
 }

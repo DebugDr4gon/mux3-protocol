@@ -90,10 +90,6 @@ contract OrderBookGetter is OrderBookStore, IOrderBookGetter {
         return hasRole(DELEGATOR_ROLE, delegator);
     }
 
-    function _liquidityLockPeriod() internal view returns (uint256 period) {
-        period = _storage.configTable.getUint256(MCO_LIQUIDITY_LOCK_PERIOD);
-    }
-
     function _isOrderPaused(OrderType orderType) internal view returns (bool paused) {
         if (orderType == OrderType.PositionOrder) {
             paused = _storage.configTable.getBoolean(MCO_POSITION_ORDER_PAUSED);
@@ -104,15 +100,6 @@ contract OrderBookGetter is OrderBookStore, IOrderBookGetter {
         }
     }
 
-    function _marketOrderTimeout() internal view returns (uint256 timeout) {
-        timeout = _storage.configTable.getUint256(MCO_MARKET_ORDER_TIMEOUT);
-        // 0 is valid
-    }
-
-    function _maxLimitOrderTimeout() internal view returns (uint256 timeout) {
-        timeout = _storage.configTable.getUint256(MCO_LIMIT_ORDER_TIMEOUT);
-        // 0 is valid
-    }
 
     function _referralManager() internal view returns (address ref) {
         ref = _storage.configTable.getAddress(MCO_REFERRAL_MANAGER);

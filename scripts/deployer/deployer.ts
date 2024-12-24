@@ -176,6 +176,18 @@ export class Deployer {
     return await this.e.provider.getStorageAt(address, storagePosition)
   }
 
+  // check if the binary code is the same
+  public async isImplementationDifferent(aliasName: string, artifactPath: string) {
+    const deployed = this.deployedContracts[aliasName]
+    if (!deployed || !deployed.address) {
+      return true
+    }
+    const oldCode = await this.e.provider.getCode(deployed.address)
+    const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"))
+    const newCode = artifact.deployedBytecode
+    return newCode !== oldCode
+  }
+
   private async _deploy(contractName: string, ...args: any[]): Promise<any> {
     return this._deployWithSigner(null, contractName, ...args)
   }

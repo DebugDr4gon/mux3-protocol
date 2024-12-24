@@ -77,8 +77,10 @@ describe("Order", () => {
 
     // orderBook
     const libOrderBook = await createContract("LibOrderBook")
+    const libOrderBook2 = await createContract("LibOrderBook2")
     orderBook = (await createContract("OrderBook", [], {
       "contracts/libraries/LibOrderBook.sol:LibOrderBook": libOrderBook,
+      "contracts/libraries/LibOrderBook2.sol:LibOrderBook2": libOrderBook2,
     })) as OrderBook
     await orderBook.initialize(core.address, weth.address)
     await orderBook.grantRole(ethers.utils.id("BROKER_ROLE"), broker.address)

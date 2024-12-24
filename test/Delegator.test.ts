@@ -66,8 +66,10 @@ describe("Delegator", () => {
 
     // orderBook
     const libOrderBook = await createContract("LibOrderBook")
+    const libOrderBook2 = await createContract("LibOrderBook2")
     orderBook = (await createContract("OrderBook", [], {
       "contracts/libraries/LibOrderBook.sol:LibOrderBook": libOrderBook,
+      "contracts/libraries/LibOrderBook2.sol:LibOrderBook2": libOrderBook2,
     })) as OrderBook
     await orderBook.initialize(core.address, weth.address)
     await orderBook.setConfig(ethers.utils.id("MCO_ORDER_GAS_FEE_GWEI"), u2b(BigNumber.from("1000000")))
