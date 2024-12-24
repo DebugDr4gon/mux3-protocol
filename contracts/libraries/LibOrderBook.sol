@@ -161,7 +161,13 @@ library LibOrderBook {
             _removeOrder(orderBook, orderData);
             emit IOrderBook.CancelOrder(orderData.account, orderId, orderData);
         }
-        delete orderBook.tpslOrders[positionId][marketId];
+        _clearTpslOrders(orderBook.tpslOrders[positionId][marketId]);
+    }
+
+    function _clearTpslOrders(EnumerableSetUpgradeable.UintSet storage orders) internal {
+        for (uint256 len = orders.length(); len > 0; len--) {
+            orders.remove(orders.at(len - 1));
+        }
     }
 
     function fillPositionOrder(

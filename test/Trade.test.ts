@@ -4648,6 +4648,12 @@ describe("Trade", () => {
           await orderBook.connect(broker).fillPositionOrder(3)
         }
         {
+          const orderIds = await orderBook.getTpslOrders(positionId, long1)
+          expect(orderIds.length).to.equal(2)
+          expect(orderIds[0]).to.equal(4)
+          expect(orderIds[1]).to.equal(5)
+        }
+        {
           const [orders, totalCount] = await orderBook.getOrders(0, 100)
           expect(totalCount).to.equal(2)
           expect(orders[0].id).to.equal(4)
@@ -4695,15 +4701,72 @@ describe("Trade", () => {
         }
       })
 
-      it("trigger close (loss). auto cancel another order", async () => {
-        await expect(orderBook.connect(broker).fillPositionOrder(5)).to.be.revertedWith("limitPrice")
-        await core.setMockPrice(a2b(btc.address), toWei("49500"))
-        await orderBook.connect(broker).fillPositionOrder(5)
-        // auto cancel
-        {
-          const [_, totalCount] = await orderBook.getOrders(0, 100)
-          expect(totalCount).to.equal(0)
-        }
+      describe("trigger close (loss). auto cancel another order", () => {
+        beforeEach(async () => {
+          await expect(orderBook.connect(broker).fillPositionOrder(5)).to.be.revertedWith("limitPrice")
+          await core.setMockPrice(a2b(btc.address), toWei("49500"))
+          await orderBook.connect(broker).fillPositionOrder(5)
+          // auto cancel
+          {
+            const orderIds = await orderBook.getTpslOrders(positionId, long1)
+            expect(orderIds.length).to.equal(0)
+          }
+          {
+            const [_, totalCount] = await orderBook.getOrders(0, 100)
+            expect(totalCount).to.equal(0)
+          }
+        })
+
+        it("open again, close again", async () => {
+          // open long btc, using usdc
+          await core.setMockPrice(a2b(btc.address), toWei("49500"))
+          await usdc.connect(trader1).transfer(orderBook.address, toUnit("10000", 6))
+          const args = {
+            positionId,
+            marketId: long1,
+            size: toWei("1"),
+            flags: PositionOrderFlags.OpenPosition,
+            limitPrice: toWei("49500"),
+            expiration: timestampOfTest + 86400 * 2 + 930 + 300,
+            lastConsumedToken: usdc.address,
+            collateralToken: usdc.address,
+            collateralAmount: toUnit("10000", 6),
+            withdrawUsd: toWei("0"),
+            withdrawSwapToken: zeroAddress,
+            withdrawSwapSlippage: toWei("0"),
+            tpPriceDiff: toWei("0.01"),
+            slPriceDiff: toWei("0.01"),
+            tpslExpiration: timestampOfTest + 86400 * 2 + 930 + 300 + 300,
+            tpslFlags: PositionOrderFlags.WithdrawProfit + PositionOrderFlags.WithdrawAllIfEmpty,
+            tpslWithdrawSwapToken: btc.address,
+            tpslWithdrawSwapSlippage: toWei("0.01"),
+          }
+          await orderBook.connect(trader1).placePositionOrder(args, refCode)
+          await orderBook.connect(broker).fillPositionOrder(6)
+          {
+            const orderIds = await orderBook.getTpslOrders(positionId, long1)
+            expect(orderIds.length).to.equal(2)
+            expect(orderIds[0]).to.equal(7)
+            expect(orderIds[1]).to.equal(8)
+          }
+          {
+            const [orders, totalCount] = await orderBook.getOrders(0, 100)
+            expect(totalCount).to.equal(2)
+            expect(orders[0].id).to.equal(7)
+            expect(orders[1].id).to.equal(8)
+          }
+          // fill, auto cancel
+          await core.setMockPrice(a2b(btc.address), toWei("50000"))
+          await orderBook.connect(broker).fillPositionOrder(7)
+          {
+            const orderIds = await orderBook.getTpslOrders(positionId, long1)
+            expect(orderIds.length).to.equal(0)
+          }
+          {
+            const [_, totalCount] = await orderBook.getOrders(0, 100)
+            expect(totalCount).to.equal(0)
+          }
+        })
       })
     })
 
@@ -4747,6 +4810,12 @@ describe("Trade", () => {
           // fee = 50000 * 1 * 0.1% = 50
           await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 30)
           await orderBook.connect(broker).fillPositionOrder(3)
+        }
+        {
+          const orderIds = await orderBook.getTpslOrders(positionId, short1)
+          expect(orderIds.length).to.equal(2)
+          expect(orderIds[0]).to.equal(4)
+          expect(orderIds[1]).to.equal(5)
         }
         {
           const [orders, totalCount] = await orderBook.getOrders(0, 100)
@@ -4801,6 +4870,10 @@ describe("Trade", () => {
         await core.setMockPrice(a2b(btc.address), toWei("50500"))
         await orderBook.connect(broker).fillPositionOrder(5)
         // auto cancel
+        {
+          const orderIds = await orderBook.getTpslOrders(positionId, short1)
+          expect(orderIds.length).to.equal(0)
+        }
         {
           const [_, totalCount] = await orderBook.getOrders(0, 100)
           expect(totalCount).to.equal(0)

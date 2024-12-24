@@ -78,6 +78,17 @@ contract OrderBookGetter is OrderBookStore, IOrderBookGetter {
         }
     }
 
+    /**
+     * @notice Get tp/sl orders of a position + marketId
+     */
+    function getTpslOrders(bytes32 positionId, bytes32 marketId) external view returns (uint64[] memory orderIds) {
+        EnumerableSetUpgradeable.UintSet storage ids = _storage.tpslOrders[positionId][marketId];
+        orderIds = new uint64[](ids.length());
+        for (uint256 i = 0; i < ids.length(); i++) {
+            orderIds[i] = LibTypeCast.toUint64(ids.at(i));
+        }
+    }
+
     function _isBroker(address broker) internal view returns (bool) {
         return hasRole(BROKER_ROLE, broker);
     }
@@ -99,7 +110,6 @@ contract OrderBookGetter is OrderBookStore, IOrderBookGetter {
             paused = _storage.configTable.getBoolean(MCO_WITHDRAWAL_ORDER_PAUSED);
         }
     }
-
 
     function _referralManager() internal view returns (address ref) {
         ref = _storage.configTable.getAddress(MCO_REFERRAL_MANAGER);
