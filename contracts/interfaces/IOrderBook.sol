@@ -158,8 +158,10 @@ interface IOrderBook {
     /**
      * @dev Trader/LP can wrap ETH to OrderBook
      *
-     *      note: transferToken is intended to be used as part of a multicall. If it is called directly
+     *      note: wrapNative is intended to be used as part of a multicall. If it is called directly
      *            the caller would end up losing the funds.
+     *      note: wrapNative is intended to be consumed in depositGas or placePositionOrder/placeLiquidityOrder.
+     *            Any excess ETH sent beyond the amount parameter will be lost in the contract.
      */
     function wrapNative(uint256 amount) external payable;
 
@@ -168,6 +170,8 @@ interface IOrderBook {
      *
      *      note: transferToken is intended to be used as part of a multicall. If it is called directly
      *            the caller would end up losing the funds.
+     *      note: transferToken is intended to be consumed in placePositionOrder/placeLiquidityOrder.
+     *            Any excess tokens sent beyond the amount parameter will be lost in the contract.
      */
     function transferToken(address token, uint256 amount) external payable;
 

@@ -95,6 +95,8 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      *
      *         note: wrapNative is intended to be used as part of a multicall. If it is called directly
      *               the caller would end up losing the funds.
+     *         note: wrapNative is intended to be consumed in depositGas or placePositionOrder/placeLiquidityOrder.
+     *               Any excess ETH sent beyond the amount parameter will be lost in the contract.
      * @param amount Amount of ETH to wrap
      * @dev Amount must be greater than 0 and less than or equal to msg.value
      */
@@ -108,6 +110,8 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      *
      *         note: transferToken is intended to be used as part of a multicall. If it is called directly
      *               the caller would end up losing the funds.
+     *         note: transferToken is intended to be consumed in placePositionOrder/placeLiquidityOrder.
+     *               Any excess tokens sent beyond the amount parameter will be lost in the contract.
      * @param token Address of the token to transfer
      * @param amount Amount of tokens to transfer
      */
