@@ -100,6 +100,15 @@ bytes32 constant MCO_LIQUIDITY_ORDER_PAUSED = keccak256("MCO_LIQUIDITY_ORDER_PAU
 // pause withdrawal order
 bytes32 constant MCO_WITHDRAWAL_ORDER_PAUSED = keccak256("MCO_WITHDRAWAL_ORDER_PAUSED");
 
+// pause rebalance order
+bytes32 constant MCO_REBALANCE_ORDER_PAUSED = keccak256("MCO_REBALANCE_ORDER_PAUSED");
+
+// pause adl order
+bytes32 constant MCO_ADL_ORDER_PAUSED = keccak256("MCO_ADL_ORDER_PAUSED");
+
+// pause liquidate order
+bytes32 constant MCO_LIQUIDATE_ORDER_PAUSED = keccak256("MCO_LIQUIDATE_ORDER_PAUSED");
+
 // timeout for market order. after this seconds, Broker can cancel the order
 bytes32 constant MCO_MARKET_ORDER_TIMEOUT = keccak256("MCO_MARKET_ORDER_TIMEOUT");
 

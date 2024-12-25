@@ -108,6 +108,12 @@ contract OrderBookGetter is OrderBookStore, IOrderBookGetter {
             paused = _storage.configTable.getBoolean(MCO_LIQUIDITY_ORDER_PAUSED);
         } else if (orderType == OrderType.WithdrawalOrder) {
             paused = _storage.configTable.getBoolean(MCO_WITHDRAWAL_ORDER_PAUSED);
+        } else if (orderType == OrderType.RebalanceOrder) {
+            paused = _storage.configTable.getBoolean(MCO_REBALANCE_ORDER_PAUSED);
+        } else if (orderType == OrderType.AdlOrder) {
+            paused = _storage.configTable.getBoolean(MCO_ADL_ORDER_PAUSED);
+        } else if (orderType == OrderType.LiquidateOrder) {
+            paused = _storage.configTable.getBoolean(MCO_LIQUIDATE_ORDER_PAUSED);
         }
     }
 
