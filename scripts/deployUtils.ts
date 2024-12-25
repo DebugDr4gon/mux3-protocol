@@ -5,19 +5,18 @@ import { TransactionReceipt } from "@ethersproject/providers"
 import { hexlify, concat, zeroPad, arrayify } from "@ethersproject/bytes"
 import { BigNumber as EthersBigNumber, BigNumberish, parseFixed, formatFixed } from "@ethersproject/bignumber"
 import chalk from "chalk"
-import { BigNumber } from "bignumber.js"
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 
 export const zeroBytes32 = ethers.constants.HashZero
 export const zeroAddress = ethers.constants.AddressZero
 
 export enum OrderType {
-  Invalid,
-  Position,
-  Liquidity,
-  Withdrawal,
-  Rebalance,
-  Adl,
+  Invalid, // 0
+  Position, // 1
+  Liquidity, // 2
+  Withdrawal, // 3
+  Rebalance, // 4
+  Adl, // 5
+  Liquidate, // 6
 }
 
 export enum PositionOrderFlags {

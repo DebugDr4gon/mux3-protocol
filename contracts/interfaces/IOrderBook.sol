@@ -10,7 +10,8 @@ enum OrderType {
     LiquidityOrder, // 2
     WithdrawalOrder, // 3
     RebalanceOrder, // 4
-    AdlOrder // 5
+    AdlOrder, // 5
+    LiquidateOrder // 6
 }
 
 // position order flags

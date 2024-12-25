@@ -371,7 +371,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         external
         onlyRole(BROKER_ROLE)
         nonReentrant
-        whenNotPaused(OrderType.LiquidityOrder)
+        whenNotPaused(OrderType.LiquidateOrder)
         updateSequence
         returns (uint256 tradingPrice)
     {
