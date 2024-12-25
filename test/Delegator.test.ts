@@ -144,7 +144,7 @@ describe("Delegator", () => {
     ])
 
     const positionId = encodePositionId(trader1.address, 0)
-    await delegator.connect(trader2).setInitialLeverage(positionId, long1, toWei("20"))
+    await delegator.connect(trader2).mux3SetInitialLeverage(positionId, long1, toWei("20"))
     expect(await core.getInitialLeverage(positionId, long1)).to.equal(toWei("20"))
     expect(await delegator.getDelegationByOwner(trader1.address)).to.deep.equal([trader2.address, BigNumber.from("99")])
   })
@@ -180,17 +180,17 @@ describe("Delegator", () => {
       tpslWithdrawSwapSlippage: toWei("0"),
     }
     {
-      await expect(delegator.connect(trader3).placePositionOrder(args, refCode)).to.revertedWith("Not authorized")
-      await expect(delegator.connect(trader2).placePositionOrder(args, refCode)).to.revertedWith("No action count")
+      await expect(delegator.connect(trader3).mux3PlacePositionOrder(args, refCode)).to.revertedWith("Not authorized")
+      await expect(delegator.connect(trader2).mux3PlacePositionOrder(args, refCode)).to.revertedWith("No action count")
       await delegator.connect(trader1).delegate(trader2.address, 100)
-      await delegator.connect(trader2).setInitialLeverage(positionId, long1, toWei("100"))
+      await delegator.connect(trader2).mux3SetInitialLeverage(positionId, long1, toWei("100"))
       const tx1 = await delegator
         .connect(trader2)
         .multicall(
           [
-            delegator.interface.encodeFunctionData("depositGas", [trader1.address, toWei("0.001")]),
-            delegator.interface.encodeFunctionData("transferToken", [trader1.address, usdc.address, toUnit("1000", 6)]),
-            delegator.interface.encodeFunctionData("placePositionOrder", [args, refCode]),
+            delegator.interface.encodeFunctionData("mux3DepositGas", [trader1.address, toWei("0.001")]),
+            delegator.interface.encodeFunctionData("mux3TransferToken", [trader1.address, usdc.address, toUnit("1000", 6)]),
+            delegator.interface.encodeFunctionData("mux3PlacePositionOrder", [args, refCode]),
           ],
           { value: toWei("0.001") }
         )
@@ -221,11 +221,11 @@ describe("Delegator", () => {
     }
     // cancel
     {
-      await expect(delegator.connect(trader3).cancelOrder(0)).to.revertedWith("Not authorized")
+      await expect(delegator.connect(trader3).mux3CancelOrder(0)).to.revertedWith("Not authorized")
       await delegator.connect(trader2).delegate(trader3.address, 100)
-      await expect(delegator.connect(trader3).cancelOrder(0)).to.revertedWith("Not authorized")
-      await expect(delegator.connect(trader2).cancelOrder(1)).to.revertedWith("No such orderId")
-      await delegator.connect(trader2).cancelOrder(0)
+      await expect(delegator.connect(trader3).mux3CancelOrder(0)).to.revertedWith("Not authorized")
+      await expect(delegator.connect(trader2).mux3CancelOrder(1)).to.revertedWith("No such orderId")
+      await delegator.connect(trader2).mux3CancelOrder(0)
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("100000", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("0", 6))
     }
@@ -243,20 +243,20 @@ describe("Delegator", () => {
     // deposit
     {
       await expect(
-        delegator.connect(trader3).depositCollateral(positionId, usdc.address, toUnit("1000", 6))
+        delegator.connect(trader3).mux3DepositCollateral(positionId, usdc.address, toUnit("1000", 6))
       ).to.revertedWith("Not authorized")
       await expect(
-        delegator.connect(trader2).depositCollateral(positionId, usdc.address, toUnit("1000", 6))
+        delegator.connect(trader2).mux3DepositCollateral(positionId, usdc.address, toUnit("1000", 6))
       ).to.revertedWith("No action count")
       await expect(
-        delegator.connect(trader2).transferToken(trader1.address, usdc.address, toUnit("1000", 6))
+        delegator.connect(trader2).mux3TransferToken(trader1.address, usdc.address, toUnit("1000", 6))
       ).to.revertedWith("No action count")
       await delegator.connect(trader1).delegate(trader2.address, 100)
       const tx1 = await delegator
         .connect(trader2)
         .multicall([
-          delegator.interface.encodeFunctionData("transferToken", [trader1.address, usdc.address, toUnit("1000", 6)]),
-          delegator.interface.encodeFunctionData("depositCollateral", [positionId, usdc.address, toUnit("1000", 6)]),
+          delegator.interface.encodeFunctionData("mux3TransferToken", [trader1.address, usdc.address, toUnit("1000", 6)]),
+          delegator.interface.encodeFunctionData("mux3DepositCollateral", [positionId, usdc.address, toUnit("1000", 6)]),
         ])
       await expect(tx1).to.emit(core, "Deposit").withArgs(trader1.address, positionId, usdc.address, toUnit("1000", 6))
       await expect(tx1)
@@ -266,15 +266,15 @@ describe("Delegator", () => {
       expect(await core.listAccountCollaterals(positionId)).to.deep.equal([[usdc.address, toUnit("1000", 18)]])
       expect(await delegator.getDelegationByOwner(trader1.address)).to.deep.equal([
         trader2.address,
-        BigNumber.from("98"),
+        BigNumber.from("99"),
       ])
     }
     // withdraw
     {
       const tx1 = await delegator.connect(trader2).multicall(
         [
-          delegator.interface.encodeFunctionData("depositGas", [trader1.address, toWei("0.001")]),
-          delegator.interface.encodeFunctionData("placeWithdrawalOrder", [
+          delegator.interface.encodeFunctionData("mux3DepositGas", [trader1.address, toWei("0.001")]),
+          delegator.interface.encodeFunctionData("mux3PlaceWithdrawalOrder", [
             {
               positionId: positionId,
               tokenAddress: usdc.address,
@@ -295,10 +295,10 @@ describe("Delegator", () => {
       expect(await core.listAccountCollaterals(positionId)).to.deep.equal([[usdc.address, toUnit("1000", 18)]])
       expect(await delegator.getDelegationByOwner(trader1.address)).to.deep.equal([
         trader2.address,
-        BigNumber.from("96"),
+        BigNumber.from("98"),
       ])
     }
     // cancel withdraw
-    await delegator.connect(trader2).cancelOrder(0)
+    await delegator.connect(trader2).mux3CancelOrder(0)
   })
 })

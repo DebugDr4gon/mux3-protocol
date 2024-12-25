@@ -3,8 +3,8 @@ pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "../interfaces/IOrderBook.sol";
-import "../libraries/LibCodec.sol";
+import { IOrderBook as IMux3OrderBook, IOrderBookGetter as IMux3OrderBookGetter, PositionOrderParams as Mux3PositionOrderParams, WithdrawalOrderParams as Mux3WithdrawalOrderParams, WithdrawAllOrderParams as Mux3WithdrawAllOrderParams, OrderData as Mux3OrderData } from "../interfaces/IOrderBook.sol";
+import { LibCodec as LibMux3Codec } from "../libraries/LibCodec.sol";
 
 contract Delegator is Initializable {
     event SetDelegator(address indexed owner, address indexed delegator, uint256 actionCount);
@@ -14,13 +14,14 @@ contract Delegator is Initializable {
         uint256 actionCount;
     }
 
-    address internal _orderBook;
+    address internal _mux3OrderBook;
     mapping(address => Delegation) internal _reserved1; // was delegator => Delegation
     mapping(address => Delegation) internal _delegations; // owner => Delegation
+    uint256 transient _actionCountDeductedInTx; // a flag to track if actionCount has been deducted in current tx. 1 means already deducted, 0 means not yet
 
-    function initialize(address orderBook) external initializer {
-        require(orderBook != address(0), "Invalid order book address");
-        _orderBook = orderBook;
+    function initialize(address mux3OrderBook) external initializer {
+        require(mux3OrderBook != address(0), "Invalid order book address");
+        _mux3OrderBook = mux3OrderBook;
     }
 
     function getDelegationByOwner(address owner) external view returns (Delegation memory) {
@@ -53,9 +54,9 @@ contract Delegator is Initializable {
      *
      *      example for collateral = USDC or WETH:
      *        multicall([
-     *          depositGas(gas),
-     *          transferToken(collateral),
-     *          placePositionOrder(positionOrderParams),
+     *          mux3DepositGas(gas),
+     *          mux3TransferToken(collateral),
+     *          mux3PlacePositionOrder(positionOrderParams),
      *        ])
      */
     function multicall(bytes[] calldata proxyCalls) external payable returns (bytes[] memory results) {
@@ -68,20 +69,20 @@ contract Delegator is Initializable {
     }
 
     /**
-     * @notice Trader should pay for gas for their orders
+     * @notice MUX3: Trader should pay for gas for their orders
      *         you should pay at least configValue(MCO_ORDER_GAS_FEE_GWEI) * 1e9 / 1e18 ETH for each order
      *
      *         note: Delegator.depositGas is slightly different from OrderBook.depositGas,
      *               there is no Delegator.wrapNative, and Delegator.depositGas consumes msg.value and deposit it as gas to OrderBook.
      */
-    function depositGas(address owner, uint256 amount) external payable {
+    function mux3DepositGas(address owner, uint256 amount) external payable {
         _consumeDelegation(owner);
-        IOrderBook(_orderBook).wrapNative{ value: amount }(amount);
-        IOrderBook(_orderBook).depositGas(owner, amount);
+        IMux3OrderBook(_mux3OrderBook).wrapNative{ value: amount }(amount);
+        IMux3OrderBook(_mux3OrderBook).depositGas(owner, amount);
     }
 
     /**
-     * @notice Trader transfer ERC20 tokens (usually collaterals) to the OrderBook
+     * @notice MUX3: Trader transfer ERC20 tokens (usually collaterals) to the OrderBook
      *
      *         note: transferToken is intended to be used as part of a multicall. If it is called directly
      *               the caller would end up losing the funds.
@@ -89,96 +90,99 @@ contract Delegator is Initializable {
      * @param token Address of the token to transfer
      * @param amount Amount of tokens to transfer
      */
-    function transferToken(address owner, address token, uint256 amount) external payable {
+    function mux3TransferToken(address owner, address token, uint256 amount) external payable {
         _consumeDelegation(owner);
-        IOrderBook(_orderBook).transferTokenFrom(owner, token, amount);
+        IMux3OrderBook(_mux3OrderBook).transferTokenFrom(owner, token, amount);
     }
 
     /**
-     * @notice A Trader can open/close position
+     * @notice MUX3: A Trader can open/close position
      *         Market order will expire after marketOrderTimeout seconds.
      *         Limit/Trigger order will expire after deadline.
      * @param orderParams The parameters for the position order
      * @param referralCode The referral code for the position order
      * @dev depositGas required (consume gas when filled)
      */
-    function placePositionOrder(PositionOrderParams memory orderParams, bytes32 referralCode) external payable {
-        (address owner, ) = LibCodec.decodePositionId(orderParams.positionId);
+    function mux3PlacePositionOrder(Mux3PositionOrderParams memory orderParams, bytes32 referralCode) external payable {
+        (address owner, ) = LibMux3Codec.decodePositionId(orderParams.positionId);
         _consumeDelegation(owner);
-        IOrderBook(_orderBook).placePositionOrder(orderParams, referralCode);
+        IMux3OrderBook(_mux3OrderBook).placePositionOrder(orderParams, referralCode);
     }
 
     /**
-     * @notice A Trader/LP can cancel an Order by orderId after a cool down period.
+     * @notice MUX3: A Trader/LP can cancel an Order by orderId after a cool down period.
      *         A Broker can also cancel an Order after expiration.
      * @param orderId The ID of the order to cancel
      */
-    function cancelOrder(uint64 orderId) external {
-        (OrderData memory orderData, bool exists) = IOrderBookGetter(_orderBook).getOrder(orderId);
+    function mux3CancelOrder(uint64 orderId) external {
+        (Mux3OrderData memory orderData, bool exists) = IMux3OrderBookGetter(_mux3OrderBook).getOrder(orderId);
         require(exists, "No such orderId");
         address owner = orderData.account;
         _consumeDelegation(owner);
-        IOrderBook(_orderBook).cancelOrder(orderId);
+        IMux3OrderBook(_mux3OrderBook).cancelOrder(orderId);
     }
 
     /**
-     * @notice A Trader can withdraw collateral
+     * @notice MUX3: A Trader can withdraw collateral
      *         This order will expire after marketOrderTimeout seconds.
      * @param orderParams The parameters for the withdrawal order
      * @dev depositGas required (consume gas when filled)
      */
-    function placeWithdrawalOrder(WithdrawalOrderParams memory orderParams) external payable {
-        (address owner, ) = LibCodec.decodePositionId(orderParams.positionId);
+    function mux3PlaceWithdrawalOrder(Mux3WithdrawalOrderParams memory orderParams) external payable {
+        (address owner, ) = LibMux3Codec.decodePositionId(orderParams.positionId);
         _consumeDelegation(owner);
-        IOrderBook(_orderBook).placeWithdrawalOrder(orderParams);
+        IMux3OrderBook(_mux3OrderBook).placeWithdrawalOrder(orderParams);
     }
 
     /**
-     * @notice A Trader can withdraw all collateral only when position = 0
+     * @notice MUX3: A Trader can withdraw all collateral only when position = 0
      * @param orderParams The parameters for the withdrawal order
      * @dev do not need depositGas
      */
-    function withdrawAllCollateral(WithdrawAllOrderParams memory orderParams) external {
-        (address owner, ) = LibCodec.decodePositionId(orderParams.positionId);
+    function mux3WithdrawAllCollateral(Mux3WithdrawAllOrderParams memory orderParams) external {
+        (address owner, ) = LibMux3Codec.decodePositionId(orderParams.positionId);
         _consumeDelegation(owner);
-        IOrderBook(_orderBook).withdrawAllCollateral(orderParams);
+        IMux3OrderBook(_mux3OrderBook).withdrawAllCollateral(orderParams);
     }
 
     /**
-     * @notice A Trader can deposit collateral into a PositionAccount
+     * @notice MUX3: A Trader can deposit collateral into a PositionAccount
      * @param positionId The ID of the position
      * @param collateralToken The address of the collateral token
      * @param collateralAmount The amount of collateral token
      * @dev do not need depositGas
      */
-    function depositCollateral(
+    function mux3DepositCollateral(
         bytes32 positionId,
         address collateralToken,
         uint256 collateralAmount // token decimals
     ) external {
-        (address owner, ) = LibCodec.decodePositionId(positionId);
+        (address owner, ) = LibMux3Codec.decodePositionId(positionId);
         _consumeDelegation(owner);
-        IOrderBook(_orderBook).depositCollateral(positionId, collateralToken, collateralAmount);
+        IMux3OrderBook(_mux3OrderBook).depositCollateral(positionId, collateralToken, collateralAmount);
     }
 
     /**
-     * @notice A trader should set initial leverage at least once before open-position
+     * @notice MUX3: A trader should set initial leverage at least once before open-position
      * @param positionId The ID of the position
      * @param marketId The ID of the market
      * @param initialLeverage The initial leverage to set
      * @dev do not need depositGas
      */
-    function setInitialLeverage(bytes32 positionId, bytes32 marketId, uint256 initialLeverage) external payable {
-        (address owner, ) = LibCodec.decodePositionId(positionId);
+    function mux3SetInitialLeverage(bytes32 positionId, bytes32 marketId, uint256 initialLeverage) external payable {
+        (address owner, ) = LibMux3Codec.decodePositionId(positionId);
         _consumeDelegation(owner);
-        IOrderBook(_orderBook).setInitialLeverage(positionId, marketId, initialLeverage);
+        IMux3OrderBook(_mux3OrderBook).setInitialLeverage(positionId, marketId, initialLeverage);
     }
 
     function _consumeDelegation(address owner) private {
         address delegator = msg.sender;
         Delegation storage delegation = _delegations[owner];
         require(delegation.delegator == delegator, "Not authorized");
-        require(delegation.actionCount > 0, "No action count");
-        delegation.actionCount--;
+        if (_actionCountDeductedInTx == 0) {
+            require(delegation.actionCount > 0, "No action count");
+            delegation.actionCount -= 1;
+            _actionCountDeductedInTx = 1;
+        }
     }
 }

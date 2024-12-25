@@ -190,7 +190,7 @@
     "address": "0x57a01cf961B076def0A62fB42Da1956635Ff9E33",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x125cc18815d39698C52132E642Ff7DF41DfDAD94"
+      "implementation": "0x32DEb53c53922585Ec447049F16c63B658199112"
     },
     "deployedAt": 265077992
   },
@@ -219,8 +219,8 @@
   "Delegator__implementation": {
     "type": "plain",
     "name": "Delegator__implementation",
-    "address": "0x125cc18815d39698C52132E642Ff7DF41DfDAD94",
-    "deployedAt": 286607519
+    "address": "0x32DEb53c53922585Ec447049F16c63B658199112",
+    "deployedAt": 288342345
   },
   "ChainlinkStreamProvider__implementation": {
     "type": "plain",
@@ -257,8 +257,8 @@
   "CollateralPoolEventEmitter__implementation": {
     "type": "plain",
     "name": "CollateralPoolEventEmitter__implementation",
-    "address": "0xC20B2636dd78E1C056D0D98700e325E3F7069e8D",
-    "deployedAt": 273694999
+    "address": "0x36aBade2d25Cd909718d45f513151374CC24242B",
+    "deployedAt": 288336711
   },
   "CollateralPoolEventEmitter": {
     "type": "upgradeable",
@@ -266,7 +266,7 @@
     "address": "0xf36Ce574164B7fF6471123084Fb7A7AdbC4C3a9F",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0xC20B2636dd78E1C056D0D98700e325E3F7069e8D"
+      "implementation": "0x36aBade2d25Cd909718d45f513151374CC24242B"
     },
     "deployedAt": 273695011
   },
