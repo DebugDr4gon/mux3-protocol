@@ -85,7 +85,7 @@ interface IFacetClose {
         bytes32 indexed positionId,
         bytes32 indexed marketId,
         bool isLong,
-        uint256 size,
+        uint256 size, // closing
         uint256 tradingPrice,
         address[] backedPools,
         uint256[] allocations, // 1e18
@@ -103,7 +103,7 @@ interface IFacetClose {
         bytes32 indexed positionId,
         bytes32 indexed marketId,
         bool isLong,
-        uint256 oldSize,
+        uint256 size, // size before liquidate = liquidate size
         uint256 tradingPrice, // 1e18
         address[] backedPools,
         uint256[] allocations, // 1e18
@@ -131,23 +131,25 @@ interface IFacetClose {
 
     function closePosition(ClosePositionArgs memory args) external returns (ClosePositionResult memory result);
 
-    struct LiquidatePositionArgs {
+    struct LiquidateArgs {
         bytes32 positionId;
-        bytes32 marketId;
         address lastConsumedToken;
         bool isUnwrapWeth;
     }
 
     struct LiquidatePositionResult {
+        bytes32 marketId;
         uint256 tradingPrice;
         int256[] poolPnlUsds;
         uint256 borrowingFeeUsd;
         uint256 positionFeeUsd;
     }
 
-    function liquidatePosition(
-        LiquidatePositionArgs memory args
-    ) external returns (LiquidatePositionResult memory result);
+    struct LiquidateResult {
+        LiquidatePositionResult[] positions;
+    }
+
+    function liquidate(LiquidateArgs memory args) external returns (LiquidateResult memory result);
 }
 
 interface IFacetPositionAccount {

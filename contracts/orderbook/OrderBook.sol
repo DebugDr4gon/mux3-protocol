@@ -355,39 +355,19 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
-     * @notice Liquidate a position. called by Broker
+     * @notice Liquidate all positions in a PositionAccount. called by Broker
      * @param positionId The ID of the position
-     * @param marketId The ID of the market
      * @param lastConsumedToken The address of the last consumed token
      * @param isWithdrawAllIfEmpty Set false so that collaterals will remain in the position account.
      * @param isUnwrapWeth Whether to unwrap WETH
-     * @return tradingPrice The trading price
-     * @dev If a PositionAccount contains multiple positions, it is recommended to liquidate positions
-     *      with pnl >= 0 first, and then liquidate positions with pnl < 0
      */
     function liquidate(
         bytes32 positionId,
-        bytes32 marketId,
         address lastConsumedToken,
         bool isWithdrawAllIfEmpty,
         bool isUnwrapWeth
-    )
-        external
-        onlyRole(BROKER_ROLE)
-        nonReentrant
-        whenNotPaused(OrderType.LiquidateOrder)
-        updateSequence
-        returns (uint256 tradingPrice)
-    {
-        return
-            LibOrderBook.liquidatePosition(
-                _storage,
-                positionId,
-                marketId,
-                lastConsumedToken,
-                isWithdrawAllIfEmpty,
-                isUnwrapWeth
-            );
+    ) external onlyRole(BROKER_ROLE) nonReentrant whenNotPaused(OrderType.LiquidateOrder) updateSequence {
+        LibOrderBook.liquidate(_storage, positionId, lastConsumedToken, isWithdrawAllIfEmpty, isUnwrapWeth);
     }
 
     /**

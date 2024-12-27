@@ -311,24 +311,21 @@ library LibOrderBook {
         }
     }
 
-    function liquidatePosition(
+    function liquidate(
         OrderBookStorage storage orderBook,
         bytes32 positionId,
-        bytes32 marketId,
         address lastConsumedToken,
         bool isWithdrawAllIfEmpty,
         bool isUnwrapWeth
-    ) external returns (uint256 tradingPrice) {
+    ) external {
         // close
-        IFacetClose.LiquidatePositionResult memory result = IFacetClose(orderBook.mux3Facet).liquidatePosition(
-            IFacetClose.LiquidatePositionArgs({
+        IFacetClose.LiquidateResult memory result = IFacetClose(orderBook.mux3Facet).liquidate(
+            IFacetClose.LiquidateArgs({
                 positionId: positionId,
-                marketId: marketId,
                 lastConsumedToken: lastConsumedToken,
                 isUnwrapWeth: isUnwrapWeth
             })
         );
-        tradingPrice = result.tradingPrice;
         // is the position completely closed
         if (_isPositionAccountFullyClosed(orderBook, positionId)) {
             // auto withdraw, equivalent to POSITION_WITHDRAW_ALL_IF_EMPTY
@@ -345,9 +342,13 @@ library LibOrderBook {
                 );
             }
         }
-
         // cancel activated tp/sl orders
-        _cancelActivatedTpslOrders(orderBook, positionId, marketId);
+        for (uint256 i = 0; i < result.positions.length; i++) {
+            bytes32 marketId = result.positions[i].marketId;
+            if (_isPositionAccountMarketFullyClosed(orderBook, positionId, marketId)) {
+                _cancelActivatedTpslOrders(orderBook, positionId, marketId);
+            }
+        }
     }
 
     function setInitialLeverage(

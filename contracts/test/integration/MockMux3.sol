@@ -34,9 +34,7 @@ contract MockMux3 is FacetManagement, FacetReader, IFacetOpen, IFacetClose, IFac
 
     function closePosition(ClosePositionArgs memory args) external returns (ClosePositionResult memory result) {}
 
-    function liquidatePosition(
-        LiquidatePositionArgs memory args
-    ) external returns (LiquidatePositionResult memory result) {}
+    function liquidate(LiquidateArgs memory args) external returns (LiquidateResult memory result) {}
 
     function reallocatePosition(
         ReallocatePositionArgs memory args

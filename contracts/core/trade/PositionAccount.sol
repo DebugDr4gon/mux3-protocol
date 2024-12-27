@@ -284,15 +284,7 @@ contract PositionAccount is Mux3FacetBase {
         bool shouldCollateralSufficient,
         address lastConsumedToken
     ) internal returns (uint256 positionFeeUsd, address[] memory feeAddresses, uint256[] memory feeAmounts) {
-        uint256 feeRate;
-        if (isLiquidating) {
-            feeRate = _marketLiquidationFeeRate(marketId);
-        } else {
-            feeRate = _marketPositionFeeRate(marketId);
-        }
-        uint256 marketPrice = _priceOf(_marketOracleId(marketId));
-        uint256 value = (size * marketPrice) / 1e18;
-        positionFeeUsd = (value * feeRate) / 1e18;
+        positionFeeUsd = _positionFeeUsd(marketId, size, isLiquidating);
         (positionFeeUsd, feeAddresses, feeAmounts) = _collectFeeFromCollateral(
             positionId,
             positionFeeUsd,
@@ -450,6 +442,22 @@ contract PositionAccount is Mux3FacetBase {
             borrowingFeeUsds[i] = feeUsd;
             borrowingFeeUsd += feeUsd;
         }
+    }
+
+    function _positionFeeUsd(
+        bytes32 marketId,
+        uint256 size,
+        bool isLiquidating
+    ) internal returns (uint256 positionFeeUsd) {
+        uint256 feeRate;
+        if (isLiquidating) {
+            feeRate = _marketLiquidationFeeRate(marketId);
+        } else {
+            feeRate = _marketPositionFeeRate(marketId);
+        }
+        uint256 marketPrice = _priceOf(_marketOracleId(marketId));
+        uint256 value = (size * marketPrice) / 1e18;
+        positionFeeUsd = (value * feeRate) / 1e18;
     }
 
     function _positionPnlUsd(

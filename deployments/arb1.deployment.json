@@ -38,32 +38,32 @@
   "FacetManagement": {
     "type": "plain",
     "name": "FacetManagement",
-    "address": "0xAd334592db47D692d57FaF85502c9B582d7D9B96",
-    "deployedAt": 287739238
+    "address": "0xF185b2CcaC6AeaF139bD37A262E20Cc2c4C5F960",
+    "deployedAt": 289149663
   },
   "FacetReader": {
     "type": "plain",
     "name": "FacetReader",
-    "address": "0x4Ed7f345286CC655e51E67fdC3AEa0dA24552da5",
-    "deployedAt": 287739271
+    "address": "0xFf2dcA2fF3C3B8d2dD764C40110653e265f2cD7A",
+    "deployedAt": 289149694
   },
   "FacetOpen": {
     "type": "plain",
     "name": "FacetOpen",
-    "address": "0x64BE6c3D5fb5e7E32365141Dc072d1B16b7e5e03",
-    "deployedAt": 287739302
+    "address": "0x9E8C0FC56947eB500d51Ab24923f284E4695fE50",
+    "deployedAt": 289149723
   },
   "FacetClose": {
     "type": "plain",
     "name": "FacetClose",
-    "address": "0x0067EBA29666801e93f925c09d52311C6a3D21Ef",
-    "deployedAt": 287739334
+    "address": "0x4320F559EC5D5893A5F63Ed9f28e2bFbB9f6f161",
+    "deployedAt": 289149756
   },
   "FacetPositionAccount": {
     "type": "plain",
     "name": "FacetPositionAccount",
-    "address": "0x2b6ecf3AB004422a938674b6CBd363e253157a36",
-    "deployedAt": 287739371
+    "address": "0xf015859950d6abD157e4ac6908b3840D76f4235f",
+    "deployedAt": 289149788
   },
   "Mux3": {
     "type": "diamond",
@@ -95,7 +95,7 @@
         ]
       },
       "facetManagement": {
-        "address": "0xAd334592db47D692d57FaF85502c9B582d7D9B96",
+        "address": "0xF185b2CcaC6AeaF139bD37A262E20Cc2c4C5F960",
         "selectors": [
           "0x49ffd567",
           "0x0606fd4f",
@@ -118,7 +118,7 @@
         ]
       },
       "facetReader": {
-        "address": "0x4Ed7f345286CC655e51E67fdC3AEa0dA24552da5",
+        "address": "0xFf2dcA2fF3C3B8d2dD764C40110653e265f2cD7A",
         "selectors": [
           "0x32404484",
           "0x5252f3a2",
@@ -142,21 +142,21 @@
         ]
       },
       "facetOpen": {
-        "address": "0x64BE6c3D5fb5e7E32365141Dc072d1B16b7e5e03",
+        "address": "0x9E8C0FC56947eB500d51Ab24923f284E4695fE50",
         "selectors": [
           "0x5876dfce",
           "0x7d8faddd"
         ]
       },
       "facetClose": {
-        "address": "0x0067EBA29666801e93f925c09d52311C6a3D21Ef",
+        "address": "0x4320F559EC5D5893A5F63Ed9f28e2bFbB9f6f161",
         "selectors": [
           "0x98118013",
-          "0xd713d5a3"
+          "0x926d2886"
         ]
       },
       "facetPositionAccount": {
-        "address": "0x2b6ecf3AB004422a938674b6CBd363e253157a36",
+        "address": "0xf015859950d6abD157e4ac6908b3840D76f4235f",
         "selectors": [
           "0xd954863c",
           "0x42ac97a1",
@@ -180,7 +180,7 @@
     "address": "0xE3A2028aB6eE109DC76c67fa4584E829a6A3E7F8",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0xfC00776BAb7bFCc1D30bb58fA0F65E74404f0B26"
+      "implementation": "0x5cCBB3Ba30254716bb3758781Cd561671663Eb4D"
     },
     "deployedAt": 265067381
   },
@@ -213,8 +213,8 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0xfC00776BAb7bFCc1D30bb58fA0F65E74404f0B26",
-    "deployedAt": 287706015
+    "address": "0x5cCBB3Ba30254716bb3758781Cd561671663Eb4D",
+    "deployedAt": 289150078
   },
   "Delegator__implementation": {
     "type": "plain",
@@ -334,16 +334,16 @@
     },
     "deployedAt": 279142174
   },
-  "LibOrderBook": {
-    "type": "plain",
-    "name": "LibOrderBook",
-    "address": "0xa0a0F9EDc93779281083d4fD1846C401a5A10987",
-    "deployedAt": 287705974
-  },
   "LibOrderBook2": {
     "type": "plain",
     "name": "LibOrderBook2",
     "address": "0xf684419b60600d21B049C04e85Cb6d5a45256FFb",
     "deployedAt": 287705995
+  },
+  "LibOrderBook": {
+    "type": "plain",
+    "name": "LibOrderBook",
+    "address": "0xA0d8c86BC14cA5A5aAE0a03CFbFc0bdA0d0584E9",
+    "deployedAt": 289150061
   }
 }
