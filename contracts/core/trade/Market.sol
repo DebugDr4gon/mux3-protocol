@@ -264,7 +264,7 @@ contract Market is Mux3FacetBase, IMarket {
             // probably exceeds MAX_COLLATERALS_PER_POSITION_ACCOUNT. but we can not stop closePosition
             positionAccount.activeCollaterals.add(collateralToken);
         }
-        deliveredPoolPnlUsd = poolPnlUsd;
+        deliveredPoolPnlUsd = LibTypeCast.toInt256((collateralAmount * _priceOf(collateralToken)) / 1e18);
     }
 
     /**

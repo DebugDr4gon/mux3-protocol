@@ -1170,7 +1170,7 @@ describe("Trade", () => {
               // position fee = 60000 * 10 * 0.1% = 600
               // Δsize1 =  9.4281 / (9.4281 + 11.5719) * 10 = 4.4896
               // Δsize2 = 11.5719 / (9.4281 + 11.5719) * 10 = 5.5104
-              // pnl1 = (60000 - 50446.967045321963067850) * 4.4896 = 42889.29675332251461058
+              // pnl1 = (60000 - 50446.967045321963067850) * 4.4896 = 42889.296753
               // pnl2 = (60000 - 50500) * 5.5104 = 52348.8
               const tx = await orderBook.connect(broker).fillPositionOrder(5)
               // {
@@ -1205,11 +1205,11 @@ describe("Trade", () => {
                   [toWei("4.4896"), toWei("5.5104")], // allocations
                   [toWei("4.9385"), toWei("6.0615")], // newSizes
                   [toWei("50446.967045321963067850"), toWei("50500")], // newEntryPrices
-                  [toWei("42889.29675332251461058"), toWei("52348.8")], // poolPnlUsds
+                  [toWei("42889.296753"), toWei("52348.8")], // poolPnlUsds
                   toWei("600"), // positionFeeUsd
                   toWei("3406.685814281621855268"), // borrowingFeeUsd
                   [usdc.address],
-                  [toWei("200171.410938718378144732")] // collateral + pnl - fee = 108940 + 42889.29675332251461058 + 52348.8 - 600 - 3406.685814281621855268
+                  [toWei("200171.410938718378144732")] // collateral + pnl - fee = 108940 + 42889.296753 + 52348.8 - 600 - 3406.685814281621855268
                 )
               expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
               expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("5266.685814", 6)) // 1260 + 600 + 3406.685814281621855268
@@ -1433,11 +1433,11 @@ describe("Trade", () => {
                 [toWei("4.4896"), toWei("5.5104")], // allocations
                 [toWei("4.9385"), toWei("6.0615")], // newSizes
                 [toWei("50446.967045321963067850"), toWei("50500")], // newEntryPrices
-                [toWei("42889.29675332251461058"), toWei("52348.8")], // poolPnlUsds
+                [toWei("42889.296753"), toWei("52348.8")], // poolPnlUsds
                 toWei("600"), // positionFeeUsd
                 toWei("3406.685814281621855268"), // borrowingFeeUsd
                 [usdc.address],
-                [toWei("200171.410938718378144732")] // collateral + pnl - fee = 108940 + 42889.29675332251461058 + 52348.8 - 600 - 3406.685814281621855268
+                [toWei("200171.410938718378144732")] // collateral + pnl - fee = 108940 + 42889.296753 + 52348.8 - 600 - 3406.685814281621855268
               )
           }
         })
@@ -1757,7 +1757,7 @@ describe("Trade", () => {
               // position fee = 60000 * 21 * 0.1% = 1260
               // Δsize1 =  9.4281
               // Δsize2 = 11.5719
-              // pnl1 = (60000 - 50446.967045321963067850) * 9.4281 = 90066.950000000000000003
+              // pnl1 = (60000 - 50446.967045321963067850) * 9.4281 = 90066.95
               // pnl2 = (60000 - 50500) * 11.5719 = 109933.05
               const tx = await orderBook.connect(broker).fillPositionOrder(5)
               // {
@@ -1792,11 +1792,11 @@ describe("Trade", () => {
                   [toWei("9.4281"), toWei("11.5719")], // allocations
                   [toWei("0"), toWei("0")], // newSizes
                   [toWei("0"), toWei("0")], // newEntryPrices
-                  [toWei("90066.950000000000000003"), toWei("109933.05")], // poolPnlUsds
+                  [toWei("90066.95"), toWei("109933.05")], // poolPnlUsds
                   toWei("1260"), // positionFeeUsd
                   toWei("3406.685814281621855268"), // borrowingFeeUsd
                   [usdc.address],
-                  [toWei("304273.314185718378144732")] // collateral + pnl - fee = 108940 + 90066.950000000000000003 + 109933.05 - 1260 - 3406.685814281621855268
+                  [toWei("304273.314185718378144732")] // collateral + pnl - fee = 108940 + 90066.95 + 109933.05 - 1260 - 3406.685814281621855268
                 )
               {
                 const positions = await core.listAccountPositions(positionId)
@@ -1912,7 +1912,7 @@ describe("Trade", () => {
               // position fee = 60000 * 10 * 0.1% = 600
               // Δsize1 =  9.4281 / (9.4281 + 11.5719) * 10 = 4.4896
               // Δsize2 = 11.5719 / (9.4281 + 11.5719) * 10 = 5.5104
-              // pnl1 = (60000 - 50446.967045321963067850) * 4.4896 = 42889.296753322514610580
+              // pnl1 = (60000 - 50446.967045321963067850) * 4.4896 = 42889.296753
               // pnl2 = (60000 - 50500) * 5.5104 = 52348.8
               const tx = await orderBook.connect(broker).fillPositionOrder(5)
               // {
@@ -1947,19 +1947,19 @@ describe("Trade", () => {
                   [toWei("4.4896"), toWei("5.5104")], // allocations
                   [toWei("4.9385"), toWei("6.0615")], // newSizes
                   [toWei("50446.967045321963067850"), toWei("50500")], // newEntryPrices
-                  [toWei("42889.296753322514610580"), toWei("52348.8")], // poolPnlUsds
+                  [toWei("42889.296753"), toWei("52348.8")], // poolPnlUsds
                   toWei("600"), // positionFeeUsd
                   toWei("3406.685814281621855268"), // borrowingFeeUsd
                   [usdc.address],
-                  [toWei("200171.410938718378144732")] // collateral + pnl - fee = 108940 + 42889.296753322514610580 + 52348.8 - 600 - 3406.685814281621855268
+                  [toWei("200171.410938718378144732")] // collateral + pnl - fee = 108940 + 42889.296753 + 52348.8 - 600 - 3406.685814281621855268
                 )
               await expect(tx).to.emit(core, "Withdraw").withArgs(
                 trader1.address,
                 positionId,
                 usdc.address,
-                toWei("91731.410939040892755312"), // profit - fee + withdraw = 42889.296753322514610580 + 52348.8 - 600 - 3406.685814281621855268 + 500
+                toWei("91731.410938718378144732"), // profit - fee + withdraw = 42889.296753 + 52348.8 - 600 - 3406.685814281621855268 + 500
                 usdc.address,
-                toUnit("91731.410939", 6)
+                toUnit("91731.410938", 6)
               )
               await expect(tx)
                 .to.emit(core, "DepositWithdrawFinish")
@@ -1968,18 +1968,18 @@ describe("Trade", () => {
                   positionId,
                   toWei("0"),
                   [usdc.address],
-                  [toWei("108439.99999967748538942")] // 200171.410938718378144732 - 91731.410939040892755312
+                  [toWei("108440")] // 200171.410938718378144732 - 91731.410938718378144732
                 )
-              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("181731.410939", 6)) // 90000 + 91731.410939
+              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("181731.410938", 6)) // 90000 + 91731.410938
               expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("5266.685814", 6)) // 1260 + 600 + 3406.685814281621855268
-              expect(await usdc.balanceOf(core.address)).to.equal(toUnit("108440.000000", 6)) // at least collateral
-              expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("957010.703247", 6)) // 999900 - 42889.296753322514610580
+              expect(await usdc.balanceOf(core.address)).to.equal(toUnit("108440.000001", 6)) // at least collateral
+              expect(await usdc.balanceOf(pool1.address)).to.equal(toUnit("957010.703247", 6)) // 999900 - 42889.296753
               expect(await usdc.balanceOf(pool2.address)).to.equal(toUnit("947551.200000", 6)) // 999900 - 52348.8
               expect(await btc.balanceOf(pool3.address)).to.equal(toUnit("19.998", 8)) // unchanged
               {
                 const collaterals = await core.listAccountCollaterals(positionId)
                 expect(collaterals[0].collateralAddress).to.equal(usdc.address)
-                expect(collaterals[0].collateralAmount).to.equal(toWei("108439.99999967748538942"))
+                expect(collaterals[0].collateralAmount).to.equal(toWei("108440"))
                 const positions = await core.listAccountPositions(positionId)
                 expect(positions[0].marketId).to.equal(long1)
                 expect(positions[0].pools[0].size).to.equal(toWei("4.9385"))
@@ -2035,17 +2035,17 @@ describe("Trade", () => {
                 trader1.address,
                 positionId,
                 usdc.address,
-                toWei("91731.410939040892755312"), // profit - fee + withdraw = 42889.296753322514610580 + 52348.8 - 600 - 3406.685814281621855268 + 500
+                toWei("91731.410938718378144732"), // profit - fee + withdraw = 42889.296753 + 52348.8 - 600 - 3406.685814281621855268 + 500
                 btc.address,
-                toUnit("1.83462821", 8) // 91731.410939 / 50000 (mockUniswap always return 50000)
+                toUnit("1.83462821", 8) // swapOut 91731.410938 / 50000 (mockUniswap always return 50000)
               )
               await expect(tx).to.emit(swapper, "TransferOut").withArgs(
                 btc.address,
-                toUnit("1.83462821", 8), // 91731.410939 / 50000 (mockUniswap always return 50000)
+                toUnit("1.83462821", 8), // 91731.410938 / 50000 (mockUniswap always return 50000)
                 false
               )
               expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // 90000
-              expect(await btc.balanceOf(trader1.address)).to.equal(toUnit("100001.83462821", 8)) // 100000 + 91731.410939 / 50000
+              expect(await btc.balanceOf(trader1.address)).to.equal(toUnit("100001.83462821", 8)) // 100000 + 91731.410938 / 50000
             }
           }
         })
@@ -2089,13 +2089,13 @@ describe("Trade", () => {
                 trader1.address,
                 positionId,
                 usdc.address,
-                toWei("91731.410939040892755312"), // profit - fee + withdraw = 42889.296753322514610580 + 52348.8 - 600 - 3406.685814281621855268 + 500
+                toWei("91731.410938718378144732"), // profit - fee + withdraw = 42889.296753 + 52348.8 - 600 - 3406.685814281621855268 + 500
                 usdc.address,
-                toUnit("91731.410939", 6)
+                toUnit("91731.410938", 6) // swapOut
               )
-              await expect(tx).to.emit(swapper, "TransferOut").withArgs(usdc.address, toUnit("91731.410939", 6), false)
-              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6).add(toUnit("91731.410939", 6))) // 90000 + 91731.410939
-              expect(await btc.balanceOf(trader1.address)).to.equal(toUnit("100000", 8)) // 100000 + 91731.410939 / 50000
+              await expect(tx).to.emit(swapper, "TransferOut").withArgs(usdc.address, toUnit("91731.410938", 6), false)
+              expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6).add(toUnit("91731.410938", 6))) // 90000 + 91731.410938
+              expect(await btc.balanceOf(trader1.address)).to.equal(toUnit("100000", 8)) // 100000 + 91731.410938 / 50000
             }
           }
         })
@@ -2445,7 +2445,7 @@ describe("Trade", () => {
           await arbFeeder.setMockData(toUnit("2", 8), await time.latest())
           await btcFeeder.setMockData(toUnit("50500", 8), await time.latest())
           // collateral = 108940
-          // pnl1 = (50500 - 50446.967045321963067850) * 9.4281 = 500.000000000000000003
+          // pnl1 = (50500 - 50446.967045321963067850) * 9.4281 = 500
           // pnl2 = (50500 - 50500) * 11.5719 = 0
           // fr1 0.10 + exp(10 * 9.4281 * 50446.967045321963067850 * 0.80 / 999900 - 7) = 0.140980166767003251
           // fr2 0.10 + exp(6 * 11.5719 * 50500                    * 0.80 / 999900 - 6) = 0.140979189713768723
@@ -2488,11 +2488,11 @@ describe("Trade", () => {
                 toWei("50500"), // tradingPrice
                 [pool1.address, pool2.address], // backedPools
                 [toWei("9.4281"), toWei("11.5719")], // allocations
-                [toWei("500.000000000000000003"), toWei("0")], // poolPnlUsds
+                [toWei("500"), toWei("0")], // poolPnlUsds
                 toWei("2121"), // positionFeeUsd
                 toWei("104144.210352846859701002"), // borrowingFeeUsd
                 [usdc.address],
-                [toWei("3174.789647153140298998")] // collateral + pnl - fee = 108940 + 500.000000000000000003 - 104144.210352846859701002 - 2121
+                [toWei("3174.789647153140298998")] // collateral + pnl - fee = 108940 + 500 - 104144.210352846859701002 - 2121
               )
             expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("90000", 6)) // unchanged
             expect(await usdc.balanceOf(feeDistributor.address)).to.equal(toUnit("107525.210352", 6)) // 1260 + 2121 + 104144.210352846859701002
@@ -4783,7 +4783,7 @@ describe("Trade", () => {
               toWei("60000"), // tradingPrice
               [pool1.address, pool2.address, pool3.address],
               [toWei("15.1989"), toWei("21.1652"), toWei("23.6359")], // allocations
-              [toWei("151989"), toWei("211652"), toWei("236359")], // poolPnlUsds
+              [toWei("151989"), toWei("211652"), toWei("236358.9996")], // poolPnlUsds
               toWei("7200"), // positionFeeUsd = 60000 * 60 * 0.002
               toWei("56255.894579773934233296"), // borrowingFeeUsd
               [usdc.address],
