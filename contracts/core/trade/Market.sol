@@ -259,9 +259,11 @@ contract Market is Mux3FacetBase, IMarket {
         (address collateralToken, uint256 collateralAmount) = ICollateralPool(backedPool).realizeProfit(
             uint256(poolPnlUsd) // positive wad
         );
-        positionAccount.collaterals[collateralToken] += collateralAmount;
-        // probably exceeds MAX_COLLATERALS_PER_POSITION_ACCOUNT. but we can not stop closePosition
-        positionAccount.activeCollaterals.add(collateralToken);
+        if (collateralAmount > 0) {
+            positionAccount.collaterals[collateralToken] += collateralAmount;
+            // probably exceeds MAX_COLLATERALS_PER_POSITION_ACCOUNT. but we can not stop closePosition
+            positionAccount.activeCollaterals.add(collateralToken);
+        }
         deliveredPoolPnlUsd = poolPnlUsd;
     }
 
