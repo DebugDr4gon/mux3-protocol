@@ -938,4 +938,27 @@ describe("Order", () => {
       )
     }
   })
+  
+  it("placeLiquidityOrder - addLiquidity to a draining pool", async () => {
+    await token0.mint(user0.address, toWei("1000"))
+    await token0.transfer(orderBook.address, toWei("150"))
+    // no1
+    await orderBook.placeLiquidityOrder({
+      poolAddress: pool1.address,
+      rawAmount: toWei("150"),
+      isAdding: true,
+      isUnwrapWeth: false,
+    })
+    await core.setPoolConfig(pool1.address, ethers.utils.id("MCP_IS_DRAINING"), u2b(ethers.BigNumber.from("1")))
+    await time.increaseTo(timestampOfTest + 86400 + 10)
+    await expect(orderBook.connect(broker).fillLiquidityOrder(0, [])).to.revertedWith("Draining")
+    // no2
+    await token0.transfer(orderBook.address, toWei("150"))
+    await expect(orderBook.placeLiquidityOrder({
+      poolAddress: pool1.address,
+      rawAmount: toWei("150"),
+      isAdding: true,
+      isUnwrapWeth: false,
+    })).to.be.revertedWith("Draining")
+  })
 })

@@ -806,6 +806,10 @@ library LibOrderBook {
         require(minUsd > 0, "MCO_MIN_LIQUIDITY_ORDER_USD not set");
     }
 
+    function _isPoolDraining(address poolAddress) internal view returns (bool isDraining) {
+        isDraining = ICollateralPool(poolAddress).configValue(MCP_IS_DRAINING).toBoolean();
+    }
+
     function _positionFeeRate(
         OrderBookStorage storage orderBook,
         bytes32 marketId

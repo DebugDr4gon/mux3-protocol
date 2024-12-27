@@ -33,6 +33,7 @@ library LibOrderBook2 {
         require(orderParams.rawAmount != 0, "Zero amount");
         LibOrderBook._validatePool(orderBook, orderParams.poolAddress);
         if (orderParams.isAdding) {
+            require(!LibOrderBook._isPoolDraining(orderParams.poolAddress), "Draining pool");
             address collateralAddress = ICollateralPool(orderParams.poolAddress).collateralToken();
             LibOrderBook._transferIn(orderBook, collateralAddress, orderParams.rawAmount);
         } else {
@@ -67,6 +68,7 @@ library LibOrderBook2 {
         uint256 lockPeriod = LibOrderBook._liquidityLockPeriod(orderBook);
         require(blockTimestamp >= orderData.placeOrderTime + lockPeriod, "Liquidity order is under lock period");
         if (orderParams.isAdding) {
+            require(!LibOrderBook._isPoolDraining(orderParams.poolAddress), "Draining pool");
             outAmount = _fillAddLiquidityOrder(orderBook, orderData, orderParams, reallocateArgs);
         } else {
             outAmount = _fillRemoveLiquidityOrder(orderBook, orderData, orderParams, reallocateArgs);
