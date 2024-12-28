@@ -94,7 +94,7 @@ contract PositionAccount is Mux3FacetBase {
                 1e18;
             minAmountOut = _collateralToRaw(withdrawToken, minAmountOut);
         }
-        {
+        if (rawCollateralAmount > 0) {
             address swapper = _swapper();
             IERC20Upgradeable(collateralToken).safeTransfer(swapper, rawCollateralAmount);
             (isSwapSuccess, rawSwapOut) = ISwapper(swapper).swapAndTransfer(

@@ -306,8 +306,10 @@ contract Market is Mux3FacetBase, IMarket {
             uint256 realizedPnlUsd = MathUpgradeable.min((wad * tokenPrice) / 1e18, remainPnlUsd);
             // send them to backed pool
             uint256 raw = _collateralToRaw(collateral, wad);
-            IERC20Upgradeable(collateral).safeTransfer(backedPool, raw);
-            ICollateralPool(backedPool).realizeLoss(collateral, raw);
+            if (raw > 0) {
+                IERC20Upgradeable(collateral).safeTransfer(backedPool, raw);
+                ICollateralPool(backedPool).realizeLoss(collateral, raw);
+            }
             // update remain
             remainPnlUsd -= realizedPnlUsd;
             if (remainPnlUsd == 0) {
@@ -348,16 +350,20 @@ contract Market is Mux3FacetBase, IMarket {
                 uint256(fromPoolPnlUsd) // positive wad
             );
             uint256 raw = _collateralToRaw(collateralToken, wad);
-            IERC20Upgradeable(collateralToken).safeTransfer(toPool, raw);
-            ICollateralPool(toPool).realizeLoss(collateralToken, raw);
+            if (raw > 0) {
+                IERC20Upgradeable(collateralToken).safeTransfer(toPool, raw);
+                ICollateralPool(toPool).realizeLoss(collateralToken, raw);
+            }
         } else {
             // if loss, transfer toPool => fromPool
             (address collateralToken, uint256 wad) = ICollateralPool(toPool).realizeProfit(
                 fromPoolPnlUsd.negInt256() // convert to positive wad
             );
             uint256 raw = _collateralToRaw(collateralToken, wad);
-            IERC20Upgradeable(collateralToken).safeTransfer(fromPool, raw);
-            ICollateralPool(fromPool).realizeLoss(collateralToken, raw);
+            if (raw > 0) {
+                IERC20Upgradeable(collateralToken).safeTransfer(fromPool, raw);
+                ICollateralPool(fromPool).realizeLoss(collateralToken, raw);
+            }
         }
     }
 }

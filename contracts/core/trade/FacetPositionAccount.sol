@@ -152,8 +152,8 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
         for (uint256 i = 0; i < mem.collaterals.length; i++) {
             mem.collateralAmount = positionAccount.collaterals[mem.collaterals[i]];
             if (mem.collateralAmount == 0) {
-                // usually we do not allow collateralAmount == 0 as an argument. caller should ensure not to withdraw 0.
-                // since this is the last step of trading, we allow withdrawing 0 to make execution simpler and more fault tolerant
+                // activeCollaterals should guarantee amount > 0. however, since this is usually the last step of trading,
+                // we allow such withdrawals to make the execution process simpler and more fault tolerant
                 continue;
             }
             (mem.isSwapSuccess, mem.rawSwapOut) = _withdrawFromAccount(
@@ -210,6 +210,9 @@ contract FacetPositionAccount is Mux3TradeBase, IFacetPositionAccount {
                 mem.payingUsd = MathUpgradeable.min(balanceUsd, mem.remainUsd);
             }
             mem.payingCollateral = (mem.payingUsd * 1e18) / mem.tokenPrice;
+            if (mem.payingCollateral == 0) {
+                continue;
+            }
             (mem.isSwapSuccess, mem.rawSwapOut) = _withdrawFromAccount(
                 args.positionId,
                 mem.collaterals[i],

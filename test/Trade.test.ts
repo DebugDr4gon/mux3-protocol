@@ -4807,6 +4807,189 @@ describe("Trade", () => {
           }
         })
       }) // cross margin
+
+      it("withdraw edge case 1: close position with loss, remaining collateral1 < 1e-6, withdraw all", async () => {
+        // Solve[27000 + (x - 50000) * 60 - x * 60 * 0.001 == 0.00000099], x = 49599.599599616116116116
+        // pnl = (49599.599599616116116116 - 50000) * 15.1989 = -6085.645645394612762764
+        // pnl = (49599.599599616116116116 - 50000) * 21.1652 = -8474.554554204979179181
+        // pnl = (49599.599599616116116116 - 50000) * 23.6359 = -9463.823823433441091093
+        // fee = 49599.599599616116116116 * 60 * 0.001 = 2975.975975976966966966
+        const args = {
+          positionId,
+          marketId: long1,
+          size: toWei("60"),
+          flags: PositionOrderFlags.WithdrawAllIfEmpty,
+          limitPrice: toWei("40000"),
+          expiration: timestampOfTest + 86400 * 2 + 930 + 30 + 30,
+          lastConsumedToken: zeroAddress,
+          collateralToken: zeroAddress,
+          collateralAmount: toUnit("0", 6),
+          withdrawUsd: toWei("0"),
+          withdrawSwapToken: zeroAddress,
+          withdrawSwapSlippage: toWei("0"),
+          tpPriceDiff: toWei("0"),
+          slPriceDiff: toWei("0"),
+          tpslExpiration: 0,
+          tpslFlags: 0,
+          tpslWithdrawSwapToken: zeroAddress,
+          tpslWithdrawSwapSlippage: toWei("0"),
+        }
+        await orderBook.connect(trader1).placePositionOrder(args, refCode)
+        await core.setMockPrice(a2b(btc.address), toWei("49599.599599616116116116"))
+        {
+          const tx = await orderBook.connect(broker).fillPositionOrder(4)
+          await expect(tx)
+            .to.emit(core, "ClosePosition")
+            .withArgs(
+              trader1.address,
+              positionId,
+              long1,
+              true, // isLong
+              toWei("60"), // size
+              toWei("49599.599599616116116116"), // tradingPrice
+              [pool1.address, pool2.address, pool3.address], // backedPools
+              [toWei("15.1989"), toWei("21.1652"), toWei("23.6359")], // allocations
+              [toWei("0"), toWei("0"), toWei("0")], // newSizes
+              [toWei("0"), toWei("0"), toWei("0")], // newEntryPrices
+              [toWei("-6085.645645394612762764"), toWei("-8474.554554204979179181"), toWei("-9463.823823433441091093")], // poolPnlUsds
+              toWei("2975.975975976966966966"), // positionFeeUsd
+              toWei("0"), // borrowingFeeUsd
+              [usdc.address, arb.address],
+              [
+                toWei("0.000000989999999996"), // collateral + pnl - fee = 27000 - 6085.645645394612762764 - 8474.554554204979179181 - 9463.823823433441091093 - 2975.975975976966966966
+                toWei("30000"), // unchanged
+              ]
+            )
+        }
+        expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("70000", 6)) // 70000 + 0
+        expect(await arb.balanceOf(trader1.address)).to.equal(toUnit("100000", 18)) // 70000 + 30000
+      })
+      
+      it("withdraw edge case 2: close position with loss, remaining collateral1 < 1e-6, withdraw usd", async () => {
+        // Solve[27000 + (x - 50000) * 60 - x * 60 * 0.001 == 0.00000099], x = 49599.599599616116116116
+        // pnl = (49599.599599616116116116 - 50000) * 15.1989 = -6085.645645394612762764
+        // pnl = (49599.599599616116116116 - 50000) * 21.1652 = -8474.554554204979179181
+        // pnl = (49599.599599616116116116 - 50000) * 23.6359 = -9463.823823433441091093
+        // fee = 49599.599599616116116116 * 60 * 0.001 = 2975.975975976966966966
+        const args = {
+          positionId,
+          marketId: long1,
+          size: toWei("60"),
+          flags: 0, // different here
+          limitPrice: toWei("40000"),
+          expiration: timestampOfTest + 86400 * 2 + 930 + 30 + 30,
+          lastConsumedToken: zeroAddress,
+          collateralToken: zeroAddress,
+          collateralAmount: toUnit("0", 6),
+          withdrawUsd: toWei("1"),
+          withdrawSwapToken: zeroAddress,
+          withdrawSwapSlippage: toWei("0"),
+          tpPriceDiff: toWei("0"),
+          slPriceDiff: toWei("0"),
+          tpslExpiration: 0,
+          tpslFlags: 0,
+          tpslWithdrawSwapToken: zeroAddress,
+          tpslWithdrawSwapSlippage: toWei("0"),
+        }
+        await orderBook.connect(trader1).placePositionOrder(args, refCode)
+        await core.setMockPrice(a2b(btc.address), toWei("49599.599599616116116116"))
+        {
+          const tx = await orderBook.connect(broker).fillPositionOrder(4)
+          await expect(tx)
+            .to.emit(core, "ClosePosition")
+            .withArgs(
+              trader1.address,
+              positionId,
+              long1,
+              true, // isLong
+              toWei("60"), // size
+              toWei("49599.599599616116116116"), // tradingPrice
+              [pool1.address, pool2.address, pool3.address], // backedPools
+              [toWei("15.1989"), toWei("21.1652"), toWei("23.6359")], // allocations
+              [toWei("0"), toWei("0"), toWei("0")], // newSizes
+              [toWei("0"), toWei("0"), toWei("0")], // newEntryPrices
+              [toWei("-6085.645645394612762764"), toWei("-8474.554554204979179181"), toWei("-9463.823823433441091093")], // poolPnlUsds
+              toWei("2975.975975976966966966"), // positionFeeUsd
+              toWei("0"), // borrowingFeeUsd
+              [usdc.address, arb.address],
+              [
+                toWei("0.000000989999999996"), // collateral + pnl - fee = 27000 - 6085.645645394612762764 - 8474.554554204979179181 - 9463.823823433441091093 - 2975.975975976966966966
+                toWei("30000"), // unchanged
+              ]
+            )
+        }
+        expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("70000", 6)) // 70000 + 0
+        expect(await arb.balanceOf(trader1.address)).to.equal(toUnit("70000.499999505000000002", 18)) // 70000 + (1 - 0.000000989999999996) / 2
+      })
+
+      it("withdraw edge case 3: close position with loss, remaining collateral2 < 1e-17, withdraw usd", async () => {
+        await core.setMarketConfig(long1, ethers.utils.id("MM_POSITION_FEE_RATE"), u2b(toWei("0")))
+        // deposit 1e-18 arb
+        {
+            await arb.mint(orderBook.address, toWei("0.000000000000000001"))
+            await orderBook.connect(trader1).depositCollateral(positionId, arb.address, toWei("0.000000000000000001"))
+            const collaterals = await core.listAccountCollaterals(positionId)
+            expect(collaterals[0].collateralAddress).to.equal(usdc.address)
+            expect(collaterals[0].collateralAmount).to.equal(toWei("27000"))
+            expect(collaterals[1].collateralAddress).to.equal(arb.address)
+            expect(collaterals[1].collateralAmount).to.equal(toWei("30000.000000000000000001"))
+        }
+        await core.setMockPrice(a2b(arb.address), toWei("0.01"))
+        // Solve[30000.000000000000000001 + ((x - 50000) * 60) / 0.01 == 0.000000000000000001], x = 49995
+        // pnl = (49995 - 50000) * 15.1989 = -75.9945
+        // pnl = (49995 - 50000) * 21.1652 = -105.826
+        // pnl = (49995 - 50000) * 23.6359 = -118.1795
+        // fee = 0
+        await core.setMockPrice(a2b(btc.address), toWei("49995"))
+        const args = {
+          positionId,
+          marketId: long1,
+          size: toWei("60"),
+          flags: 0, // different here
+          limitPrice: toWei("40000"),
+          expiration: timestampOfTest + 86400 * 2 + 930 + 30 + 30,
+          lastConsumedToken: usdc.address, // different here
+          collateralToken: zeroAddress,
+          collateralAmount: toUnit("0", 6),
+          withdrawUsd: toWei("1"),
+          withdrawSwapToken: zeroAddress,
+          withdrawSwapSlippage: toWei("0"),
+          tpPriceDiff: toWei("0"),
+          slPriceDiff: toWei("0"),
+          tpslExpiration: 0,
+          tpslFlags: 0,
+          tpslWithdrawSwapToken: zeroAddress,
+          tpslWithdrawSwapSlippage: toWei("0"),
+        }
+        await orderBook.connect(trader1).placePositionOrder(args, refCode)
+        {
+          const tx = await orderBook.connect(broker).fillPositionOrder(4)
+          await expect(tx)
+            .to.emit(core, "ClosePosition")
+            .withArgs(
+              trader1.address,
+              positionId,
+              long1,
+              true, // isLong
+              toWei("60"), // size
+              toWei("49995"), // tradingPrice
+              [pool1.address, pool2.address, pool3.address], // backedPools
+              [toWei("15.1989"), toWei("21.1652"), toWei("23.6359")], // allocations
+              [toWei("0"), toWei("0"), toWei("0")], // newSizes
+              [toWei("0"), toWei("0"), toWei("0")], // newEntryPrices
+              [toWei("-75.9945"), toWei("-105.826"), toWei("-118.1795")], // poolPnlUsds
+              toWei("0"), // positionFeeUsd
+              toWei("0"), // borrowingFeeUsd
+              [usdc.address, arb.address],
+              [
+                toWei("27000"), // unchanged
+                toWei("0.000000000000000001"),
+              ]
+            )
+        }
+        expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("70001", 6))
+        expect(await arb.balanceOf(trader1.address)).to.equal(toUnit("70000", 18)) // unchanged
+      })
     }) // 2 collaterals, open long, allocated to 3 pools
 
     it("isolated mode, you can only open single market position", async () => {
