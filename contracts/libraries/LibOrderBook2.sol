@@ -327,9 +327,7 @@ library LibOrderBook2 {
         WithdrawalOrderParams memory orderParams,
         uint64 blockTimestamp
     ) external {
-        if (orderParams.tokenAddress != address(0)) {
-            LibOrderBook._validateCollateral(orderBook, orderParams.tokenAddress);
-        }
+        LibOrderBook._validateCollateral(orderBook, orderParams.tokenAddress);
         if (orderParams.lastConsumedToken != address(0)) {
             LibOrderBook._validateCollateral(orderBook, orderParams.lastConsumedToken);
         }
