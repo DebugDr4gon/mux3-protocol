@@ -22,11 +22,12 @@ library LibExpBorrowingRate {
         IBorrowingRate.Global memory conf,
         IBorrowingRate.AllocatePool memory pool
     ) internal pure returns (int256 fr) {
-        int256 util = 0;
         if (pool.poolSizeUsd > 0) {
-            util = (pool.reservedUsd * 1e18) / pool.poolSizeUsd;
+            fr = (pool.reservedUsd * pool.k) / pool.poolSizeUsd;
+        } else {
+            // let util = 0, thus k * util = 0
         }
-        fr = (pool.k * util) / 1e18 + pool.b;
+        fr = fr + pool.b;
         fr = LibLogExp.exp(fr);
         fr = conf.baseApy + fr;
         return fr;
