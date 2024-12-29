@@ -144,7 +144,9 @@ describe("Rebalance", () => {
     beforeEach(async () => {
       // donate some arb into the pool
       await arb.mint(orderBook.address, toWei("10"))
+      await orderBook.grantRole(ethers.utils.id("FEE_DONATOR_ROLE"), admin.address) // so that we can call donateLiquidity
       await orderBook.donateLiquidity(pool1.address, arb.address, toWei("10"))
+      await orderBook.revokeRole(ethers.utils.id("FEE_DONATOR_ROLE"), admin.address)
       {
         const balances = await pool1.liquidityBalances()
         expect(balances.tokens[0]).to.equal(usdc.address)

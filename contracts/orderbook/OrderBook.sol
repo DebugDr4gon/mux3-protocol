@@ -457,12 +457,25 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         address collateralAddress,
         uint256 rawAmount // token.decimals
     ) external updateSequence {
+        require(_isFeeDonator(msg.sender), "Not authorized");
         LibOrderBook.donateLiquidity(_storage, poolAddress, collateralAddress, rawAmount);
     }
 
     function _blockTimestamp() internal view virtual returns (uint64) {
         uint256 timestamp = block.timestamp;
         return LibTypeCast.toUint64(timestamp);
+    }
+
+    function _isFeeDonator(address addr) internal view returns (bool) {
+        if (addr == LibOrderBook._feeDistributor(_storage)) {
+            // Mux3FeeDistributor is valid
+            return true;
+        }
+        if (hasRole(FEE_DONATOR_ROLE, addr)) {
+            // for future use
+            return true;
+        }
+        return false;
     }
 
     function setConfig(bytes32 key, bytes32 value) external nonReentrant updateSequence {
