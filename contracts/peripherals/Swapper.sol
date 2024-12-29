@@ -46,6 +46,7 @@ contract Swapper is OwnableUpgradeable, ISwapper, IErrors {
     event UniswapRouterSet(address uniswapRouter);
     event UniswapQuoterSet(address uniswapQuoter);
     event SetSwapPath(address tokenIn, address tokenOut, bytes[] paths);
+    event MissingSwapPath(address tokenIn, address tokenOut);
     event AppendSwapPath(address tokenIn, address tokenOut, bytes path);
     event TransferOut(address token, uint256 amount, bool isUnwrapped);
     event SwapSuccess(address tokenIn, uint256 amountIn, address tokenOut, uint256 amountOut);
@@ -145,51 +146,60 @@ contract Swapper is OwnableUpgradeable, ISwapper, IErrors {
         address receiver,
         bool isUnwrapWeth
     ) external returns (bool, uint256) {
-        if (tokenOut != address(0) && tokenOut != tokenIn) {
-            bytes[] memory paths = swapPaths[_encodeTokenPair(tokenIn, tokenOut)];
-            require(paths.length > 0, "Swapper::NO_PATH_SET");
-            (bool quoteSuccess, uint256 bestPathIndex, uint256 bestOutAmount) = LibUniswap.quote(
-                uniswapQuoter,
-                paths,
-                amountIn
-            );
-            // if quote success and best out amount is greater than min amount out, swap
-            // or send raw token to user
-            if (quoteSuccess && bestOutAmount >= minAmountOut) {
-                (uint256 amountOut, bool swapSuccess) = LibUniswap.swap(
-                    uniswapRouter,
-                    paths[bestPathIndex],
-                    tokenIn,
-                    tokenOut,
-                    amountIn,
-                    minAmountOut
-                );
-                if (swapSuccess) {
-                    require(
-                        IERC20MetadataUpgradeable(tokenOut).balanceOf(address(this)) >= amountOut,
-                        "Swapper::INVALID_TOKEN_OUT"
-                    );
-                    _transfer(tokenOut, amountOut, isUnwrapWeth, receiver);
-                    emit SwapSuccess(tokenIn, amountIn, tokenOut, amountOut);
-                    return (true, amountOut);
-                } else {
-                    emit SwapFailed(
-                        tokenIn,
-                        amountIn,
-                        tokenOut,
-                        minAmountOut,
-                        quoteSuccess,
-                        bestOutAmount,
-                        swapSuccess,
-                        amountOut
-                    );
-                }
-            } else {
-                emit SwapFailed(tokenIn, amountIn, tokenOut, minAmountOut, quoteSuccess, bestOutAmount, false, 0);
-            }
+        // no swap needed
+        if (tokenOut == address(0) || tokenOut == tokenIn) {
+            _transfer(tokenIn, amountIn, isUnwrapWeth, receiver);
+            return (false, amountIn);
         }
-        _transfer(tokenIn, amountIn, isUnwrapWeth, receiver);
-        return (false, amountIn);
+        // path not found
+        bytes[] memory paths = swapPaths[_encodeTokenPair(tokenIn, tokenOut)];
+        if (paths.length == 0) {
+            emit MissingSwapPath(tokenIn, tokenOut);
+            _transfer(tokenIn, amountIn, isUnwrapWeth, receiver);
+            return (false, amountIn);
+        }
+        // quote
+        (bool quoteSuccess, uint256 bestPathIndex, uint256 bestOutAmount) = LibUniswap.quote(
+            uniswapQuoter,
+            paths,
+            amountIn
+        );
+        if (!quoteSuccess || bestOutAmount < minAmountOut) {
+            emit SwapFailed(tokenIn, amountIn, tokenOut, minAmountOut, quoteSuccess, bestOutAmount, false, 0);
+            _transfer(tokenIn, amountIn, isUnwrapWeth, receiver);
+            return (false, amountIn);
+        }
+        // swap
+        (uint256 amountOut, bool swapSuccess) = LibUniswap.swap(
+            uniswapRouter,
+            paths[bestPathIndex],
+            tokenIn,
+            tokenOut,
+            amountIn,
+            minAmountOut
+        );
+        if (!swapSuccess) {
+            emit SwapFailed(
+                tokenIn,
+                amountIn,
+                tokenOut,
+                minAmountOut,
+                quoteSuccess,
+                bestOutAmount,
+                swapSuccess,
+                amountOut
+            );
+            _transfer(tokenIn, amountIn, isUnwrapWeth, receiver);
+            return (false, amountIn);
+        }
+        // transfer swapped tokens
+        require(
+            IERC20MetadataUpgradeable(tokenOut).balanceOf(address(this)) >= amountOut,
+            "Swapper::INVALID_TOKEN_OUT"
+        );
+        _transfer(tokenOut, amountOut, isUnwrapWeth, receiver);
+        emit SwapSuccess(tokenIn, amountIn, tokenOut, amountOut);
+        return (true, amountOut);
     }
 
     /**

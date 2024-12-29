@@ -72,7 +72,7 @@ describe("Swapper", () => {
     expect(await weth.balanceOf(user1.address)).to.equal(toWei("2"))
   })
 
-  it("swap usdc=>weth unwrap", async () => {
+  it("swap usdc=>weth, unwrap", async () => {
     await swapper.setSwapPath(usdc.address, weth.address, [usdc.address + UNI_FEE_005 + weth.address.slice(2)])
     await weth.deposit({ value: toWei("2") })
     await weth.transfer(uniswap.address, toWei("2"))
@@ -85,5 +85,12 @@ describe("Swapper", () => {
     await swapper.swapAndTransfer(usdc.address, toUnit("6000", 6), weth.address, toWei("2"), user1.address, true)
     expect(await usdc.balanceOf(swapper.address)).to.equal(toWei("0"))
     expect(await waffle.provider.getBalance(user1.address)).to.equal(rawBalance.add(toWei("2")))
+  })
+
+  it("no path", async () => {
+    await usdc.mint(swapper.address, toUnit("6000", 6))
+    const tx1 = await swapper.swapAndTransfer(usdc.address, toUnit("6000", 6), weth.address, toWei("2"), user1.address, false)
+    await expect(tx1).to.emit(swapper, "MissingSwapPath").withArgs(usdc.address, weth.address)
+    expect(await usdc.balanceOf(user1.address)).to.equal(toUnit("6000", 6))
   })
 })
