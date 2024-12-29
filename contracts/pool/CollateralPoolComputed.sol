@@ -126,7 +126,6 @@ contract CollateralPoolComputed is CollateralPoolStore {
         // trader upnl is affected by adl parameters
         if (upnlUsd > 0) {
             uint256 maxPnlRate = _adlMaxPnlRate(marketId);
-            require(maxPnlRate > 0, IErrors.EssentialConfigNotSet("MCP_ADL_MAX_PNL_RATE"));
             uint256 maxPnlUsd = (data.totalSize * data.averageEntryPrice) / 1e18;
             maxPnlUsd = (maxPnlUsd * maxPnlRate) / 1e18;
             upnlUsd = MathUpgradeable.min(uint256(upnlUsd), maxPnlUsd).toInt256();
