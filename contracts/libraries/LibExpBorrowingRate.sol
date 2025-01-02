@@ -292,6 +292,11 @@ library LibExpBorrowingRate {
         }
 
         // all pools are full
+        // this is an approximation algorithm, so allocated == xTotal almost never happens.
+        // here we only check the case where pools are likely full: allocated < xTotal && all pools are full.
+        // remains the following cases:
+        // 1. pools are full but current allocation is fine
+        // 2. allocated is slightly less than xTotal and pools are not full (this case will be covered in Market.sol)
         if (mem.totalAllocated < mem.xTotal) {
             bool isAllFull = true;
             for (int256 i = 0; i < mem.poolsN; i++) {

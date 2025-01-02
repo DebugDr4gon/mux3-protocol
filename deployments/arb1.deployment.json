@@ -171,8 +171,8 @@
   "CollateralPool__implementation": {
     "type": "plain",
     "name": "CollateralPool__implementation",
-    "address": "0x4f7333C3a85161D20fE0501246Eed40e1Dc33753",
-    "deployedAt": 287707030
+    "address": "0x06154fD6355e72d24578aF98D44fBd01F7615Ce2",
+    "deployedAt": 290497640
   },
   "OrderBook": {
     "type": "upgradeable",
@@ -180,7 +180,7 @@
     "address": "0xE3A2028aB6eE109DC76c67fa4584E829a6A3E7F8",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x5cCBB3Ba30254716bb3758781Cd561671663Eb4D"
+      "implementation": "0x9107e91eff5219fAD3821C589649b036da5CcE07"
     },
     "deployedAt": 265067381
   },
@@ -213,8 +213,8 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0x5cCBB3Ba30254716bb3758781Cd561671663Eb4D",
-    "deployedAt": 289150078
+    "address": "0x9107e91eff5219fAD3821C589649b036da5CcE07",
+    "deployedAt": 290478223
   },
   "Delegator__implementation": {
     "type": "plain",
@@ -273,8 +273,8 @@
   "Swapper__implementation": {
     "type": "plain",
     "name": "Swapper__implementation",
-    "address": "0x41571144E47f8257BdbdCBDEaeBAE0A30627A79D",
-    "deployedAt": 275984282
+    "address": "0xD882C4c67746Ac0D007614F364FeaEF5c492c7f4",
+    "deployedAt": 289697321
   },
   "Swapper": {
     "type": "upgradeable",
@@ -282,7 +282,7 @@
     "address": "0x0241d1b85FD3B184bFe881162Eee163f7b8fe3f7",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x41571144E47f8257BdbdCBDEaeBAE0A30627A79D"
+      "implementation": "0xD882C4c67746Ac0D007614F364FeaEF5c492c7f4"
     },
     "deployedAt": 273909792
   },
@@ -334,16 +334,16 @@
     },
     "deployedAt": 279142174
   },
-  "LibOrderBook2": {
-    "type": "plain",
-    "name": "LibOrderBook2",
-    "address": "0xf684419b60600d21B049C04e85Cb6d5a45256FFb",
-    "deployedAt": 287705995
-  },
   "LibOrderBook": {
     "type": "plain",
     "name": "LibOrderBook",
-    "address": "0xA0d8c86BC14cA5A5aAE0a03CFbFc0bdA0d0584E9",
-    "deployedAt": 289150061
+    "address": "0x1617285803E3837A1fE848D303c88F6B92eD55d4",
+    "deployedAt": 290478195
+  },
+  "LibOrderBook2": {
+    "type": "plain",
+    "name": "LibOrderBook2",
+    "address": "0x97f518EA95d1CD38e3f0e0187244c9aae0Fb4843",
+    "deployedAt": 290478209
   }
 }
