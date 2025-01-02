@@ -221,7 +221,8 @@ library LibExpBorrowingRate {
             for (int256 i = 0; i < n; i++) {
                 mem.candidate[uint256(i)] = calculateXi(mem, i, c);
                 if (mem.candidate[uint256(i)] < 0) {
-                    break;
+                    // this happens due to rounding errors. since this is just an approximate algorithm, no need to continue
+                    return;
                 }
 
                 // prevent overflow
