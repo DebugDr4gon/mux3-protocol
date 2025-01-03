@@ -4559,7 +4559,7 @@ describe("Trade", () => {
         beforeEach(async () => {
           // market
           await core.createMarket(
-            short2, 
+            short2,
             "Short2",
             false, // isLong
             [pool1.address, pool2.address, pool3.address]
@@ -4571,15 +4571,51 @@ describe("Trade", () => {
           await core.setMarketConfig(short2, ethers.utils.id("MM_LOT_SIZE"), u2b(toWei("0.1")))
           await core.setMarketConfig(short2, ethers.utils.id("MM_ORACLE_ID"), a2b(arb.address))
           await core.setMarketConfig(short2, ethers.utils.id("MM_OPEN_INTEREST_CAP_USD"), u2b(toWei("100000000")))
-          await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short2), u2b(toWei("0.80")))
-          await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short2), u2b(toWei("0.75")))
-          await core.setPoolConfig(pool1.address, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short2), u2b(toWei("0.70")))
-          await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short2), u2b(toWei("0.80")))
-          await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short2), u2b(toWei("0.75")))
-          await core.setPoolConfig(pool2.address, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short2), u2b(toWei("0.70")))
-          await core.setPoolConfig(pool3.address, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short2), u2b(toWei("0.80")))
-          await core.setPoolConfig(pool3.address, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short2), u2b(toWei("0.75")))
-          await core.setPoolConfig(pool3.address, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short2), u2b(toWei("0.70")))
+          await core.setPoolConfig(
+            pool1.address,
+            encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short2),
+            u2b(toWei("0.80"))
+          )
+          await core.setPoolConfig(
+            pool1.address,
+            encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short2),
+            u2b(toWei("0.75"))
+          )
+          await core.setPoolConfig(
+            pool1.address,
+            encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short2),
+            u2b(toWei("0.70"))
+          )
+          await core.setPoolConfig(
+            pool2.address,
+            encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short2),
+            u2b(toWei("0.80"))
+          )
+          await core.setPoolConfig(
+            pool2.address,
+            encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short2),
+            u2b(toWei("0.75"))
+          )
+          await core.setPoolConfig(
+            pool2.address,
+            encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short2),
+            u2b(toWei("0.70"))
+          )
+          await core.setPoolConfig(
+            pool3.address,
+            encodePoolMarketKey("MCP_ADL_RESERVE_RATE", short2),
+            u2b(toWei("0.80"))
+          )
+          await core.setPoolConfig(
+            pool3.address,
+            encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", short2),
+            u2b(toWei("0.75"))
+          )
+          await core.setPoolConfig(
+            pool3.address,
+            encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", short2),
+            u2b(toWei("0.70"))
+          )
           await core.setMockPrice(a2b(usdc.address), toWei("1"))
           await core.setMockPrice(a2b(arb.address), toWei("2"))
           await core.setMockPrice(a2b(btc.address), toWei("60000"))
@@ -4781,36 +4817,40 @@ describe("Trade", () => {
             //     }
             //   }
             // }
-            await expect(tx).to.emit(core, "LiquidatePosition").withArgs(
-              trader1.address,
-              positionId,
-              long1,
-              true,
-              toWei("60"), // size
-              toWei("60000"), // tradingPrice
-              [pool1.address, pool2.address, pool3.address],
-              [toWei("15.1989"), toWei("21.1652"), toWei("23.6359")], // allocations
-              [toWei("151989"), toWei("211652"), toWei("236358.9996")], // poolPnlUsds
-              toWei("7200"), // positionFeeUsd = 60000 * 60 * 0.002
-              toWei("56255.894579773934233296"), // borrowingFeeUsd
-              [usdc.address],
-              [toWei("35404.105020226065766700")], // 98859.9996 - 7200 - 56255.894579773934233296
-            )
-            await expect(tx).to.emit(core, "LiquidatePosition").withArgs(
-              trader1.address,
-              positionId,
-              short2,
-              false,
-              toWei("70000"), // size
-              toWei("16.7"), // tradingPrice
-              [pool1.address, pool2.address, pool3.address],
-              [toWei("10931.5"), toWei("18220.5"), toWei("40848")], // allocations
-              [toWei("-160693.05"), toWei("-267841.35"), toWei("-600465.6")], // poolPnlUsds
-              toWei("2338"), // positionFeeUsd = 16.7 * 70000 * 0.002
-              toWei("20857.822696618037775746"), // borrowingFeeUsd
-              [usdc.address],
-              [toWei("12208.282323608027990954")], // 35404.105020226065766700 - 20857.82269661803777574725 - 2338
-            )
+            await expect(tx)
+              .to.emit(core, "LiquidatePosition")
+              .withArgs(
+                trader1.address,
+                positionId,
+                long1,
+                true,
+                toWei("60"), // size
+                toWei("60000"), // tradingPrice
+                [pool1.address, pool2.address, pool3.address],
+                [toWei("15.1989"), toWei("21.1652"), toWei("23.6359")], // allocations
+                [toWei("151989"), toWei("211652"), toWei("236358.9996")], // poolPnlUsds
+                toWei("7200"), // positionFeeUsd = 60000 * 60 * 0.002
+                toWei("56255.894579773934233296"), // borrowingFeeUsd
+                [usdc.address],
+                [toWei("35404.105020226065766700")] // 98859.9996 - 7200 - 56255.894579773934233296
+              )
+            await expect(tx)
+              .to.emit(core, "LiquidatePosition")
+              .withArgs(
+                trader1.address,
+                positionId,
+                short2,
+                false,
+                toWei("70000"), // size
+                toWei("16.7"), // tradingPrice
+                [pool1.address, pool2.address, pool3.address],
+                [toWei("10931.5"), toWei("18220.5"), toWei("40848")], // allocations
+                [toWei("-160693.05"), toWei("-267841.35"), toWei("-600465.6")], // poolPnlUsds
+                toWei("2338"), // positionFeeUsd = 16.7 * 70000 * 0.002
+                toWei("20857.822696618037775746"), // borrowingFeeUsd
+                [usdc.address],
+                [toWei("12208.282323608027990954")] // 35404.105020226065766700 - 20857.82269661803777574725 - 2338
+              )
           }
         })
       }) // cross margin
@@ -4871,7 +4911,7 @@ describe("Trade", () => {
         expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("70000", 6)) // 70000 + 0
         expect(await arb.balanceOf(trader1.address)).to.equal(toUnit("100000", 18)) // 70000 + 30000
       })
-      
+
       it("withdraw edge case 2: close position with loss, remaining collateral1 < 1e-6, withdraw usd", async () => {
         // Solve[27000 + (x - 50000) * 60 - x * 60 * 0.001 == 0.00000099], x = 49599.599599616116116116
         // pnl = (49599.599599616116116116 - 50000) * 15.1989 = -6085.645645394612762764
@@ -4933,13 +4973,13 @@ describe("Trade", () => {
         await core.setMarketConfig(long1, ethers.utils.id("MM_POSITION_FEE_RATE"), u2b(toWei("0")))
         // deposit 1e-18 arb
         {
-            await arb.mint(orderBook.address, toWei("0.000000000000000001"))
-            await orderBook.connect(trader1).depositCollateral(positionId, arb.address, toWei("0.000000000000000001"))
-            const collaterals = await core.listAccountCollaterals(positionId)
-            expect(collaterals[0].collateralAddress).to.equal(usdc.address)
-            expect(collaterals[0].collateralAmount).to.equal(toWei("27000"))
-            expect(collaterals[1].collateralAddress).to.equal(arb.address)
-            expect(collaterals[1].collateralAmount).to.equal(toWei("30000.000000000000000001"))
+          await arb.mint(orderBook.address, toWei("0.000000000000000001"))
+          await orderBook.connect(trader1).depositCollateral(positionId, arb.address, toWei("0.000000000000000001"))
+          const collaterals = await core.listAccountCollaterals(positionId)
+          expect(collaterals[0].collateralAddress).to.equal(usdc.address)
+          expect(collaterals[0].collateralAmount).to.equal(toWei("27000"))
+          expect(collaterals[1].collateralAddress).to.equal(arb.address)
+          expect(collaterals[1].collateralAmount).to.equal(toWei("30000.000000000000000001"))
         }
         await core.setMockPrice(a2b(arb.address), toWei("0.01"))
         // Solve[30000.000000000000000001 + ((x - 50000) * 60) / 0.01 == 0.000000000000000001], x = 49995
