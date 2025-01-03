@@ -14,10 +14,12 @@ contract TestMux3 is Mux3FacetBase, FacetOpen, FacetClose, FacetPositionAccount,
     // for withdraw
     receive() external payable {}
 
-    function _priceOf(bytes32 id) internal view override returns (uint256) {
-        return _mockCache[id];
+    function _priceOf(bytes32 oracleId) internal view override returns (uint256 price) {
+        price = _mockCache[oracleId];
+        require(price > 0, MissingPrice(oracleId));
     }
 
+    // price = 0 means clear the price
     function setMockPrice(bytes32 key, uint256 price) external {
         _mockCache[key] = price;
     }

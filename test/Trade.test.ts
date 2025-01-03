@@ -256,6 +256,10 @@ describe("Trade", () => {
 
   it("deposit 2 tokens, withdraw all when position = 0", async () => {
     const positionId = encodePositionId(trader1.address, 0)
+    // clear price
+    await core.setMockPrice(a2b(usdc.address), toWei("0"))
+    await core.setMockPrice(a2b(arb.address), toWei("0"))
+    await core.setMockPrice(a2b(btc.address), toWei("0"))
     // deposit
     await usdc.connect(trader1).transfer(orderBook.address, toUnit("1000", 6))
     await arb.connect(trader1).transfer(orderBook.address, toUnit("500", 18))
@@ -295,8 +299,6 @@ describe("Trade", () => {
       const args = {
         positionId,
         isUnwrapWeth: false,
-        withdrawSwapToken: zeroAddress,
-        withdrawSwapSlippage: toWei("0"),
       }
       await expect(orderBook.connect(lp1).withdrawAllCollateral(args)).to.revertedWith("Not authorized")
       await orderBook.connect(trader1).withdrawAllCollateral(args)
@@ -5446,6 +5448,10 @@ describe("Trade", () => {
   })
 
   it("multicall can throw custom error", async () => {
+    // clear price
+    await core.setMockPrice(a2b(usdc.address), toWei("0"))
+    await core.setMockPrice(a2b(arb.address), toWei("0"))
+    await core.setMockPrice(a2b(btc.address), toWei("0"))
     await expect(
       orderBook.connect(trader1).multicall([
         orderBook.interface.encodeFunctionData("withdrawAllCollateral", [

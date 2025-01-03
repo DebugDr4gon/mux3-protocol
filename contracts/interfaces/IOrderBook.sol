@@ -105,8 +105,6 @@ struct WithdrawalOrderParams {
 struct WithdrawAllOrderParams {
     bytes32 positionId;
     bool isUnwrapWeth;
-    address withdrawSwapToken;
-    uint256 withdrawSwapSlippage;
 }
 
 struct RebalanceOrderParams {

@@ -308,16 +308,14 @@ library LibOrderBook2 {
             LibOrderBook._isPositionAccountFullyClosed(orderBook, orderParams.positionId),
             "Position account is not fully closed"
         );
-        require(orderParams.withdrawSwapSlippage <= 1e18, "withdrawSwapSlippage too large");
-        if (orderParams.withdrawSwapToken != address(0)) {
-            LibOrderBook._validateCollateral(orderBook, orderParams.withdrawSwapToken);
-        }
         IFacetPositionAccount(orderBook.mux3Facet).withdrawAll(
             IFacetPositionAccount.WithdrawAllArgs({
                 positionId: orderParams.positionId,
                 isUnwrapWeth: orderParams.isUnwrapWeth,
-                withdrawSwapToken: orderParams.withdrawSwapToken,
-                withdrawSwapSlippage: orderParams.withdrawSwapSlippage
+                // OrderBook.withdrawAll can not support swap. because OrderBook.withdrawAll is not called by broker,
+                // so there is no reference prices.
+                withdrawSwapToken: address(0),
+                withdrawSwapSlippage: 0
             })
         );
     }
