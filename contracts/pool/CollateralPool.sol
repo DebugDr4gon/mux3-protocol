@@ -108,15 +108,16 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     }
 
     /**
-     * @notice Calculates the Assets Under Management (AUM) in USD without considering PnL
-     * @return The AUM value in USD (18 decimals)
+     * @notice Calculates the value of pool.collateralToken. This is used to reserve for potential PnL.
+     * @return The value of pool.collateralToken in USD (18 decimals)
      */
-    function getAumUsdWithoutPnl() external view returns (uint256) {
-        return _aumUsdWithoutPnl();
+    function getCollateralTokenUsd() external view returns (uint256) {
+        return _collateralTokenUsd();
     }
 
     /**
-     * @notice Calculates the total Assets Under Management (AUM) in USD including PnL
+     * @notice Calculates the total Assets Under Management (AUM) in USD including unrealized PnL.
+     *         This is used to evaluate NAV
      * @return The total AUM value in USD (18 decimals)
      */
     function getAumUsd() external view returns (uint256) {
@@ -222,7 +223,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         poolFr.poolId = uint256(uint160(address(this)));
         poolFr.k = _borrowingK();
         poolFr.b = _borrowingB();
-        poolFr.poolSizeUsd = _aumUsdWithoutPnl().toInt256();
+        poolFr.poolSizeUsd = _collateralTokenUsd().toInt256();
         poolFr.reservedUsd = _reservedUsd().toInt256();
         poolFr.reserveRate = _adlReserveRate(marketId).toInt256();
         poolFr.isDraining = _isDraining();
@@ -408,7 +409,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         // nav
         uint256 collateralPrice = IFacetReader(_core).priceOf(_collateralToken);
         uint256 aumUsd = _aumUsd();
-        uint256 aumUsdWithoutPnl = _aumUsdWithoutPnl(); // important: read this before add liquidity
+        uint256 poolCollateralUsd = _collateralTokenUsd(); // used to reserve for potential PnL. important: read this before add liquidity
         uint256 lpPrice = _nav(aumUsd);
         // token amount
         uint256 collateralAmount = _toWad(_collateralToken, args.rawCollateralAmount);
@@ -430,8 +431,8 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
             uint256 liquidityCap = _liquidityCapUsd();
             uint256 collateralUsd = (collateralAmount * collateralPrice) / 1e18;
             require(
-                aumUsdWithoutPnl + collateralUsd <= liquidityCap,
-                CapacityExceeded(liquidityCap, aumUsdWithoutPnl, collateralUsd)
+                poolCollateralUsd + collateralUsd <= liquidityCap,
+                CapacityExceeded(liquidityCap, poolCollateralUsd, collateralUsd)
             );
         }
         // share
@@ -464,7 +465,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         require(_isCollateralExist(_collateralToken), CollateralNotExist(_collateralToken));
         // nav
         uint256 aumUsd = _aumUsd();
-        uint256 aumUsdWithoutPnl = _aumUsdWithoutPnl(); // important: read this before remove liquidity
+        uint256 poolCollateralUsd = _collateralTokenUsd(); // used to reserve for potential PnL. important: read this before remove liquidity
         uint256 lpPrice = _nav(aumUsd);
         // from pool
         uint256 collateralPrice = IFacetReader(_core).priceOf(_collateralToken);
@@ -481,10 +482,10 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         );
         {
             uint256 removedValue = (collateralPrice * collateralAmount) / 1e18;
-            if (removedValue < aumUsdWithoutPnl) {
-                aumUsdWithoutPnl -= removedValue;
+            if (removedValue < poolCollateralUsd) {
+                poolCollateralUsd -= removedValue;
             } else {
-                aumUsdWithoutPnl = 0;
+                poolCollateralUsd = 0;
             }
         }
         // fees
@@ -509,10 +510,10 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         } else {
             IERC20Upgradeable(_collateralToken).safeTransfer(args.account, result.rawCollateralAmount);
         }
-        // since util = reserved / aumUsdWithoutPnl, do not let new aumUsdWithoutPnl < reserved
+        // since util = reserved / poolCollateralUsd, do not let new poolCollateralUsd < reserved
         {
             uint256 reservedUsd = _reservedUsd();
-            require(reservedUsd <= aumUsdWithoutPnl, InsufficientLiquidity(reservedUsd, aumUsdWithoutPnl));
+            require(reservedUsd <= poolCollateralUsd, InsufficientLiquidity(reservedUsd, poolCollateralUsd));
         }
         ICollateralPoolEventEmitter(_eventEmitter).emitRemoveLiquidity(
             args.account,

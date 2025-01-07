@@ -30,7 +30,7 @@ interface ICollateralPool {
 
     function liquidityBalances() external view returns (address[] memory tokens, uint256[] memory balances);
 
-    function getAumUsdWithoutPnl() external view returns (uint256);
+    function getCollateralTokenUsd() external view returns (uint256);
 
     function getAumUsd() external view returns (uint256);
 

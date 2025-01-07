@@ -194,7 +194,7 @@ contract FacetOpen is Mux3TradeBase, IFacetOpen {
             mem.fromPoolOldEntryPrice
         );
         // transfer pool's position and settle PnL between them
-        _reallocateMarketPosition(
+        mem.poolPnlUsds[mem.fromIndex] = _reallocateMarketPosition(
             args.marketId,
             args.fromPool,
             args.toPool,
@@ -213,9 +213,9 @@ contract FacetOpen is Mux3TradeBase, IFacetOpen {
         // prevent insufficient reserves in pools. we do not need to check fromPool as it should have enough reserves to pay the pnl.
         // however, we need to verify toPool has sufficient reserves
         {
-            uint256 aumUsdWithoutPnl = ICollateralPool(args.toPool).getAumUsdWithoutPnl();
+            uint256 poolCollateralUsd = ICollateralPool(args.toPool).getCollateralTokenUsd();
             uint256 reservedUsd = ICollateralPool(args.toPool).getReservedUsd();
-            require(reservedUsd <= aumUsdWithoutPnl, InsufficientLiquidity(reservedUsd, aumUsdWithoutPnl));
+            require(reservedUsd <= poolCollateralUsd, InsufficientLiquidity(reservedUsd, poolCollateralUsd));
         }
         // done
         {

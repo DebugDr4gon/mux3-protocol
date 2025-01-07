@@ -263,8 +263,8 @@ contract Market is Mux3FacetBase, IMarket {
             positionAccount.collaterals[collateralToken] += collateralAmount;
             // probably exceeds MAX_COLLATERALS_PER_POSITION_ACCOUNT. but we can not stop closePosition
             positionAccount.activeCollaterals.add(collateralToken);
+            deliveredPoolPnlUsd = LibTypeCast.toInt256((collateralAmount * _priceOf(collateralToken)) / 1e18);
         }
-        deliveredPoolPnlUsd = LibTypeCast.toInt256((collateralAmount * _priceOf(collateralToken)) / 1e18);
     }
 
     /**
@@ -337,7 +337,7 @@ contract Market is Mux3FacetBase, IMarket {
         uint256 size,
         uint256 fromPoolOldEntryPrice,
         int256 fromPoolPnlUsd
-    ) internal {
+    ) internal returns (int256 deliveredPoolPnlUsd) {
         // transfer positions
         ICollateralPool(fromPool).closePosition(marketId, size, fromPoolOldEntryPrice);
         ICollateralPool(toPool).openPosition(marketId, size, fromPoolOldEntryPrice); // usually uses market price, but in this case uses trader's other entry price
@@ -353,6 +353,7 @@ contract Market is Mux3FacetBase, IMarket {
             if (raw > 0) {
                 IERC20Upgradeable(collateralToken).safeTransfer(toPool, raw);
                 ICollateralPool(toPool).realizeLoss(collateralToken, raw);
+                deliveredPoolPnlUsd = LibTypeCast.toInt256((wad * _priceOf(collateralToken)) / 1e18);
             }
         } else {
             // if loss, transfer toPool => fromPool
@@ -363,6 +364,8 @@ contract Market is Mux3FacetBase, IMarket {
             if (raw > 0) {
                 IERC20Upgradeable(collateralToken).safeTransfer(fromPool, raw);
                 ICollateralPool(fromPool).realizeLoss(collateralToken, raw);
+                deliveredPoolPnlUsd = LibTypeCast.toInt256((wad * _priceOf(collateralToken)) / 1e18);
+                deliveredPoolPnlUsd = -deliveredPoolPnlUsd;
             }
         }
     }

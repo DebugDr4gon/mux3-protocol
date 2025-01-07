@@ -81,6 +81,22 @@ contract CollateralPoolComputed is CollateralPoolStore {
         // false is valid
     }
 
+    /**
+     * @dev _collateralTokenUsd represents the value of pool.collateralToken. this is used to reserve for potential PnL.
+     */
+    function _collateralTokenUsd() internal view returns (uint256 collateralUsd) {
+        address token = _collateralToken;
+        uint256 balance = _liquidityBalances[token];
+        if (balance == 0) {
+            return 0;
+        }
+        uint256 price = IFacetReader(_core).priceOf(token);
+        collateralUsd = (balance * price) / 1e18;
+    }
+
+    /**
+     * @dev AUM without unrealized PnL
+     */
     function _aumUsdWithoutPnl() internal view returns (uint256 aum) {
         address[] memory tokens = IFacetReader(_core).listCollateralTokens();
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -94,6 +110,9 @@ contract CollateralPoolComputed is CollateralPoolStore {
         }
     }
 
+    /**
+     * @dev NAV = AUM / shares. Used for addLiquidity and removeLiquidity
+     */
     function _nav(uint256 liquidityUsd) internal view returns (uint256) {
         uint256 shares = totalSupply();
         if (shares == 0) {
@@ -102,7 +121,11 @@ contract CollateralPoolComputed is CollateralPoolStore {
         return (liquidityUsd * 1e18) / shares;
     }
 
-    // non-negative aum of pool, borrowing fee excluded
+    /**
+     * @dev AUM including unrealized PnL. this is used to evaluate NAV
+     *      note: never negative
+     *      note: borrowing fee excluded
+     */
     function _aumUsd() internal view returns (uint256 aum) {
         int256 upnl;
         uint256 length = _marketIds.length();

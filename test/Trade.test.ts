@@ -3152,7 +3152,8 @@ describe("Trade", () => {
             // acc2 0.140979189713768724 * 7 / 365 = 0.002703710487661317
             // borrowing 49900 * 1 * 0.002703729225668555 + 49900 * 0 * 0.002703710487661317 = 134.9160883608608945
             // newSize = 8.4281 - 1, 11.5719 + 1, 0
-            // pnl1 = (49900 - 50000) * 1
+            // pnl1 = (49900 - 50000) * 1 = -100, since it is loss, pool1 should get rpnl, thus pool3 should pay to pool1.
+            //      = -100 / 49900 = -0.00200400 btc = -99.9996
             await expect(tx).to.emit(emitter, "UpdateMarketBorrowing").withArgs(
               pool1.address,
               long1,
@@ -3180,7 +3181,7 @@ describe("Trade", () => {
                 [pool1.address, pool2.address, pool3.address], // backedPools
                 [toWei("0"), toWei("0"), toWei("1")], // newSizes
                 [toWei("0"), toWei("0"), toWei("50000")], // newEntryPrices
-                [toWei("-100"), toWei("0"), toWei("0")], // poolPnlUsds
+                [toWei("-99.9996"), toWei("0"), toWei("0")], // poolPnlUsds
                 toWei("134.9160883608608945"), // borrowingFeeUsd
                 [usdc.address],
                 [toWei("9815.0839116391391055")] // collateral - fee = 9950 - 134.9160883608608945
@@ -4410,20 +4411,21 @@ describe("Trade", () => {
           // acc2 0.498581221122844065 * 7 / 365 = 0.009561831637972351
           // acc2 0.498585685703980363 * 7 / 365 = 0.009561917260076335
           // borrowing 60000 * 15.1989 * 0.009561923375977604 + 60000 * 21.1652 * 0.009561831637972351 + 60000 * 23.6359 * 0.009561917260076335 = 34422.798981035799314838
-          // position fees = 60000 * (10 + 2) * 0.001 = 720 paid by lp
-          // when reallocate,
-          //   pool1 -> pool3, (60000 - 50000) * 10 = 100000 = 99999.9996 (because of rounding)
-          //   pool2 -> pool3, (60000 - 50000) * 2 = 20000 = 19999.9998 (because of rounding)
+          // position fees = 60000 * (9 + 2) * 0.001 = 660 paid by lp
+          // when reallocate, transfer upnl
+          //   pool3 -> pool1, (60000 - 50000) * 9 = 90000
+          //   pool3 -> pool2, (60000 - 50000) * 2 = 20000 = 19999.9998 (because of rounding)
           // after reallocate
-          //   aum = 19.998 * 60000 - 99999.9996 - 19999.9998 - (60000 - 50000) 11.6359 = 963521.0006
-          //   nav = 963521.0006 / 999900 = 0.963617362336233623
+          //   pool3
+          //     aum = 19.998 * 60000 - 90000 - 19999.9998 - (60000 - 50000) (23.6359 - 9 - 2) = 963521.0002
+          //     nav = 963521.0002 / 999900 = 0.963617361936193619
           const tx = await orderBook.connect(broker).fillLiquidityOrder(4, [
             {
               positionId,
               marketId: long1,
               fromPool: pool3.address,
               toPool: pool1.address,
-              size: toWei("10"),
+              size: toWei("9"),
               lastConsumedToken: zeroAddress,
               isUnwrapWeth: false,
             },
@@ -4462,6 +4464,13 @@ describe("Trade", () => {
             toWei("0.498585685703980363"), // apy
             toWei("0.009561917260076335") // acc
           )
+          // {
+          //   for (const i of (await (await tx).wait()).events!) {
+          //     if (i.topics[0] === "0xb48bd90f58452fe73356197cb2b955341ef4f2dd57d8bda856d9805977bc5594") {
+          //       console.log(core.interface.parseLog(i))
+          //     }
+          //   }
+          // }
           await expect(tx)
             .to.emit(core, "ReallocatePosition")
             .withArgs(
@@ -4471,14 +4480,14 @@ describe("Trade", () => {
               true, // isLong
               pool3.address,
               pool1.address,
-              toWei("10"), // size
+              toWei("9"), // size
               toWei("60000"), // tradingPrice
               toWei("50000"), // fromPoolOldEntryPrice
               [pool1.address, pool2.address, pool3.address], // backedPools
-              // 15.1989 + 10, 21.1652, 23.6359 - 10
-              [toWei("25.1989"), toWei("21.1652"), toWei("13.6359")], // newSizes
+              // 15.1989 + 9, 21.1652, 23.6359 - 9
+              [toWei("24.1989"), toWei("21.1652"), toWei("14.6359")], // newSizes
               [toWei("50000"), toWei("50000"), toWei("50000")], // newEntryPrices
-              [], // mem.poolPnlUsds
+              [toWei("0"), toWei("0"), toWei("90000")], // mem.poolPnlUsds
               toWei("34422.798981035799314838"), // borrowingFeeUsd
               // 27000 usdc => 0 - 34422.798981035799314838
               // 30000 arb - (34422.798981035799314838 - 27000) / 2
@@ -4498,10 +4507,10 @@ describe("Trade", () => {
               toWei("60000"), // tradingPrice
               toWei("50000"), // fromPoolOldEntryPrice
               [pool1.address, pool2.address, pool3.address], // backedPools
-              // 25.1989, 21.1652 + 2, 13.6359 - 2
-              [toWei("25.1989"), toWei("23.1652"), toWei("11.6359")], // newSizes
+              // 24.1989, 21.1652 + 2, 14.6359 - 2
+              [toWei("24.1989"), toWei("23.1652"), toWei("12.6359")], // newSizes
               [toWei("50000"), toWei("50000"), toWei("50000")], // newEntryPrices
-              [], // mem.poolPnlUsds
+              [toWei("0"), toWei("0"), toWei("19999.9998")], // mem.poolPnlUsds
               toWei("0"), // borrowingFeeUsd
               [arb.address], // newCollateralTokens
               [toWei("26288.600509482100342581")] // unchanged
@@ -4511,47 +4520,47 @@ describe("Trade", () => {
             lp1.address,
             btc.address,
             toWei("60000"), // collateralPrice
-            toWei("0.012642411574890822"), // liquidityFeeCollateral + extraFeeCollateral = (400000 * 0.963617362336233623 * 0.0001 + 720) / 60000
-            toWei("0.963617362336233623"), // lpPrice
+            toWei("0.011642411574624129"), // liquidityFeeCollateral + extraFeeCollateral = (400000 * 0.963617361936193619 * 0.0001 + 660) / 60000
+            toWei("0.963617361936193619"), // lpPrice
             toWei("400000") // shares
           )
         }
         // when removeLiquidity
-        //   pool3 liquidity decreases = 400000 * 0.963617362336233623 / 60000 = 6.424115748908224153, including output collateral + liquidityFee + extraFee
-        //   liquidityFee = 6.424115748908224153 * 0.0001 = 0.000642411574890822
-        //   extraFee = positionFee = 60000 * 12 * 0.001 / 60000 = 0.012
-        //   pool1 + pool2 got (99999.9996 + 19999.9998) / 60000
-        //   lp got 6.424115748908224153 - liquidityFee - extraFee = 6.424115748908224153 - 0.000642411574890822 - 0.012 = 6.411473337333333331
+        //   pool3 liquidity decreases = 400000 * 0.963617361936193619 / 60000 = 6.424115746241290793, including output collateral + liquidityFee + extraFee
+        //   liquidityFee = 6.424115746241290793 * 0.0001 = 0.000642411574624129
+        //   extraFee = positionFee = 60000 * (9 + 2) * 0.001 / 60000 = 0.011
+        //   pool1 + pool2 got (90000 + 19999.9998) / 60000
+        //   lp got 6.424115746241290793 - liquidityFee - extraFee = 6.424115746241290793 - 0.000642411574624129 - 0.011 = 6.412473334666666664
         {
           const [poolTokens, poolBalances] = await pool1.liquidityBalances()
           expect(poolTokens[0]).to.equal(usdc.address)
           expect(poolBalances[0]).to.equal(toWei("999900")) // unchanged
           expect(poolTokens[2]).to.equal(btc.address)
-          expect(poolBalances[2]).to.equal(toWei("1.66666666")) // (60000 - 50000) * 10 / 60000
+          expect(poolBalances[2]).to.equal(toWei("1.5")) // got pnl = (60000 - 50000) * 9 / 60000
         }
         {
           const [poolTokens, poolBalances] = await pool2.liquidityBalances()
           expect(poolTokens[0]).to.equal(usdc.address)
           expect(poolBalances[0]).to.equal(toWei("999900")) // unchanged
           expect(poolTokens[2]).to.equal(btc.address)
-          expect(poolBalances[2]).to.equal(toWei("0.33333333")) // (60000 - 50000) * 2 / 60000
+          expect(poolBalances[2]).to.equal(toWei("0.33333333")) // got pnl = (60000 - 50000) * 2 / 60000
         }
         {
           const [poolTokens, poolBalances] = await pool3.liquidityBalances()
           expect(poolTokens[2]).to.equal(btc.address)
-          expect(poolBalances[2]).to.equal(toWei("11.573884261091775847")) // 19.998 - 2 - 6.424115748908224153
+          expect(poolBalances[2]).to.equal(toWei("11.740550923758709207")) // collateral - pnl - liquidityFee = 19.998 - (1.5 + 0.33333333) - 6.424115746241290793
         }
         {
-          expect(await btc.balanceOf(lp1.address)).to.equal(toUnit("999986.41147333", 8)) // 999980 + 6.411473337333333331
-          expect(await btc.balanceOf(pool1.address)).to.equal(toUnit("1.66666666", 8)) // at least liquidityBalances
+          expect(await btc.balanceOf(lp1.address)).to.equal(toUnit("999986.41247333", 8)) // 999980 + 6.412473334666666664
+          expect(await btc.balanceOf(pool1.address)).to.equal(toUnit("1.5", 8)) // at least liquidityBalances
           expect(await btc.balanceOf(pool2.address)).to.equal(toUnit("0.33333333", 8)) // at least liquidityBalances
-          expect(await btc.balanceOf(pool3.address)).to.equal(toUnit("11.57388427", 8)) // at least liquidityBalances
-          expect(await btc.balanceOf(feeDistributor.address)).to.equal(toUnit("0.01464241", 8)) // 0.002 + 0.012 + 0.000642411574890822
+          expect(await btc.balanceOf(pool3.address)).to.equal(toUnit("11.74055093", 8)) // at least liquidityBalances
+          expect(await btc.balanceOf(feeDistributor.address)).to.equal(toUnit("0.01364241", 8)) // 0.002 + 0.011 + 0.000642411574624129
         }
         {
-          expect(await pool1.callStatic.getAumUsd()).to.equal(toWei("847910.9996")) // 999900 + 1.66666666 * 60000 - (60000 - 50000) * 25.1989
+          expect(await pool1.callStatic.getAumUsd()).to.equal(toWei("847911")) // 999900 + 1.5 * 60000 - (60000 - 50000) * 24.1989
           expect(await pool2.callStatic.getAumUsd()).to.equal(toWei("788247.9998")) // 999900 + 0.33333333 * 60000 - (60000 - 50000) * 23.1652
-          expect(await pool3.callStatic.getAumUsd()).to.equal(toWei("578074.05566550655082")) // 11.573884261091775847 * 60000 - (60000 - 50000) * 11.6359
+          expect(await pool3.callStatic.getAumUsd()).to.equal(toWei("578074.05542552255242")) // 11.740550923758709207 * 60000 - (60000 - 50000) * 12.6359
         }
       })
 
