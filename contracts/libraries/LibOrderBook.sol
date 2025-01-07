@@ -640,7 +640,7 @@ library LibOrderBook {
                 LibOrder.isUnwrapWeth(orderParams)
             );
         }
-        // remove ths current order from tp/sl list
+        // remove the current order from tp/sl list
         orderBook.tpslOrders[orderParams.positionId][orderParams.marketId].remove(uint256(orderData.id));
     }
 
