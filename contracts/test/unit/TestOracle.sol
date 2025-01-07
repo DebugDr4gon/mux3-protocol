@@ -86,7 +86,7 @@ contract TestOracle is PricingManager, TestSuit {
         mpp.initialize(signer); // signer
         MuxPriceProvider.OracleData memory data = MuxPriceProvider.OracleData({
             oracleId: bytes32(uint256(0x1234)),
-            sequence: 12,
+            sequence: 13,
             price: 2000e18,
             timestamp: 17295938660,
             signature: signature

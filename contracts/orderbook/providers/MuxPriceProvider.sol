@@ -65,7 +65,7 @@ contract MuxPriceProvider is OwnableUpgradeable {
         );
         address signer = ECDSAUpgradeable.recover(message, oracleData.signature);
         require(signer == oracleSigner, IErrors.InvalidSignature(signer, oracleSigner));
-        sequence++;
+        sequence = oracleData.sequence;
         return (oracleData.price, oracleData.timestamp);
     }
 }
