@@ -13,11 +13,19 @@ contract OrderBookGetter is OrderBookStore, IOrderBookGetter {
     using LibConfigMap for mapping(bytes32 => bytes32);
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
 
+    /**
+     * @notice Get the next orderId before placing an order
+     */
     function nextOrderId() external view override returns (uint64) {
         return _storage.nextOrderId;
     }
 
-    function sequence() external view override returns (uint64) {
+    /**
+     * @notice A number to hint off-chain programs that the state has changed.
+     *         note 1: may not increment by 1 each time
+     *         note 2: will be 0 after 0xffffffff
+     */
+    function sequence() external view override returns (uint32) {
         return _storage.sequence;
     }
 

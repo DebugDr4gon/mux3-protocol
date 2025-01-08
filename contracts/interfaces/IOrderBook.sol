@@ -260,7 +260,7 @@ interface IOrderBook {
 interface IOrderBookGetter {
     function nextOrderId() external view returns (uint64);
 
-    function sequence() external view returns (uint64);
+    function sequence() external view returns (uint32);
 
     function configValue(bytes32 key) external view returns (bytes32);
 
