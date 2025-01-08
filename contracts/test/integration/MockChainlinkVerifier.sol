@@ -28,15 +28,15 @@ contract MockFeeManager is IFeeManager {
 
 contract MockChainlinkVerifier is IVerifyProxy {
     struct Report {
-        bytes32 feedId; // The feed ID the report has data for
-        uint32 validFromTimestamp; // Earliest timestamp for which price is applicable
-        uint32 observationsTimestamp; // Latest timestamp for which price is applicable
-        uint192 nativeFee; // Base cost to validate a transaction using the report, denominated in the chain’s native token (WETH/ETH)
-        uint192 linkFee; // Base cost to validate a transaction using the report, denominated in LINK
-        uint32 expiresAt; // Latest timestamp where the report can be verified onchain
-        int192 price; // DON consensus median price, carried to 8 decimal places
-        int192 bid; // Simulated price impact of a buy order up to the X% depth of liquidity utilisation
-        int192 ask; // Simulated price impact of a sell order up to the X% depth of liquidity utilisation
+        bytes32 feedId;
+        uint32 validFromTimestamp;
+        uint32 observationsTimestamp;
+        uint192 nativeFee;
+        uint192 linkFee;
+        uint32 expiresAt;
+        int192 price;
+        int192 bid;
+        int192 ask;
     }
 
     Report mockReport;

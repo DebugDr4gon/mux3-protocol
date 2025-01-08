@@ -10,16 +10,17 @@ import "../../interfaces/chainlink/IVerifyProxy.sol";
 import "../../interfaces/IErrors.sol";
 
 contract ChainlinkStreamProvider is OwnableUpgradeable {
+    // V3
     struct Report {
-        bytes32 feedId; // The feed ID the report has data for
+        bytes32 feedId; // The stream ID the report has data for
         uint32 validFromTimestamp; // Earliest timestamp for which price is applicable
         uint32 observationsTimestamp; // Latest timestamp for which price is applicable
-        uint192 nativeFee; // Base cost to validate a transaction using the report, denominated in the chain’s native token (WETH/ETH)
+        uint192 nativeFee; // Base cost to validate a transaction using the report, denominated in the chain’s native token (e.g., WETH/ETH)
         uint192 linkFee; // Base cost to validate a transaction using the report, denominated in LINK
         uint32 expiresAt; // Latest timestamp where the report can be verified onchain
-        int192 price; // DON consensus median price, carried to 8 decimal places
-        int192 bid; // Simulated price impact of a buy order up to the X% depth of liquidity utilisation
-        int192 ask; // Simulated price impact of a sell order up to the X% depth of liquidity utilisation
+        int192 price; // DON consensus median price (8 or 18 decimals)
+        int192 bid; // Simulated price impact of a buy order up to the X% depth of liquidity utilisation (8 or 18 decimals)
+        int192 ask; // Simulated price impact of a sell order up to the X% depth of liquidity utilisation (8 or 18 decimals)
     }
 
     address public chainlinkVerifier;
