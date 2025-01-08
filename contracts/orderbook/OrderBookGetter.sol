@@ -101,10 +101,6 @@ contract OrderBookGetter is OrderBookStore, IOrderBookGetter {
         return hasRole(BROKER_ROLE, broker);
     }
 
-    function _isMaintainer(address maintainer) internal view returns (bool) {
-        return hasRole(MAINTAINER_ROLE, maintainer);
-    }
-
     function _isDelegator(address delegator) internal view returns (bool) {
         return hasRole(DELEGATOR_ROLE, delegator);
     }
@@ -138,9 +134,5 @@ contract OrderBookGetter is OrderBookStore, IOrderBookGetter {
     function _orderGasFeeGwei() internal view returns (uint256 gasFee) {
         gasFee = _storage.configTable.getUint256(MCO_ORDER_GAS_FEE_GWEI);
         // 0 is valid
-    }
-
-    function _balance(address token) internal view returns (uint256) {
-        return IERC20Upgradeable(token).balanceOf(address(this));
     }
 }
