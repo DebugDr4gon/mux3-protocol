@@ -529,7 +529,7 @@ library LibOrderBook {
                     tpslWithdrawSwapSlippage: 0
                 }),
                 blockTimestamp,
-                0
+                0 // gasFeeGwei
             );
             orderBook.tpslOrders[orderParams.positionId][orderParams.marketId].add(uint256(orderId));
             require(
@@ -570,7 +570,7 @@ library LibOrderBook {
                     tpslWithdrawSwapSlippage: 0
                 }),
                 blockTimestamp,
-                0
+                0 // gasFeeGwei
             );
             orderBook.tpslOrders[orderParams.positionId][orderParams.marketId].add(uint256(orderId));
             require(
