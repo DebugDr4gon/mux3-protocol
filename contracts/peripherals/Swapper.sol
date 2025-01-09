@@ -115,6 +115,25 @@ contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
         emit SetSwapPath(tokenIn, tokenOut, paths);
     }
 
+    function listSwapPath(
+        address tokenIn,
+        address tokenOut,
+        uint256 begin,
+        uint256 end
+    ) external view returns (bytes[] memory ret) {
+        bytes[] storage paths = swapPaths[_encodeTokenPair(tokenIn, tokenOut)];
+        if (begin >= paths.length) {
+            return new bytes[](0);
+        }
+        if (end > paths.length) {
+            end = paths.length;
+        }
+        ret = new bytes[](end - begin);
+        for (uint256 i = begin; i < end; i++) {
+            ret[i - begin] = paths[i];
+        }
+    }
+
     /**
      * @notice Adds a new swap path for a token pair
      * @param tokenIn The input token address

@@ -37,32 +37,32 @@
   "FacetManagement": {
     "type": "plain",
     "name": "FacetManagement",
-    "address": "0xF185b2CcaC6AeaF139bD37A262E20Cc2c4C5F960",
-    "deployedAt": 289149663
+    "address": "0x71c2d120F22989f0a956BADfE7e8eb0193156297",
+    "deployedAt": 293604653
   },
   "FacetReader": {
     "type": "plain",
     "name": "FacetReader",
-    "address": "0xFf2dcA2fF3C3B8d2dD764C40110653e265f2cD7A",
-    "deployedAt": 289149694
+    "address": "0xa4d370fAbFf41C494a374486Aa2ED00E68Ce1E10",
+    "deployedAt": 293604680
   },
   "FacetOpen": {
     "type": "plain",
     "name": "FacetOpen",
-    "address": "0x9E8C0FC56947eB500d51Ab24923f284E4695fE50",
-    "deployedAt": 289149723
+    "address": "0x544B8BbDA19B643Ad9971Aa87eb12A750D189CC0",
+    "deployedAt": 293604715
   },
   "FacetClose": {
     "type": "plain",
     "name": "FacetClose",
-    "address": "0x4320F559EC5D5893A5F63Ed9f28e2bFbB9f6f161",
-    "deployedAt": 289149756
+    "address": "0x0605fC61eE882C0aE580680ADA740667168C3CF5",
+    "deployedAt": 293604748
   },
   "FacetPositionAccount": {
     "type": "plain",
     "name": "FacetPositionAccount",
-    "address": "0xf015859950d6abD157e4ac6908b3840D76f4235f",
-    "deployedAt": 289149788
+    "address": "0xD062b2d2F97155Ba2157CE469447dC401Ea14F17",
+    "deployedAt": 293604777
   },
   "Mux3": {
     "type": "diamond",
@@ -96,7 +96,7 @@
         ]
       },
       "facetManagement": {
-        "address": "0xF185b2CcaC6AeaF139bD37A262E20Cc2c4C5F960",
+        "address": "0x71c2d120F22989f0a956BADfE7e8eb0193156297",
         "selectors": [
           "0x49ffd567",
           "0x0606fd4f",
@@ -119,7 +119,7 @@
         ]
       },
       "facetReader": {
-        "address": "0xFf2dcA2fF3C3B8d2dD764C40110653e265f2cD7A",
+        "address": "0xa4d370fAbFf41C494a374486Aa2ED00E68Ce1E10",
         "selectors": [
           "0x32404484",
           "0x5252f3a2",
@@ -143,21 +143,21 @@
         ]
       },
       "facetOpen": {
-        "address": "0x9E8C0FC56947eB500d51Ab24923f284E4695fE50",
+        "address": "0x544B8BbDA19B643Ad9971Aa87eb12A750D189CC0",
         "selectors": [
           "0x5876dfce",
           "0x7d8faddd"
         ]
       },
       "facetClose": {
-        "address": "0x4320F559EC5D5893A5F63Ed9f28e2bFbB9f6f161",
+        "address": "0x0605fC61eE882C0aE580680ADA740667168C3CF5",
         "selectors": [
           "0x98118013",
           "0x926d2886"
         ]
       },
       "facetPositionAccount": {
-        "address": "0xf015859950d6abD157e4ac6908b3840D76f4235f",
+        "address": "0xD062b2d2F97155Ba2157CE469447dC401Ea14F17",
         "selectors": [
           "0xd954863c",
           "0x42ac97a1",
@@ -172,8 +172,8 @@
   "CollateralPool__implementation": {
     "type": "plain",
     "name": "CollateralPool__implementation",
-    "address": "0x06154fD6355e72d24578aF98D44fBd01F7615Ce2",
-    "deployedAt": 290497640
+    "address": "0x334597e39e7609EC5e80d1AC51363390C9574278",
+    "deployedAt": 293604517
   },
   "OrderBook": {
     "type": "upgradeable",
@@ -181,7 +181,7 @@
     "address": "0xE3A2028aB6eE109DC76c67fa4584E829a6A3E7F8",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x9107e91eff5219fAD3821C589649b036da5CcE07"
+      "implementation": "0x67F90F6B85ee6526A0dD59e52E6a76720c059216"
     },
     "deployedAt": 265067381
   },
@@ -214,8 +214,8 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0x9107e91eff5219fAD3821C589649b036da5CcE07",
-    "deployedAt": 290478223
+    "address": "0x67F90F6B85ee6526A0dD59e52E6a76720c059216",
+    "deployedAt": 293605458
   },
   "Delegator__implementation": {
     "type": "plain",
@@ -274,8 +274,8 @@
   "Swapper__implementation": {
     "type": "plain",
     "name": "Swapper__implementation",
-    "address": "0x95158b14960383ae42717C60E649b19194Bc1f85",
-    "deployedAt": 293592901
+    "address": "0x2A6D451133C5ac2a7aEfffc1159Ad793c758a6eA",
+    "deployedAt": 293628242
   },
   "Swapper": {
     "type": "upgradeable",
@@ -283,7 +283,7 @@
     "address": "0x0241d1b85FD3B184bFe881162Eee163f7b8fe3f7",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x95158b14960383ae42717C60E649b19194Bc1f85"
+      "implementation": "0x2A6D451133C5ac2a7aEfffc1159Ad793c758a6eA"
     },
     "deployedAt": 273909792
   },
@@ -338,13 +338,13 @@
   "LibOrderBook": {
     "type": "plain",
     "name": "LibOrderBook",
-    "address": "0x1617285803E3837A1fE848D303c88F6B92eD55d4",
-    "deployedAt": 290478195
+    "address": "0x72888eBd0950c627A0dcb36D808734567EC4F1AF",
+    "deployedAt": 293605404
   },
   "LibOrderBook2": {
     "type": "plain",
     "name": "LibOrderBook2",
-    "address": "0x97f518EA95d1CD38e3f0e0187244c9aae0Fb4843",
-    "deployedAt": 290478209
+    "address": "0xB7B1bE44e62ABE44c782eDa5f41836548fDb03f5",
+    "deployedAt": 293605444
   }
 }

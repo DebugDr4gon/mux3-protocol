@@ -50,13 +50,14 @@ async function main(deployer: Deployer) {
   const arb = "0x912ce59144191c1204e64559fe8253a0e49e6548"
   const susds = "0x688c202577670fa1ae186c433965d178f26347f9"
   const susdsOracleL1 = "0x437CEa956B415e97517020490205c07f4a845168"
+  const susde = "0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2"
 
   const diamondInit = await deployer.deployOrSkip("DiamondInit", "DiamondInit")
   const facets = {
     // check https://louper.dev/diamond/ for the current cuts
     diamondCutFacet: await deployer.deployOrSkip("DiamondCutFacet", "DiamondCutFacet"),
     diamondLoupeFacet: await deployer.deployOrSkip("DiamondLoupeFacet", "DiamondLoupeFacet"),
-    ownershipFacet: await deployer.deployOrSkip("OwnershipFacet", "OwnershipFacet"),
+    mux3OwnerFacet: await deployer.deployOrSkip("Mux3OwnerFacet", "Mux3OwnerFacet"),
     facetManagement: await deployer.deployOrSkip("FacetManagement", "FacetManagement"),
     facetReader: await deployer.deployOrSkip("FacetReader", "FacetReader"),
     facetOpen: await deployer.deployOrSkip("FacetOpen", "FacetOpen"),
@@ -153,9 +154,10 @@ async function main(deployer: Deployer) {
   await ensureFinished(core.addCollateralToken(usdc, 6, true))
   await ensureFinished(core.addCollateralToken(weth, 18, false))
   await ensureFinished(core.addCollateralToken(susds, 18, true))
+  await ensureFinished(core.addCollateralToken(susde, 18, true))
   await ensureFinished(core.setStrictStableId(a2b(usdc), true))
 
-  // pool 17: usdc, (remove me!)
+  // pool 17: usdc (remove me!)
   await ensureFinished(core.createCollateralPool("MUX Elemental Pool 17", "MEP-17", usdc, 0))
   const pool17 = (await core.listCollateralPool())[0]
   console.log("pool17Addr", pool17)
@@ -164,7 +166,7 @@ async function main(deployer: Deployer) {
   await ensureFinished(core.setPoolConfig(pool17, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))
   await ensureFinished(core.setPoolConfig(pool17, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001"))))
 
-  // pool 18: usdc, (remove me!)
+  // pool 18: usdc (remove me!)
   await ensureFinished(core.createCollateralPool("MUX Elemental Pool 18", "MEP-18", usdc, 1))
   const pool18 = (await core.listCollateralPool())[1]
   console.log("pool18Addr", pool18)
@@ -174,7 +176,7 @@ async function main(deployer: Deployer) {
   await ensureFinished(core.setPoolConfig(pool18, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001"))))
   await ensureFinished(core.setPoolConfig(pool18, ethers.utils.id("MCP_IS_DRAINING"), u2b(ethers.BigNumber.from("0"))))
 
-  // pool 3: weth, support eth
+  // pool 3: weth (remove me!)
   await ensureFinished(core.createCollateralPool("MUX Elemental Pool 3", "MEP-3", weth, 2))
   const pool3 = (await core.listCollateralPool())[2]
   console.log("pool3Addr", pool3)
@@ -191,9 +193,19 @@ async function main(deployer: Deployer) {
   await ensureFinished(core.setPoolConfig(pool7, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938"))))
   await ensureFinished(core.setPoolConfig(pool7, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))
   await ensureFinished(core.setPoolConfig(pool7, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001"))))
+  await ensureFinished(core.setPoolConfig(pool7, ethers.utils.id("MCP_IS_DRAINING"), u2b(ethers.BigNumber.from("0"))))
+
+  // pool 5: susds, support eth
+  await ensureFinished(core.createCollateralPool("MUX Elemental Pool 5", "MEP-5", susde, 4))
+  const pool5 = (await core.listCollateralPool())[4]
+  console.log("pool5Addr", pool5)
+  await ensureFinished(core.setPoolConfig(pool5, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306"))))
+  await ensureFinished(core.setPoolConfig(pool5, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938"))))
+  await ensureFinished(core.setPoolConfig(pool5, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))
+  await ensureFinished(core.setPoolConfig(pool5, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0001"))))
 
   // markets
-  await ensureFinished(core.createMarket(lEthMarketId, "ETH", true, [pool17, pool18, pool3, pool7]))
+  await ensureFinished(core.createMarket(lEthMarketId, "ETH", true, [pool17, pool18, pool3, pool7, pool5]))
   await ensureFinished(
     core.setMarketConfig(lEthMarketId, ethers.utils.id("MM_POSITION_FEE_RATE"), u2b(toWei("0.0006")))
   )
@@ -211,7 +223,7 @@ async function main(deployer: Deployer) {
   await ensureFinished(
     core.setMarketConfig(lEthMarketId, ethers.utils.id("MM_OPEN_INTEREST_CAP_USD"), u2b(toWei("10000")))
   )
-  for (const p of [pool17, pool18, pool3, pool7]) {
+  for (const p of [pool17, pool18, pool3, pool7, pool5]) {
     await ensureFinished(
       core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", lEthMarketId), u2b(toWei("0.80")))
     )
@@ -223,7 +235,7 @@ async function main(deployer: Deployer) {
     )
   }
 
-  await ensureFinished(core.createMarket(sEthMarketId, "ETH", false, [pool17, pool18, pool3, pool7]))
+  await ensureFinished(core.createMarket(sEthMarketId, "ETH", false, [pool17, pool18, pool3, pool7, pool5]))
   await ensureFinished(
     core.setMarketConfig(sEthMarketId, ethers.utils.id("MM_POSITION_FEE_RATE"), u2b(toWei("0.0006")))
   )
@@ -241,7 +253,7 @@ async function main(deployer: Deployer) {
   await ensureFinished(
     core.setMarketConfig(sEthMarketId, ethers.utils.id("MM_OPEN_INTEREST_CAP_USD"), u2b(toWei("10000")))
   )
-  for (const p of [pool17, pool18, pool3, pool7]) {
+  for (const p of [pool17, pool18, pool3, pool7, pool5]) {
     await ensureFinished(
       core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", sEthMarketId), u2b(toWei("0.80")))
     )
@@ -260,13 +272,10 @@ async function main(deployer: Deployer) {
   )
   await ensureFinished(feeDistributor.setFeeRatio(toWei("0.85")))
 
-  // oracle
+  // oracle: chainlink stream provider
+  await ensureFinished(core.setOracleProvider(chainlinkStreamProvider.address, true))
   await ensureFinished(chainlinkStreamProvider.initialize("0x478Aa2aC9F6D65F84e09D9185d126c3a17c2a93C"))
   await ensureFinished(chainlinkStreamProvider.setPriceExpirationSeconds(86400))
-  await ensureFinished(core.setOracleProvider(chainlinkStreamProvider.address, true))
-  await ensureFinished(core.setOracleProvider(mux3PriceProvider.address, true))
-  await ensureFinished(mux3PriceProvider.initialize(mux3OracleSigner))
-  await ensureFinished(mux3PriceProvider.setPriceExpirationSeconds(86400))
   await ensureFinished(chainlinkStreamProvider.setCallerWhitelist(core.address, true))
   await ensureFinished(
     chainlinkStreamProvider.setFeedId(a2b(weth), "0x000362205e10b3a147d02792eccee483dca6c7b44ecce7012cb8c6e0b68b3ae9")
@@ -274,6 +283,12 @@ async function main(deployer: Deployer) {
   await ensureFinished(
     chainlinkStreamProvider.setFeedId(a2b(wbtc), "0x00039d9e45394f473ab1f050a1b963e6b05351e52d71e507509ada0c95ed75b8")
   )
+
+  // oracle: mux3 provider
+  await ensureFinished(core.setOracleProvider(mux3PriceProvider.address, true))
+  await ensureFinished(mux3PriceProvider.initialize())
+  await ensureFinished(mux3PriceProvider.setPriceExpirationSeconds(86400))
+  await ensureFinished(mux3PriceProvider.grantRole(ethers.utils.id("ORACLE_SIGNER"), mux3OracleSigner))
 
   // swapper
   const uniRouter = "0xE592427A0AEce92De3Edee1F18E0157C05861564"
@@ -290,9 +305,11 @@ async function main(deployer: Deployer) {
 
   // susds
   await ensureFinished(susdsOracleL2.initialize(susdsOracleL1))
+
   // aum reader
   // https://docs.chain.link/data-feeds/price-feeds/addresses/?network=arbitrum&amp%3Bpage=1&page=1
   await ensureFinished(collateralPoolAumReader.initialize())
+  await ensureFinished(collateralPoolAumReader.setPriceExpiration(86400))
   await ensureFinished(
     collateralPoolAumReader.setMarketPriceProvider(lEthMarketId, "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612")
   )
@@ -316,6 +333,9 @@ async function main(deployer: Deployer) {
   )
   await ensureFinished(collateralPoolAumReader.setTokenPriceProvider(arb, "0xb2A824043730FE05F3DA2efaFa1CBbe83fa548D6"))
   await ensureFinished(collateralPoolAumReader.setTokenPriceProvider(susds, susdsOracleL2.address))
+  await ensureFinished(
+    collateralPoolAumReader.setTokenPriceProvider(susde, "0xf2215b9c35b1697B5f47e407c917a40D055E68d7")
+  ) // https://data.chain.link/feeds/arbitrum/mainnet/susde-usd
 }
 
 restorableEnviron(ENV, main)
