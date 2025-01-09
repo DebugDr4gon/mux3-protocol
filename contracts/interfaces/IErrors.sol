@@ -73,5 +73,5 @@ interface IErrors {
     error IdMismatch(bytes32 id, bytes32 expectedId);
     error MissingSignature();
     error InvalidSequence(uint256 sequence, uint256 expectedSequence);
-    error InvalidSignature(address signer, address expectSigner);
+    error InvalidSinger(address signer);
 }

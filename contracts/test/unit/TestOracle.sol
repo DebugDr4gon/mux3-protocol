@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../orderbook/providers/ChainlinkStreamProvider.sol";
 import "../../orderbook/providers/MuxPriceProvider.sol";
 import "../../core/management/PricingManager.sol";
-
+import "../../interfaces/IRoles.sol";
 import "../TestSuit.sol";
 import "../SimplePriceProvider.sol";
 import "../integration/MockChainlinkVerifier.sol";
@@ -68,7 +68,8 @@ contract TestOracle is PricingManager, TestSuit {
     }
 
     function test_muxPriceProvider(address signer, bytes memory signature) external {
-        mpp.initialize(signer); // signer
+        mpp.initialize();
+        mpp.grantRole(ORACLE_SIGNER, signer);
 
         MuxPriceProvider.OracleData memory data = MuxPriceProvider.OracleData({
             oracleId: bytes32(uint256(0x1234)),
@@ -83,7 +84,8 @@ contract TestOracle is PricingManager, TestSuit {
     }
 
     function test_muxPriceProvider_error(address signer, bytes memory signature) external {
-        mpp.initialize(signer); // signer
+        mpp.initialize();
+
         MuxPriceProvider.OracleData memory data = MuxPriceProvider.OracleData({
             oracleId: bytes32(uint256(0x1234)),
             sequence: 13,
@@ -91,9 +93,6 @@ contract TestOracle is PricingManager, TestSuit {
             timestamp: 17295938660,
             signature: signature
         });
-        mpp.getOraclePrice(bytes32(uint256(0x1234)), abi.encode(data));
-
-        mpp.setOracleSigner(address(this));
         mpp.getOraclePrice(bytes32(uint256(0x1234)), abi.encode(data));
     }
 

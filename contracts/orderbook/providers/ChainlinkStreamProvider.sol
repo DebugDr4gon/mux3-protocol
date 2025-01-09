@@ -2,14 +2,14 @@
 pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 
 import "../../interfaces/chainlink/ICommon.sol";
 import "../../interfaces/chainlink/IFeeManager.sol";
 import "../../interfaces/chainlink/IVerifyProxy.sol";
 import "../../interfaces/IErrors.sol";
 
-contract ChainlinkStreamProvider is OwnableUpgradeable {
+contract ChainlinkStreamProvider is Ownable2StepUpgradeable {
     // V3
     struct Report {
         bytes32 feedId; // The stream ID the report has data for

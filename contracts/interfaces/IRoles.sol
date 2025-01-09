@@ -9,3 +9,4 @@ bytes32 constant DELEGATOR_ROLE = keccak256("DELEGATOR_ROLE");
 bytes32 constant FEE_DISTRIBUTOR_USER_ROLE = keccak256("FEE_DISTRIBUTOR_USER_ROLE");
 bytes32 constant REBALANCER_ROLE = keccak256("REBALANCER_ROLE");
 bytes32 constant FEE_DONATOR_ROLE = keccak256("FEE_DONATOR_ROLE");
+bytes32 constant ORACLE_SIGNER = keccak256("ORACLE_SIGNER");

@@ -105,13 +105,13 @@ describe("Oracle", () => {
         oracleId: oracleId,
         chainid: 31337,
         contractAddress: await tester.mpp(),
-        seq: 12,
+        seq: 13,
         price: toWei("2000"),
         timestamp: 17295938660,
       },
       signer
     )
-    await expect(tester.test_muxPriceProvider_error(signer.address, signature)).to.be.revertedWith("InvalidSignature")
+    await expect(tester.test_muxPriceProvider_error(signer.address, signature)).to.be.revertedWith("InvalidSinger")
   })
 
   it("test_collateralPoolAumReader", async () => {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
@@ -21,7 +21,7 @@ import "../interfaces/ISwapper.sol";
  *         We may integrate with different DeFi protocols to provide better liquidity. However, regardless of the liquidity source,
  *         if the slippage does not meet trader's requirements, we will skip the swap.
  */
-contract Swapper is OwnableUpgradeable, ISwapper, IErrors {
+contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     uint256 constant MIN_PATH_LENGTH = 20 + 3 + 20;

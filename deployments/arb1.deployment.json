@@ -23,11 +23,10 @@
     "address": "0x88f5136d66E06129b038237bd5c3374cD90893D9",
     "deployedAt": 265025675
   },
-  "OwnershipFacet": {
+  "Mux3OwnerFacet": {
     "type": "plain",
-    "name": "OwnershipFacet",
-    "address": "0x6C38591445724c2c1c53A292ff9b663fdfBB8b2E",
-    "deployedAt": 265025687
+    "name": "Mux3OwnerFacet",
+    "address": "0x1d9f0f2E21692bf154D5Ca32EAFa77b2d1903f8a"
   },
   "DiamondInit": {
     "type": "plain",
@@ -87,10 +86,12 @@
           "0x01ffc9a7"
         ]
       },
-      "ownershipFacet": {
-        "address": "0x6C38591445724c2c1c53A292ff9b663fdfBB8b2E",
+      "mux3OwnerFacet": {
+        "address": "0x1d9f0f2E21692bf154D5Ca32EAFa77b2d1903f8a",
         "selectors": [
+          "0x79ba5097",
           "0x8da5cb5b",
+          "0xe30c3978",
           "0xf2fde38b"
         ]
       },
@@ -225,8 +226,8 @@
   "ChainlinkStreamProvider__implementation": {
     "type": "plain",
     "name": "ChainlinkStreamProvider__implementation",
-    "address": "0xF7b82D8eF9b2157439e5F88c1C1F024565B12896",
-    "deployedAt": 278876631
+    "address": "0x296AEe88127dA17F4780060657ac8BA21E1C15c8",
+    "deployedAt": 293581077
   },
   "ChainlinkStreamProvider": {
     "type": "upgradeable",
@@ -234,15 +235,15 @@
     "address": "0x381200de35Cd57810F5AB9a6273eaD68917961e2",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0xF7b82D8eF9b2157439e5F88c1C1F024565B12896"
+      "implementation": "0x296AEe88127dA17F4780060657ac8BA21E1C15c8"
     },
     "deployedAt": 267361654
   },
   "MuxPriceProvider__implementation": {
     "type": "plain",
     "name": "MuxPriceProvider__implementation",
-    "address": "0xA715e9434C078E8Ead8a78e235c4487c0C73463E",
-    "deployedAt": 280831369
+    "address": "0xBc51202E691A0aaEa61edE5dC35c597bD92f31a8",
+    "deployedAt": 293587507
   },
   "MuxPriceProvider": {
     "type": "upgradeable",
@@ -250,7 +251,7 @@
     "address": "0x384b3384CC4cE9CEf6fBa182F2f2e5Fe76f8D280",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0xA715e9434C078E8Ead8a78e235c4487c0C73463E"
+      "implementation": "0xBc51202E691A0aaEa61edE5dC35c597bD92f31a8"
     },
     "deployedAt": 269763501
   },
@@ -273,8 +274,8 @@
   "Swapper__implementation": {
     "type": "plain",
     "name": "Swapper__implementation",
-    "address": "0xD882C4c67746Ac0D007614F364FeaEF5c492c7f4",
-    "deployedAt": 289697321
+    "address": "0x95158b14960383ae42717C60E649b19194Bc1f85",
+    "deployedAt": 293592901
   },
   "Swapper": {
     "type": "upgradeable",
@@ -282,7 +283,7 @@
     "address": "0x0241d1b85FD3B184bFe881162Eee163f7b8fe3f7",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0xD882C4c67746Ac0D007614F364FeaEF5c492c7f4"
+      "implementation": "0x95158b14960383ae42717C60E649b19194Bc1f85"
     },
     "deployedAt": 273909792
   },
@@ -321,8 +322,8 @@
   "CollateralPoolAumReader__implementation": {
     "type": "plain",
     "name": "CollateralPoolAumReader__implementation",
-    "address": "0x6Ca989bE5e44A10e93b33752c5aa93d953938c04",
-    "deployedAt": 279142157
+    "address": "0xCf62C5dbee1DCa508d6af7B580aD61fdbdcD14cA",
+    "deployedAt": 293591021
   },
   "CollateralPoolAumReader": {
     "type": "upgradeable",
@@ -330,7 +331,7 @@
     "address": "0x90faED583D40F3B654E4aE54DAEcd95E537145C2",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x6Ca989bE5e44A10e93b33752c5aa93d953938c04"
+      "implementation": "0xCf62C5dbee1DCa508d6af7B580aD61fdbdcD14cA"
     },
     "deployedAt": 279142174
   },

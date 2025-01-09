@@ -2,7 +2,7 @@
 pragma solidity 0.8.28;
 
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import { AggregatorV2V3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV2V3Interface.sol";
 
@@ -32,7 +32,7 @@ import "../libraries/LibTypeCast.sol";
  *         If you are developing external contracts for MUX3 (such as lending CollateralPool LP tokens),
  *         you can reference price estimates from this contract while keeping the above limitations in mind.
  */
-contract CollateralPoolAumReader is Initializable, OwnableUpgradeable {
+contract CollateralPoolAumReader is Initializable, Ownable2StepUpgradeable {
     using LibTypeCast for uint256;
     using LibTypeCast for bytes32;
 
