@@ -102,6 +102,10 @@ contract ChainlinkStreamProvider is OwnableUpgradeable {
         );
     }
 
+    function withdraw(address token, address to, uint256 amount) external onlyOwner {
+        IERC20Upgradeable(token).transfer(to, amount);
+    }
+
     function _setChainlinkVerifier(address _chainlinkVerifier) internal {
         require(_chainlinkVerifier != address(0), IErrors.InvalidAddress(_chainlinkVerifier));
         chainlinkVerifier = _chainlinkVerifier;
