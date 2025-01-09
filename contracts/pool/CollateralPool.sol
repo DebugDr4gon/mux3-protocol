@@ -417,6 +417,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         uint256 aumUsd = _aumUsd();
         uint256 poolCollateralUsd = _collateralTokenUsd(); // used to reserve for potential PnL. important: read this before add liquidity
         uint256 lpPrice = _nav(aumUsd);
+        require(lpPrice > 0, PoolBankrupt());
         // token amount
         uint256 collateralAmount = _toWad(_collateralToken, args.rawCollateralAmount);
         uint256 liquidityFeeCollateral = (collateralAmount * _liquidityFeeRate()) / 1e18;
@@ -473,6 +474,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         uint256 aumUsd = _aumUsd();
         uint256 poolCollateralUsd = _collateralTokenUsd(); // used to reserve for potential PnL. important: read this before remove liquidity
         uint256 lpPrice = _nav(aumUsd);
+        require(lpPrice > 0, PoolBankrupt());
         // from pool
         uint256 collateralPrice = IFacetReader(_core).priceOf(_collateralToken);
         uint256 collateralAmount = (args.shares * lpPrice) / collateralPrice;

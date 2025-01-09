@@ -45,6 +45,7 @@ interface IErrors {
     error PoolAlreadyExist(address pool);
     error PoolNotExists(address pool);
     error CreateProxyFailed();
+    error PoolBankrupt();
 
     // account
     error PositionAccountAlreadyExist(bytes32 positionId);
