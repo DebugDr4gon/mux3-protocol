@@ -11,11 +11,26 @@ import "../interfaces/ICollateralPool.sol";
 import "../libraries/LibTypeCast.sol";
 
 /**
- * @notice CollateralPoolAumReader is used to read the AUM of a collateral pool.
+ * @notice CollateralPoolAumReader provides an ESTIMATION of a collateral pool's AUM.
  *
- *         this contract is NOT part of MUX3 protocol and MUX contracts never reads from CollateralPoolAumReader.
- *         if you are developing external contracts for MUX3, such as lending CollateralPool LP tokens,
- *         you can reference price from this contract.
+ *         IMPORTANT LIMITATIONS:
+ *         1. This contract is for ESTIMATION PURPOSES ONLY and is NOT part of the core MUX3 protocol.
+ *            MUX contracts never read from CollateralPoolAumReader.
+ *
+ *         2. The estimated AUM will have some deviation from the actual AUM used in
+ *            MUX3's addLiquidity/removeLiquidity operations due to different price sources:
+ *            - MUX3 core uses ChainlinkStreamProvider/MuxPriceProvider (real-time prices)
+ *            - This contract uses ChainlinkFeedProvider or similar non-real-time sources
+ *
+ *         3. Due to these price source differences, the AUM and LP token price estimates
+ *            from this contract should ONLY be used in scenarios where high precision
+ *            is not critical (e.g. LP token lending).
+ *
+ *         4. DO NOT use these estimates in scenarios requiring precise LP token pricing
+ *            or exact AUM calculations.
+ *
+ *         If you are developing external contracts for MUX3 (such as lending CollateralPool LP tokens),
+ *         you can reference price estimates from this contract while keeping the above limitations in mind.
  */
 contract CollateralPoolAumReader is Initializable, OwnableUpgradeable {
     using LibTypeCast for uint256;
