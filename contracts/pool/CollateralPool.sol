@@ -117,7 +117,10 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
 
     /**
      * @notice Calculates the total Assets Under Management (AUM) in USD including unrealized PnL.
-     *         This is used to evaluate NAV
+     *         This is used to evaluate NAV.
+     *
+     *         note: This function is for MUX3 contract internal use only. External contracts may
+     *               revert or get incorrect information when calling this function.
      * @return The total AUM value in USD (18 decimals)
      */
     function getAumUsd() external view returns (uint256) {
@@ -127,6 +130,9 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     /**
     /**
      * @notice Calculates the reserved USD which is used to ensure the pool can pay PnL
+     *
+     *         note: This function is for MUX3 contract internal use only. External contracts may
+     *               revert or get incorrect information when calling this function.
      * @return Reserved value in USD (18 decimals)
      */
     function getReservedUsd() external view returns (uint256) {
