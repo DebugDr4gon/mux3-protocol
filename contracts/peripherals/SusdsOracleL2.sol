@@ -32,18 +32,32 @@ contract SusdsOracleL2 is Initializable, OwnableUpgradeable {
         emit OracleUpdated(chi_, rho_, ssr_);
     }
 
-    // consistent with  https://etherscan.io/address/0xa3931d71877c0e7a3148cb7eb4463524fec27fbd
+    /**
+     * @notice Update price according to time passed since last update.
+     *         Consistent with https://etherscan.io/address/0xa3931d71877c0e7a3148cb7eb4463524fec27fbd
+     */
     function currentChi() public view returns (uint256) {
         require(chi != 0 && rho != 0, "Not kick off yet");
         return (block.timestamp > rho) ? (_rpow(ssr, block.timestamp - rho) * chi) / RAY : chi;
     }
 
-    // pretend to be a ChainlinkAggregator
+    /**
+     * @notice Price decimals
+     * @dev Pretend to be a ChainlinkAggregator
+     */
     function decimals() external pure returns (uint8) {
         return 27;
     }
 
-    // pretend to be a ChainlinkAggregator
+    /**
+     * @notice Price
+     * @dev Pretend to be a ChainlinkAggregator
+     * @return roundId The round ID
+     * @return answer The answer for this round
+     * @return startedAt Timestamp of when the round started
+     * @return updatedAt Timestamp of when the round was updated
+     * @return answeredInRound Deprecated - Previously used when answers could take multiple rounds to be computed
+     */
     function latestRoundData()
         external
         view
@@ -52,10 +66,10 @@ contract SusdsOracleL2 is Initializable, OwnableUpgradeable {
         uint256 p = currentChi();
         require(p <= uint256(type(int256).max), "Overflow int256");
         answer = int256(p);
+        startedAt = rho;
         updatedAt = block.timestamp;
         // leave the other fields empty
         roundId;
-        startedAt;
         answeredInRound;
     }
 
