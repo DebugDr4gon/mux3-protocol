@@ -45,6 +45,10 @@ contract PositionAccount is Mux3FacetBase {
         require(rawCollateralAmount != 0, InvalidAmount("rawCollateralAmount"));
         PositionAccountInfo storage positionAccount = _positionAccounts[positionId];
         uint256 collateralAmount = _collateralToWad(collateralToken, rawCollateralAmount);
+        if (collateralAmount == 0) {
+            // token.decimals > 18 and rawCollateralAmount < 1e18
+            return;
+        }
         positionAccount.collaterals[collateralToken] += collateralAmount;
         EnumerableSetUpgradeable.AddressSet storage activeCollaterals = positionAccount.activeCollaterals;
         if (!activeCollaterals.contains(collateralToken)) {
