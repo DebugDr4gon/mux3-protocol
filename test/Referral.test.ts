@@ -21,10 +21,8 @@ import {
   WETH9,
   Mux3FeeDistributor,
   CollateralPoolEventEmitter,
-  MockUniswapV3,
+  MockUniswap3,
   Swapper,
-  CollateralPoolAumReader,
-  MockChainlinkFeeder,
   TestReferralManager,
   TestReferralTiers,
 } from "../typechain"
@@ -36,6 +34,8 @@ const a2b = (a) => {
 const u2b = (u) => {
   return ethers.utils.hexZeroPad(u.toTwos(256).toHexString(), 32)
 }
+const SWAPPER_UNI3 = "00"
+const SWAPPER_BAL2 = "01"
 
 describe("ReferralAndFeeDistributor", () => {
   const refCode = toBytes32("")
@@ -59,7 +59,7 @@ describe("ReferralAndFeeDistributor", () => {
   let pool2: CollateralPool
   let orderBook: OrderBook
   let feeDistributor: Mux3FeeDistributor
-  let uniswap: MockUniswapV3
+  let uniswap: MockUniswap3
   let swapper: Swapper
   let referralTiers: TestReferralTiers
   let referralManager: TestReferralManager
@@ -166,15 +166,18 @@ describe("ReferralAndFeeDistributor", () => {
     await core.grantRole(ethers.utils.id("ORDER_BOOK_ROLE"), orderBook.address)
 
     // swapper
-    uniswap = (await createContract("MockUniswapV3", [
+    uniswap = (await createContract("MockUniswap3", [
       usdc.address,
       weth.address,
       btc.address,
       zeroAddress,
-    ])) as MockUniswapV3
+    ])) as MockUniswap3
     swapper = (await createContract("Swapper", [])) as Swapper
-    await swapper.initialize(weth.address, uniswap.address, uniswap.address)
-    await swapper.setSwapPath(usdc.address, btc.address, [usdc.address + "0001f4" + btc.address.slice(2)])
+    await swapper.initialize(weth.address)
+    await swapper.setUniswap3(uniswap.address, uniswap.address)
+    await swapper.setSwapPath(usdc.address, btc.address, [
+      "0x" + SWAPPER_UNI3 + usdc.address.slice(2) + "0001f4" + btc.address.slice(2),
+    ])
     await btc.mint(uniswap.address, toUnit("100000", 8))
     await core.setConfig(ethers.utils.id("MC_SWAPPER"), a2b(swapper.address))
 

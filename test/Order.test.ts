@@ -21,7 +21,7 @@ import {
   MockMux3,
   OrderBook,
   WETH9,
-  MockUniswapV3,
+  MockUniswap3,
   Swapper,
 } from "../typechain"
 import { time } from "@nomicfoundation/hardhat-network-helpers"
@@ -830,14 +830,15 @@ describe("Order", () => {
 
   it("withdraw order - broker fee", async () => {
     // swapper
-    const uniswap = (await createContract("MockUniswapV3", [
+    const uniswap = (await createContract("MockUniswap3", [
       zeroAddress,
       weth.address,
       zeroAddress,
       zeroAddress,
-    ])) as MockUniswapV3
+    ])) as MockUniswap3
     const swapper = (await createContract("Swapper", [])) as Swapper
-    await swapper.initialize(weth.address, uniswap.address, uniswap.address)
+    await swapper.initialize(weth.address)
+    await swapper.setUniswap3(uniswap.address, uniswap.address)
     await core.setConfig(ethers.utils.id("MC_SWAPPER"), a2b(swapper.address))
 
     await orderBook.setConfig(ethers.utils.id("MCO_ORDER_GAS_FEE_GWEI"), u2b(BigNumber.from("1000000")))
@@ -938,7 +939,7 @@ describe("Order", () => {
       )
     }
   })
-  
+
   it("placeLiquidityOrder - addLiquidity to a draining pool", async () => {
     await token0.mint(user0.address, toWei("1000"))
     await token0.transfer(orderBook.address, toWei("150"))
@@ -954,11 +955,13 @@ describe("Order", () => {
     await expect(orderBook.connect(broker).fillLiquidityOrder(0, [])).to.revertedWith("Draining")
     // no2
     await token0.transfer(orderBook.address, toWei("150"))
-    await expect(orderBook.placeLiquidityOrder({
-      poolAddress: pool1.address,
-      rawAmount: toWei("150"),
-      isAdding: true,
-      isUnwrapWeth: false,
-    })).to.be.revertedWith("Draining")
+    await expect(
+      orderBook.placeLiquidityOrder({
+        poolAddress: pool1.address,
+        rawAmount: toWei("150"),
+        isAdding: true,
+        isUnwrapWeth: false,
+      })
+    ).to.be.revertedWith("Draining")
   })
 })

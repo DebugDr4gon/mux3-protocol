@@ -1,8 +1,8 @@
 import { ethers } from "hardhat"
-import { BytesLike, ethers } from "ethers"
+import { BytesLike } from "ethers"
 import { ContractTransaction, Contract, ContractReceipt } from "ethers"
 import { TransactionReceipt } from "@ethersproject/providers"
-import { hexlify, concat, zeroPad, arrayify } from "@ethersproject/bytes"
+import { hexlify } from "@ethersproject/bytes"
 import { BigNumber as EthersBigNumber, BigNumberish, parseFixed, formatFixed } from "@ethersproject/bignumber"
 import chalk from "chalk"
 
@@ -50,7 +50,7 @@ export const ASSET_IS_STRICT_STABLE = 0x01000000000000 // assetPrice is always 1
 
 // -1 => 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 // -0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff => 0xf000000000000000000000000000000000000000000000000000000000000001
-export function int256ToBytes32(n: ethers.BigNumber): string {
+export function int256ToBytes32(n: EthersBigNumber): string {
   const hex = n.toTwos(256).toHexString()
   return ethers.utils.hexZeroPad(hex, 32)
 }
@@ -138,7 +138,7 @@ export async function ensureFinished(
 
 //  |----- 160 -----|------ 96 ------|
 //  | user address  | position index |
-export function encodePositionId(account: string, index: number | ethers.BigNumber): string {
+export function encodePositionId(account: string, index: number | EthersBigNumber): string {
   return hexlify(ethers.utils.solidityPack(["address", "uint96"], [account, index]))
 }
 
@@ -328,4 +328,19 @@ export function parseWithdrawalOrder(orderData: string) {
     withdrawSwapToken,
     withdrawSwapSlippage,
   }
+}
+
+export async function hardhatSetArbERC20Balance(
+  tokenAddress: BytesLike,
+  account: BytesLike,
+  balance: BigNumberish,
+  balanceSlot: number = 51
+) {
+  let slot = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["address", "uint"], [account, balanceSlot]))
+  // remove padding for JSON RPC. ex: 0x0dd9ff... => 0xdd9ff...
+  while (slot.startsWith("0x0")) {
+    slot = "0x" + slot.slice(3)
+  }
+  const val = ethers.utils.defaultAbiCoder.encode(["uint256"], [balance])
+  await ethers.provider.send("hardhat_setStorageAt", [tokenAddress, slot, val])
 }

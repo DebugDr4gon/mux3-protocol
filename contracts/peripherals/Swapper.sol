@@ -8,12 +8,12 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20Metadat
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/IQuoter.sol";
-
 import "../libraries/LibEthUnwrapper.sol";
-import "../libraries/LibUniswap.sol";
-import { Path } from "../libraries/LibUniswapPath.sol";
+import "../libraries/LibUniswap3.sol";
+import "../libraries/LibBalancer2.sol";
 import "../interfaces/IErrors.sol";
 import "../interfaces/ISwapper.sol";
+import "../libraries/LibBytes.sol";
 
 /**
  * @notice Swapper is used to swap tokens (usually trading profits) into another token (usually a trader's collateral)
@@ -24,7 +24,10 @@ import "../interfaces/ISwapper.sol";
 contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    uint256 constant MIN_PATH_LENGTH = 20 + 3 + 20;
+    enum Protocol {
+        Uniswap3,
+        Balancer2
+    }
 
     /**
      * @notice The WETH token address used for ETH wrapping/unwrapping
@@ -32,22 +35,33 @@ contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
     address public weth;
 
     /**
-     * @notice The Uniswap V3 Router contract used for token swaps
+     * @notice The Uniswap V3 Router
      */
-    ISwapRouter public uniswapRouter;
+    address public uniswap3Router;
 
     /**
-     * @notice The Uniswap V3 Quoter contract used for price quotes
+     * @notice The Uniswap V3 Quoter
      */
-    IQuoter public uniswapQuoter;
+    address public uniswap3Quoter;
 
+    mapping(bytes32 => bytes[]) private _reserved1;
+
+    /**
+     * @dev Mapping of token pairs to swap paths
+     *      See `decodePath` for details.
+     */
     mapping(bytes32 => bytes[]) internal swapPaths;
 
-    event UniswapRouterSet(address uniswapRouter);
-    event UniswapQuoterSet(address uniswapQuoter);
+    /**
+     * @notice The Balancer V2 Vault
+     */
+    address public balancer2Vault;
+
+    event SetUniswap3(address uniswap3Router, address uniswap3Quoter);
+    event SetBalancer2(address balancer2Vault);
     event SetSwapPath(address tokenIn, address tokenOut, bytes[] paths);
-    event MissingSwapPath(address tokenIn, address tokenOut);
     event AppendSwapPath(address tokenIn, address tokenOut, bytes path);
+    event MissingSwapPath(address tokenIn, address tokenOut);
     event TransferOut(address token, uint256 amount, bool isUnwrapped);
     event SwapSuccess(address tokenIn, uint256 amountIn, address tokenOut, uint256 amountOut);
     event SwapFailed(
@@ -69,32 +83,34 @@ contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
     /**
      * @notice Initializes the Swapper contract
      * @param weth_ The WETH token address
-     * @param uniswapRouter_ The Uniswap V3 Router address
-     * @param uniswapQuoter_ The Uniswap V3 Quoter address
-     * @dev Can only be called once due to initializer modifier
      */
-    function initialize(address weth_, address uniswapRouter_, address uniswapQuoter_) external initializer {
+    function initialize(address weth_) external initializer {
         __Ownable_init();
 
         weth = weth_;
-        _setUniswap(uniswapRouter_);
-        _setUniswapQuoter(uniswapQuoter_);
     }
 
     /**
-     * @notice Sets a new Uniswap Router address
-     * @param _uniswapRouter The new router address
+     * @notice Sets a new Uniswap Router, Quoter address
+     * @param uniswap3Router_ The new router address
+     * @param uniswap3Quoter_ The new quoter address
      */
-    function setUniswapRouter(address _uniswapRouter) external onlyOwner {
-        _setUniswap(_uniswapRouter);
+    function setUniswap3(address uniswap3Router_, address uniswap3Quoter_) external onlyOwner {
+        require(uniswap3Router_ != address(0), "Swapper::INVALID_UNISWAP_ROUTER");
+        require(uniswap3Quoter_ != address(0), "Swapper::INVALID_UNISWAP_QUOTER");
+        uniswap3Router = uniswap3Router_;
+        uniswap3Quoter = uniswap3Quoter_;
+        emit SetUniswap3(uniswap3Router_, uniswap3Quoter_);
     }
 
     /**
-     * @notice Sets a new Uniswap Quoter address
-     * @param _uniswapQuoter The new quoter address
+     * @notice Sets a new Balancer V2 Vault address
+     * @param balancer2Vault_ The new vault address
      */
-    function setUniswapQuoter(address _uniswapQuoter) external onlyOwner {
-        _setUniswapQuoter(_uniswapQuoter);
+    function setBalancer2(address balancer2Vault_) external onlyOwner {
+        require(balancer2Vault_ != address(0), "Swapper::INVALID_BALANCER_VAULT");
+        balancer2Vault = balancer2Vault_;
+        emit SetBalancer2(balancer2Vault_);
     }
 
     /**
@@ -104,15 +120,26 @@ contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
      *         Use `appendSwapPath` to add single path.
      * @param tokenIn The input token address
      * @param tokenOut The output token address
-     * @param paths Array of encoded swap paths, see `Path.sol` for details
-     *              Each path must be valid and have matching input/output tokens
+     * @param paths A list of encoded swap paths. See `decodePath` for details.
      */
     function setSwapPath(address tokenIn, address tokenOut, bytes[] memory paths) external onlyOwner {
-        for (uint256 i = 1; i < paths.length; i++) {
-            _verifyPathInOut(tokenIn, tokenOut, paths[i]);
+        for (uint256 i = 0; i < paths.length; i++) {
+            _verifyPath(tokenIn, tokenOut, paths[i]);
         }
-        swapPaths[_encodeTokenPair(tokenIn, tokenOut)] = paths;
+        swapPaths[encodeTokenPair(tokenIn, tokenOut)] = paths;
         emit SetSwapPath(tokenIn, tokenOut, paths);
+    }
+
+    /**
+     * @notice Adds a new swap path for a token pair
+     * @param tokenIn The input token address
+     * @param tokenOut The output token address
+     * @param path The encoded swap path to add, path must be valid and have matching input/output tokens
+     */
+    function appendSwapPath(address tokenIn, address tokenOut, bytes memory path) external onlyOwner {
+        _verifyPath(tokenIn, tokenOut, path);
+        swapPaths[encodeTokenPair(tokenIn, tokenOut)].push(path);
+        emit AppendSwapPath(tokenIn, tokenOut, path);
     }
 
     function listSwapPath(
@@ -121,7 +148,7 @@ contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
         uint256 begin,
         uint256 end
     ) external view returns (bytes[] memory ret) {
-        bytes[] storage paths = swapPaths[_encodeTokenPair(tokenIn, tokenOut)];
+        bytes[] storage paths = swapPaths[encodeTokenPair(tokenIn, tokenOut)];
         if (begin >= paths.length) {
             return new bytes[](0);
         }
@@ -135,19 +162,25 @@ contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
     }
 
     /**
-     * @notice Adds a new swap path for a token pair
+     * @notice Try to query the out amount for a given path
      * @param tokenIn The input token address
      * @param tokenOut The output token address
-     * @param path The encoded swap path to add, path must be valid and have matching input/output tokens
+     * @param amountIn The amount of input tokens
+     * @return quoteSuccess Whether the quote was successful
+     * @return bestPathIndex Index of the best path in the paths array
+     * @return bestPath The encoded swap path that gives the best output
+     * @return bestOutAmount The amount of output tokens for the best path
      */
-    function appendSwapPath(address tokenIn, address tokenOut, bytes memory path) external onlyOwner {
-        _verifyPathInOut(tokenIn, tokenOut, path);
-        swapPaths[_encodeTokenPair(tokenIn, tokenOut)].push(path);
-        emit AppendSwapPath(tokenIn, tokenOut, path);
+    function quote(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn
+    ) external returns (bool quoteSuccess, uint256 bestPathIndex, bytes memory bestPath, uint256 bestOutAmount) {
+        return _quote(tokenIn, tokenOut, amountIn);
     }
 
     /**
-     * @notice Swaps tokens. If the swap fails or if tokenOut is same as tokenIn/zero, transfers tokenIn instead.
+     * @notice Swaps tokens. If the swap fails or if tokenOut is same as tokenIn, transfers tokenIn instead.
      * @param tokenIn The address of the input token
      * @param amountIn The amount of input tokens to swap
      * @param tokenOut The address of the output token (use address(0) to skip swap)
@@ -171,32 +204,21 @@ contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
             return (false, amountIn);
         }
         // path not found
-        bytes[] memory paths = swapPaths[_encodeTokenPair(tokenIn, tokenOut)];
+        bytes[] memory paths = swapPaths[encodeTokenPair(tokenIn, tokenOut)];
         if (paths.length == 0) {
             emit MissingSwapPath(tokenIn, tokenOut);
             _transfer(tokenIn, amountIn, isUnwrapWeth, receiver);
             return (false, amountIn);
         }
         // quote
-        (bool quoteSuccess, uint256 bestPathIndex, uint256 bestOutAmount) = LibUniswap.quote(
-            uniswapQuoter,
-            paths,
-            amountIn
-        );
+        (bool quoteSuccess, , bytes memory bestPath, uint256 bestOutAmount) = _quote(tokenIn, tokenOut, amountIn);
         if (!quoteSuccess || bestOutAmount < minAmountOut) {
             emit SwapFailed(tokenIn, amountIn, tokenOut, minAmountOut, quoteSuccess, bestOutAmount, false, 0);
             _transfer(tokenIn, amountIn, isUnwrapWeth, receiver);
             return (false, amountIn);
         }
         // swap
-        (uint256 amountOut, bool swapSuccess) = LibUniswap.swap(
-            uniswapRouter,
-            paths[bestPathIndex],
-            tokenIn,
-            tokenOut,
-            amountIn,
-            minAmountOut
-        );
+        (bool swapSuccess, uint256 amountOut) = _swap(bestPath, tokenIn, tokenOut, amountIn, minAmountOut);
         if (!swapSuccess) {
             emit SwapFailed(
                 tokenIn,
@@ -222,37 +244,89 @@ contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
     }
 
     /**
-     * @notice Try to query the out amount for a given path
-     * @param tokenIn The input token address
-     * @param tokenOut The output token address
-     * @param amountIn The amount of input tokens
-     * @return path The encoded swap path that gives the best output
-     * @return quoteSuccess Whether the quote was successful
-     * @return bestPathIndex Index of the best path in the paths array
-     * @return bestOutAmount The amount of output tokens for the best path
+     * @notice Encodes a token pair into a bytes32 hash
      */
-    function quote(
+    function encodeTokenPair(address tokenIn, address tokenOut) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(tokenIn, tokenOut));
+    }
+
+    /**
+     * @notice Decodes a swap path, where a path is:
+     *      * For Uniswap3:  | 00 | token1 | fee1 | token2 | fee2 | token3 |
+     *      * For Balancer2: | 01 | abi.encode((assets, swaps)) |
+     */
+    function decodePath(bytes memory path) public pure returns (Protocol protocol, bytes memory rawPath) {
+        require(path.length >= 1, "Swapper::INVALID_PATH");
+        protocol = Protocol(uint8(path[0]));
+        rawPath = LibBytes.slice(path, 1, path.length - 1);
+    }
+
+    function _quote(
         address tokenIn,
         address tokenOut,
         uint256 amountIn
-    ) external returns (bytes memory path, bool quoteSuccess, uint256 bestPathIndex, uint256 bestOutAmount) {
-        bytes[] memory paths = swapPaths[_encodeTokenPair(tokenIn, tokenOut)];
+    ) internal returns (bool quoteSuccess, uint256 bestPathIndex, bytes memory bestPath, uint256 bestOutAmount) {
+        bytes[] memory paths = swapPaths[encodeTokenPair(tokenIn, tokenOut)];
         require(paths.length > 0, "Swapper::NO_PATH_SET");
-        (quoteSuccess, bestPathIndex, bestOutAmount) = LibUniswap.quote(uniswapQuoter, paths, amountIn);
+        for (uint256 i = 0; i < paths.length; i++) {
+            bool localSuccess;
+            uint256 localAmountOut;
+            (Protocol protocol, bytes memory rawPath) = decodePath(paths[i]);
+            if (protocol == Protocol.Uniswap3) {
+                (localSuccess, localAmountOut) = LibUniswap3.quote(uniswap3Quoter, rawPath, amountIn);
+            } else if (protocol == Protocol.Balancer2) {
+                (localSuccess, localAmountOut) = LibBalancer2.quote(balancer2Vault, rawPath, amountIn);
+            }
+            if (localSuccess && localAmountOut > bestOutAmount) {
+                quoteSuccess = true;
+                bestPathIndex = i;
+                bestOutAmount = localAmountOut;
+            }
+        }
         if (quoteSuccess) {
-            path = paths[bestPathIndex];
+            bestPath = paths[bestPathIndex];
         }
     }
 
-    function _verifyPathInOut(address tokenIn, address tokenOut, bytes memory path) internal pure {
-        require(tokenIn != tokenOut, "Swapper::INVALID_PATH");
-        require(path.length >= MIN_PATH_LENGTH, "Swapper::INVALID_PATH");
-        (address realTokenIn, , ) = Path.decodeFirstPool(path);
-        while (Path.hasMultiplePools(path)) {
-            path = Path.skipToken(path);
+    function _swap(
+        bytes memory bestPath,
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 minAmountOut
+    ) internal returns (bool swapSuccess, uint256 amountOut) {
+        (Protocol protocol, bytes memory rawPath) = decodePath(bestPath);
+        if (protocol == Protocol.Uniswap3) {
+            (swapSuccess, amountOut) = LibUniswap3.swap(
+                uniswap3Router,
+                rawPath,
+                tokenIn,
+                tokenOut,
+                amountIn,
+                minAmountOut
+            );
+        } else if (protocol == Protocol.Balancer2) {
+            (swapSuccess, amountOut) = LibBalancer2.swap(
+                balancer2Vault,
+                rawPath,
+                tokenIn,
+                tokenOut,
+                amountIn,
+                minAmountOut
+            );
         }
-        (, address realTokenOut, ) = Path.decodeFirstPool(path);
-        require(realTokenIn == tokenIn && realTokenOut == tokenOut, "Swapper::INVALID_PATH");
+    }
+
+    function _verifyPath(address tokenIn, address tokenOut, bytes memory path) internal pure {
+        require(tokenIn != tokenOut, "Swapper::INVALID_PATH");
+        (Protocol protocol, bytes memory rawPath) = decodePath(path);
+        bool valid;
+        if (protocol == Protocol.Uniswap3) {
+            valid = LibUniswap3.isValidPath(tokenIn, tokenOut, rawPath);
+        } else if (protocol == Protocol.Balancer2) {
+            valid = LibBalancer2.isValidPath(tokenIn, tokenOut, rawPath);
+        }
+        require(valid, "Swapper::INVALID_PATH");
     }
 
     function _transfer(address token, uint256 amount, bool isUnwrapWeth, address receiver) internal {
@@ -263,21 +337,5 @@ contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
             IERC20Upgradeable(token).safeTransfer(receiver, amount);
             emit TransferOut(token, amount, false);
         }
-    }
-
-    function _setUniswap(address _uniswapRouter) internal {
-        require(_uniswapRouter != address(0), "Swapper::INVALID_UNISWAP_ROUTER");
-        uniswapRouter = ISwapRouter(_uniswapRouter);
-        emit UniswapRouterSet(_uniswapRouter);
-    }
-
-    function _setUniswapQuoter(address _uniswapQuoter) internal {
-        require(_uniswapQuoter != address(0), "Swapper::INVALID_UNISWAP_QUOTER");
-        uniswapQuoter = IQuoter(_uniswapQuoter);
-        emit UniswapQuoterSet(_uniswapQuoter);
-    }
-
-    function _encodeTokenPair(address tokenIn, address tokenOut) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(tokenIn, tokenOut));
     }
 }

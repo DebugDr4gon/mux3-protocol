@@ -291,17 +291,12 @@ async function main(deployer: Deployer) {
   await ensureFinished(mux3PriceProvider.grantRole(ethers.utils.id("ORACLE_SIGNER"), mux3OracleSigner))
 
   // swapper
-  const uniRouter = "0xE592427A0AEce92De3Edee1F18E0157C05861564"
-  const uniQuoter = "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
-  await ensureFinished(swapper.initialize(weth, uniRouter, uniQuoter))
-  const UNI_FEE_030 = "000bb8"
-  const UNI_FEE_005 = "0001f4"
-  await ensureFinished(
-    swapper.setSwapPath(usdc, weth, [usdc + UNI_FEE_030 + weth.slice(2), usdc + UNI_FEE_005 + weth.slice(2)])
-  )
-  await ensureFinished(
-    swapper.setSwapPath(weth, usdc, [weth + UNI_FEE_030 + usdc.slice(2), weth + UNI_FEE_005 + usdc.slice(2)])
-  )
+  const uni3Router = "0xE592427A0AEce92De3Edee1F18E0157C05861564"
+  const uni3Quoter = "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6"
+  const balancer2Vault = "0xba12222222228d8ba445958a75a0704d566bf2c8"
+  await ensureFinished(swapper.initialize(weth))
+  await ensureFinished(swapper.setUniswap3(uni3Router, uni3Quoter))
+  await ensureFinished(swapper.setBalancer2(balancer2Vault))
 
   // susds
   await ensureFinished(susdsOracleL2.initialize(susdsOracleL1))

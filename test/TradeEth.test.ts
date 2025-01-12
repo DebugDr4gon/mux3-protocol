@@ -19,7 +19,7 @@ import {
   MockERC20,
   WETH9,
   MockMux3FeeDistributor,
-  MockUniswapV3,
+  MockUniswap3,
   Swapper,
 } from "../typechain"
 import { time } from "@nomicfoundation/hardhat-network-helpers"
@@ -49,7 +49,7 @@ describe("Trade, eth collateral", () => {
   let pool1: CollateralPool
   let orderBook: OrderBook
   let feeDistributor: MockMux3FeeDistributor
-  let uniswap: MockUniswapV3
+  let uniswap: MockUniswap3
 
   let timestampOfTest: number
 
@@ -146,14 +146,15 @@ describe("Trade, eth collateral", () => {
     await core.setMockPrice(a2b(weth.address), toWei("3000"))
 
     // swapper
-    uniswap = (await createContract("MockUniswapV3", [
+    uniswap = (await createContract("MockUniswap3", [
       usdc.address,
       weth.address,
       zeroAddress,
       zeroAddress,
-    ])) as MockUniswapV3
+    ])) as MockUniswap3
     const swapper = (await createContract("Swapper", [])) as Swapper
-    await swapper.initialize(weth.address, uniswap.address, uniswap.address)
+    await swapper.initialize(weth.address)
+    await swapper.setUniswap3(uniswap.address, uniswap.address)
     await core.setConfig(ethers.utils.id("MC_SWAPPER"), a2b(swapper.address))
   })
 

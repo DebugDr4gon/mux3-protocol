@@ -1,7 +1,13 @@
 import { ethers, network } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
 import { expect } from "chai"
-import { toWei, createContract, getMuxSignature, getMuxPriceData } from "../scripts/deployUtils"
+import {
+  toWei,
+  createContract,
+  getMuxSignature,
+  getMuxPriceData,
+  hardhatSetArbERC20Balance,
+} from "../scripts/deployUtils"
 import { BigNumber } from "ethers"
 import { TestOracle } from "../typechain"
 
@@ -28,22 +34,11 @@ describe("Oracle", () => {
     return ethers.utils.hexZeroPad(u.toTwos(256).toHexString(), 32)
   }
 
-  async function hardhatSetArbERC20Balance(tokenAddress: any, account: any, balance: any) {
-    const balanceSlot = 51
-    let slot = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(["address", "uint"], [account, balanceSlot]))
-    // remove padding for JSON RPC. ex: 0x0dd9ff... => 0xdd9ff...
-    while (slot.startsWith("0x0")) {
-      slot = "0x" + slot.slice(3)
-    }
-    const val = ethers.utils.defaultAbiCoder.encode(["uint256"], [balance])
-    await ethers.provider.send("hardhat_setStorageAt", [tokenAddress, slot, val])
-  }
-
   it("test_setPrice", async () => {
     await tester.test_setPrice()
   })
 
-  // it("test_chainlinkStreamProvider", async () => {
+  // it("test_chainlinkStreamProvider, live test", async () => {
   //   await network.provider.request({
   //     method: "hardhat_reset",
   //     params: [

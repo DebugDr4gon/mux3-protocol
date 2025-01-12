@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/presets/ERC20PresetMinterPauser.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import "../../libraries/LibUniswapPath.sol";
+import "../../libraries/LibUniswap3Path.sol";
 
-contract MockUniswapV3 {
+contract MockUniswap3 {
     address usdc;
     address weth;
     address wbtc;
@@ -18,6 +18,10 @@ contract MockUniswapV3 {
         arb = arb_;
     }
 
+    function quoteExactInput(bytes memory path, uint256 amountIn) external view returns (uint256 amountOut) {
+        (, , amountOut) = _price(path, amountIn);
+    }
+
     function exactInput(ISwapRouter.ExactInputParams memory params) external returns (uint256 amountOut) {
         uint256 amountIn = params.amountIn;
         address tokenIn;
@@ -28,19 +32,15 @@ contract MockUniswapV3 {
         require(amountOut >= params.amountOutMinimum, "UniswapV3: INSUFFICIENT_OUTPUT_AMOUNT");
     }
 
-    function quoteExactInput(bytes memory path, uint256 amountIn) external view returns (uint256 amountOut) {
-        (, , amountOut) = _price(path, amountIn);
-    }
-
     function _price(
         bytes memory path,
         uint256 amountIn
     ) internal view returns (address tokenIn, address tokenOut, uint256 amountOut) {
-        (tokenIn, , ) = Path.decodeFirstPool(path);
-        while (Path.hasMultiplePools(path)) {
-            path = Path.skipToken(path);
+        (tokenIn, , ) = LibUniswap3Path.decodeFirstPool(path);
+        while (LibUniswap3Path.hasMultiplePools(path)) {
+            path = LibUniswap3Path.skipToken(path);
         }
-        (, tokenOut, ) = Path.decodeFirstPool(path);
+        (, tokenOut, ) = LibUniswap3Path.decodeFirstPool(path);
         if (tokenIn == weth && tokenOut == usdc) {
             // assume 3000
             amountOut = (amountIn * 3000) / 1e12;

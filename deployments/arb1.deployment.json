@@ -274,8 +274,8 @@
   "Swapper__implementation": {
     "type": "plain",
     "name": "Swapper__implementation",
-    "address": "0x2A6D451133C5ac2a7aEfffc1159Ad793c758a6eA",
-    "deployedAt": 293628242
+    "address": "0x5c96F64f475429F781497711a86b215e3Ecf449f",
+    "deployedAt": 294627728
   },
   "Swapper": {
     "type": "upgradeable",
@@ -283,7 +283,7 @@
     "address": "0x0241d1b85FD3B184bFe881162Eee163f7b8fe3f7",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x2A6D451133C5ac2a7aEfffc1159Ad793c758a6eA"
+      "implementation": "0x5c96F64f475429F781497711a86b215e3Ecf449f"
     },
     "deployedAt": 273909792
   },
