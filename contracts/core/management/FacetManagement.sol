@@ -190,6 +190,6 @@ contract FacetManagement is
         bytes memory oracleCalldata
     ) external virtual onlyRole(ORDER_BOOK_ROLE) {
         (uint256 price, uint256 timestamp) = _setPrice(oracleId, provider, oracleCalldata);
-        emit SetPrice(oracleId, provider, oracleCalldata, price, timestamp);
+        emit SetPrice(oracleId, provider, price, timestamp);
     }
 }

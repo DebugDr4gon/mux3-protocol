@@ -37,8 +37,8 @@
   "FacetManagement": {
     "type": "plain",
     "name": "FacetManagement",
-    "address": "0x71c2d120F22989f0a956BADfE7e8eb0193156297",
-    "deployedAt": 293604653
+    "address": "0x76B5550d06cEc563150721F9d64d282735bB10A8",
+    "deployedAt": 294949004
   },
   "FacetReader": {
     "type": "plain",
@@ -96,7 +96,7 @@
         ]
       },
       "facetManagement": {
-        "address": "0x71c2d120F22989f0a956BADfE7e8eb0193156297",
+        "address": "0x76B5550d06cEc563150721F9d64d282735bB10A8",
         "selectors": [
           "0x49ffd567",
           "0x0606fd4f",

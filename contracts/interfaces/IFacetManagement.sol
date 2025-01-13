@@ -13,7 +13,7 @@ interface IFacetManagement {
     event SetCollateralPoolConfig(address pool, bytes32 key, bytes32 value);
     event SetCollateralTokenEnabled(address token, bool enabled);
     event SetOracleProvider(address oracleProvider, bool isValid);
-    event SetPrice(bytes32 oracleId, address provider, bytes data, uint256 price, uint256 timestamp);
+    event SetPrice(bytes32 oracleId, address provider, uint256 price, uint256 timestamp);
 
     function setPrice(bytes32 oracleId, address provider, bytes memory oracleCalldata) external;
 }
