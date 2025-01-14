@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
@@ -21,7 +21,7 @@ import "../libraries/LibBytes.sol";
  *         We may integrate with different DeFi protocols to provide better liquidity. However, regardless of the liquidity source,
  *         if the slippage does not meet trader's requirements, we will skip the swap.
  */
-contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
+contract Swapper is AccessControlEnumerableUpgradeable, ISwapper, IErrors {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     enum Protocol {
@@ -85,9 +85,10 @@ contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
      * @param weth_ The WETH token address
      */
     function initialize(address weth_) external initializer {
-        __Ownable_init();
+        __AccessControlEnumerable_init();
 
         weth = weth_;
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
@@ -95,7 +96,7 @@ contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
      * @param uniswap3Router_ The new router address
      * @param uniswap3Quoter_ The new quoter address
      */
-    function setUniswap3(address uniswap3Router_, address uniswap3Quoter_) external onlyOwner {
+    function setUniswap3(address uniswap3Router_, address uniswap3Quoter_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(uniswap3Router_ != address(0), "Swapper::INVALID_UNISWAP_ROUTER");
         require(uniswap3Quoter_ != address(0), "Swapper::INVALID_UNISWAP_QUOTER");
         uniswap3Router = uniswap3Router_;
@@ -107,7 +108,7 @@ contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
      * @notice Sets a new Balancer V2 Vault address
      * @param balancer2Vault_ The new vault address
      */
-    function setBalancer2(address balancer2Vault_) external onlyOwner {
+    function setBalancer2(address balancer2Vault_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(balancer2Vault_ != address(0), "Swapper::INVALID_BALANCER_VAULT");
         balancer2Vault = balancer2Vault_;
         emit SetBalancer2(balancer2Vault_);
@@ -122,7 +123,11 @@ contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
      * @param tokenOut The output token address
      * @param paths A list of encoded swap paths. See `decodePath` for details.
      */
-    function setSwapPath(address tokenIn, address tokenOut, bytes[] memory paths) external onlyOwner {
+    function setSwapPath(
+        address tokenIn,
+        address tokenOut,
+        bytes[] memory paths
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         for (uint256 i = 0; i < paths.length; i++) {
             _verifyPath(tokenIn, tokenOut, paths[i]);
         }
@@ -136,7 +141,11 @@ contract Swapper is Ownable2StepUpgradeable, ISwapper, IErrors {
      * @param tokenOut The output token address
      * @param path The encoded swap path to add, path must be valid and have matching input/output tokens
      */
-    function appendSwapPath(address tokenIn, address tokenOut, bytes memory path) external onlyOwner {
+    function appendSwapPath(
+        address tokenIn,
+        address tokenOut,
+        bytes memory path
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _verifyPath(tokenIn, tokenOut, path);
         swapPaths[encodeTokenPair(tokenIn, tokenOut)].push(path);
         emit AppendSwapPath(tokenIn, tokenOut, path);

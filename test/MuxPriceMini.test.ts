@@ -22,6 +22,7 @@ import {
   WETH9,
   MockMux3FeeDistributor,
   CollateralPoolEventEmitter,
+  MuxPriceProvider,
 } from "../typechain"
 import { time } from "@nomicfoundation/hardhat-network-helpers"
 
@@ -219,11 +220,11 @@ describe("MuxPriceMini", () => {
 
   it("1 pool mini test (real price data): +liq, +trade", async () => {
     const signer = (await ethers.getSigners())[0]
-    const muxProvider = await createContract("MuxPriceProvider", [])
-    await muxProvider.initialize(signer.address)
+    const muxProvider = (await createContract("MuxPriceProvider", [])) as MuxPriceProvider
+    await muxProvider.initialize()
     await muxProvider.setPriceExpirationSeconds(86400)
+    await muxProvider.grantRole(ethers.utils.id("ORACLE_SIGNER"), signer.address)
     await core.setOracleProvider(muxProvider.address, true)
-
     {
       await time.increaseTo(timestampOfTest + 86400 * 2 + 0)
       const args = {
@@ -232,7 +233,6 @@ describe("MuxPriceMini", () => {
         isAdding: true,
         isUnwrapWeth: true,
       }
-
       // +liq usdc
       await usdc.connect(lp1).approve(orderBook.address, toUnit("1000000", 6))
       const tx1 = await orderBook
@@ -273,7 +273,6 @@ describe("MuxPriceMini", () => {
           toWei("1") /* lpPrice */,
           toWei("999900") /* share */
         )
-
       const result = await orderBook.getOrder(0)
       expect(result[1]).to.equal(false)
       expect(await usdc.balanceOf(lp1.address)).to.equal(toUnit("0", 6))
@@ -346,7 +345,6 @@ describe("MuxPriceMini", () => {
         expect(poolTokens[0]).to.equal(usdc.address)
         expect(poolBalances[0]).to.equal(toWei("999900")) // unchanged
       }
-
       // fill
       // await core.setMockPrice(short1, toWei("2000"))
       const tx2 = await orderBook.connect(broker).multicall([
@@ -413,7 +411,6 @@ describe("MuxPriceMini", () => {
         expect(state.totalSize).to.equal(toWei("1"))
         expect(state.averageEntryPrice).to.equal(toWei("2000"))
       }
-
       await pool1.connect(lp1).approve(orderBook.address, toUnit("500000", 18))
       await orderBook.connect(lp1).multicall([
         orderBook.interface.encodeFunctionData("transferToken", [pool1.address, toUnit("100000", 18)]),
@@ -451,7 +448,6 @@ describe("MuxPriceMini", () => {
             toWei("100000")
           )
       }
-
       await orderBook.connect(lp1).multicall([
         orderBook.interface.encodeFunctionData("transferToken", [pool1.address, toUnit("100000", 18)]),
         orderBook.interface.encodeFunctionData("placeLiquidityOrder", [
@@ -495,9 +491,10 @@ describe("MuxPriceMini", () => {
     await orderBook.setConfig(ethers.utils.id("MCO_ORDER_GAS_FEE_GWEI"), u2b(ethers.BigNumber.from("1000000")))
 
     const signer = (await ethers.getSigners())[0]
-    const muxProvider = await createContract("MuxPriceProvider", [])
-    await muxProvider.initialize(signer.address)
+    const muxProvider = (await createContract("MuxPriceProvider", [])) as MuxPriceProvider
+    await muxProvider.initialize()
     await muxProvider.setPriceExpirationSeconds(86400)
+    await muxProvider.grantRole(ethers.utils.id("ORACLE_SIGNER"), signer.address)
     await core.setOracleProvider(muxProvider.address, true)
 
     // +liq usdc
