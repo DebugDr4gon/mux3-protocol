@@ -62,6 +62,8 @@ interface ICollateralPool {
 
     struct AddLiquidityResult {
         uint256 shares;
+        uint256 collateralPrice;
+        uint256 lpPrice;
     }
 
     function addLiquidity(AddLiquidityArgs memory args) external returns (AddLiquidityResult memory result);
@@ -75,6 +77,8 @@ interface ICollateralPool {
 
     struct RemoveLiquidityResult {
         uint256 rawCollateralAmount; // token out. token decimals
+        uint256 collateralPrice;
+        uint256 lpPrice;
     }
 
     function removeLiquidity(RemoveLiquidityArgs memory args) external returns (RemoveLiquidityResult memory result);

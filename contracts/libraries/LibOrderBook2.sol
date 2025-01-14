@@ -11,6 +11,7 @@ import "../interfaces/IMux3FeeDistributor.sol";
 import "../interfaces/IMarket.sol";
 import "../interfaces/IOrderBook.sol";
 import "../interfaces/IWETH9.sol";
+import "../interfaces/ICallback.sol";
 import "../libraries/LibCodec.sol";
 import "../libraries/LibConfigMap.sol";
 import "../libraries/LibEthUnwrapper.sol";
@@ -67,15 +68,48 @@ library LibOrderBook2 {
         LiquidityOrderParams memory orderParams = LibOrder.decodeLiquidityOrder(orderData);
         uint256 lockPeriod = LibOrderBook._liquidityLockPeriod(orderBook);
         require(blockTimestamp >= orderData.placeOrderTime + lockPeriod, "Liquidity order is under lock period");
+        uint256 lpPrice;
+        uint256 collateralPrice;
         if (orderParams.isAdding) {
             require(!LibOrderBook._isPoolDraining(orderParams.poolAddress), "Draining pool");
-            outAmount = _fillAddLiquidityOrder(orderBook, orderData, orderParams, reallocateArgs);
+            (outAmount, lpPrice, collateralPrice) = _fillAddLiquidityOrder(
+                orderBook,
+                orderData,
+                orderParams,
+                reallocateArgs
+            );
         } else {
-            outAmount = _fillRemoveLiquidityOrder(orderBook, orderData, orderParams, reallocateArgs);
+            (outAmount, lpPrice, collateralPrice) = _fillRemoveLiquidityOrder(
+                orderBook,
+                orderData,
+                orderParams,
+                reallocateArgs
+            );
         }
         emit IOrderBook.FillOrder(orderData.account, orderId, orderData);
         // gas
         LibOrderBook._payGasFee(orderBook, orderData, msg.sender);
+
+        if (orderBook.callbackWhitelist[orderData.account]) {
+            uint256 assetAmount = orderParams.isAdding ? orderParams.rawAmount : outAmount;
+            uint256 lpAmount = orderParams.isAdding ? outAmount : orderParams.rawAmount;
+            try
+                ICallback(orderData.account).afterLiquidityOrderFilled{ gas: _callbackGasLimit(orderBook) }(
+                    orderId,
+                    assetAmount,
+                    lpAmount,
+                    collateralPrice,
+                    lpPrice
+                )
+            {} catch (bytes memory reason) {
+                emit IOrderBook.CallbackFailed(orderData.account, orderId, reason);
+            }
+        }
+    }
+
+    function _callbackGasLimit(OrderBookStorage storage orderBook) internal view returns (uint256) {
+        uint256 callbackGasLimit = orderBook.configTable.getUint256(MCO_CALLBACK_GAS_LIMIT);
+        return callbackGasLimit == 0 ? gasleft() : callbackGasLimit;
     }
 
     function _fillAddLiquidityOrder(
@@ -83,7 +117,7 @@ library LibOrderBook2 {
         OrderData memory orderData,
         LiquidityOrderParams memory orderParams,
         IFacetOpen.ReallocatePositionArgs[] memory reallocateArgs
-    ) internal returns (uint256 outAmount) {
+    ) internal returns (uint256 outAmount, uint256 lpPrice, uint256 collateralPrice) {
         // reallocate
         // when adding liquidity to a pool (called focusPool), its utilization will decrease.
         // the focusPool is eager to receive positions from other pools.
@@ -115,6 +149,8 @@ library LibOrderBook2 {
             })
         );
         outAmount = result.shares;
+        lpPrice = result.lpPrice;
+        collateralPrice = result.collateralPrice;
     }
 
     function _fillRemoveLiquidityOrder(
@@ -122,7 +158,7 @@ library LibOrderBook2 {
         OrderData memory orderData,
         LiquidityOrderParams memory orderParams,
         IFacetOpen.ReallocatePositionArgs[] memory reallocateArgs
-    ) internal returns (uint256 outAmount) {
+    ) internal returns (uint256 outAmount, uint256 lpPrice, uint256 collateralPrice) {
         // reallocate
         // when removing liquidity from a pool (called focusPool), its utilization will increase.
         // the focusPool is eager to send positions to other pools.
@@ -161,6 +197,8 @@ library LibOrderBook2 {
             })
         );
         outAmount = result.rawCollateralAmount;
+        lpPrice = result.lpPrice;
+        collateralPrice = result.collateralPrice;
         // min order protection
         address collateralAddress = ICollateralPool(orderParams.poolAddress).collateralToken();
         {

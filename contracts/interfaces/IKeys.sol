@@ -127,3 +127,6 @@ bytes32 constant MCO_ORDER_GAS_FEE_GWEI = keccak256("MCO_ORDER_GAS_FEE_GWEI");
 
 // minimum order value in USD for adding/removing liquidity
 bytes32 constant MCO_MIN_LIQUIDITY_ORDER_USD = keccak256("MCO_MIN_LIQUIDITY_ORDER_USD");
+
+// callback gas limit for liquidity order
+bytes32 constant MCO_CALLBACK_GAS_LIMIT = keccak256("MCO_CALLBACK_GAS_LIMIT");

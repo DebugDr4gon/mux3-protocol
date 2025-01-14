@@ -54,7 +54,8 @@ struct OrderBookStorage {
     mapping(address => uint256) gasBalances;
     mapping(bytes32 => bytes32) configTable;
     mapping(address => uint256) previousTokenBalance;
-    bytes32[47] __gap;
+    mapping(address => bool) callbackWhitelist;
+    bytes32[46] __gap;
 }
 
 struct PositionOrderParams {
@@ -137,6 +138,7 @@ interface IOrderBook {
     event NewRebalanceOrder(address indexed rebalancer, uint64 indexed orderId, RebalanceOrderParams params);
     event FillOrder(address indexed account, uint64 indexed orderId, OrderData orderData);
     event FillAdlOrder(address indexed account, AdlOrderParams params);
+    event CallbackFailed(address indexed account, uint64 indexed orderId, bytes reason);
 
     /**
      * @dev Trader/LP can wrap ETH to OrderBook, transfer ERC20 to OrderBook, placeOrders

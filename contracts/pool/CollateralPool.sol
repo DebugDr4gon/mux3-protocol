@@ -444,6 +444,8 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         }
         // share
         result.shares = (collateralAmount * collateralPrice) / lpPrice;
+        result.lpPrice = lpPrice;
+        result.collateralPrice = collateralPrice;
         _mint(args.account, result.shares);
         // fees
         _distributeFee(args.account, collateralPrice, liquidityFeeCollateral, args.isUnwrapWeth);
@@ -513,6 +515,8 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         // send tokens to lp
         _burn(address(this), args.shares);
         result.rawCollateralAmount = _toRaw(_collateralToken, collateralAmount);
+        result.lpPrice = lpPrice;
+        result.collateralPrice = collateralPrice;
         if (_collateralToken == _weth && args.isUnwrapWeth) {
             LibEthUnwrapper.unwrap(_weth, payable(args.account), result.rawCollateralAmount);
         } else {

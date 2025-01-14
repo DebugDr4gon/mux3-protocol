@@ -482,4 +482,9 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         _checkRole(MAINTAINER_ROLE, msg.sender);
         LibConfigMap.setBytes32(_storage.configTable, key, value);
     }
+
+    function setCallbackWhitelist(address account, bool isWhitelisted) external nonReentrant updateSequence {
+        _checkRole(MAINTAINER_ROLE, msg.sender);
+        _storage.callbackWhitelist[account] = isWhitelisted;
+    }
 }
