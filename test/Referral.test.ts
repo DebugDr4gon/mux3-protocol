@@ -211,6 +211,7 @@ describe("ReferralAndFeeDistributor", () => {
       {
         const args = {
           poolAddress: pool1.address,
+          token: usdc.address,
           rawAmount: toUnit("1000000", 6),
           isAdding: true,
           isUnwrapWeth: false,
@@ -243,6 +244,7 @@ describe("ReferralAndFeeDistributor", () => {
       {
         const args = {
           poolAddress: pool2.address,
+          token: btc.address,
           rawAmount: toUnit("20", 8),
           isAdding: true,
           isUnwrapWeth: false,
@@ -339,6 +341,7 @@ describe("ReferralAndFeeDistributor", () => {
       {
         const args = {
           poolAddress: pool1.address,
+          token: usdc.address,
           rawAmount: toUnit("1000000", 6),
           isAdding: true,
           isUnwrapWeth: false,
@@ -379,6 +382,7 @@ describe("ReferralAndFeeDistributor", () => {
       {
         const args = {
           poolAddress: pool2.address,
+          token: btc.address,
           rawAmount: toUnit("20", 8),
           isAdding: true,
           isUnwrapWeth: false,

@@ -402,6 +402,7 @@ describe("Trade", () => {
       {
         const args = {
           poolAddress: pool1.address,
+          token: usdc.address,
           rawAmount: toUnit("1000000", 6),
           isAdding: true,
           isUnwrapWeth: false,
@@ -414,6 +415,7 @@ describe("Trade", () => {
       {
         const args = {
           poolAddress: pool2.address,
+          token: usdc.address,
           rawAmount: toUnit("1000000", 6),
           isAdding: true,
           isUnwrapWeth: false,
@@ -423,7 +425,13 @@ describe("Trade", () => {
       }
       await btc.connect(lp1).transfer(orderBook.address, toUnit("20", 8))
       {
-        const args = { poolAddress: pool3.address, rawAmount: toUnit("20", 8), isAdding: true, isUnwrapWeth: false }
+        const args = {
+          poolAddress: pool3.address,
+          token: btc.address,
+          rawAmount: toUnit("20", 8),
+          isAdding: true,
+          isUnwrapWeth: false,
+        }
         await orderBook.connect(lp1).placeLiquidityOrder(args)
         expect(await btc.balanceOf(lp1.address)).to.equal(toUnit("999980", 8))
       }
@@ -483,7 +491,13 @@ describe("Trade", () => {
     it("remove liquidity + remove liquidity", async () => {
       // remove pool3
       {
-        const args = { poolAddress: pool3.address, rawAmount: toWei("100"), isAdding: false, isUnwrapWeth: false }
+        const args = {
+          poolAddress: pool3.address,
+          token: btc.address,
+          rawAmount: toWei("100"),
+          isAdding: false,
+          isUnwrapWeth: false,
+        }
         await expect(orderBook.connect(lp1).placeLiquidityOrder({ ...args, rawAmount: toWei("0") })).to.revertedWith(
           "Zero amount"
         )
@@ -492,7 +506,7 @@ describe("Trade", () => {
         const tx1 = await orderBook.connect(lp1).placeLiquidityOrder(args)
         await expect(tx1)
           .to.emit(orderBook, "NewLiquidityOrder")
-          .withArgs(lp1.address, 3, [args.poolAddress, args.rawAmount, args.isAdding])
+          .withArgs(lp1.address, 3, [args.poolAddress, btc.address, args.rawAmount, args.isAdding, args.isUnwrapWeth])
         expect(await pool3.balanceOf(lp1.address)).to.equal(toWei("999800")) // 999900 - 100
         expect(await pool3.balanceOf(orderBook.address)).to.equal(toWei("100"))
       }
@@ -531,12 +545,18 @@ describe("Trade", () => {
 
       // remove pool3
       {
-        const args = { poolAddress: pool3.address, rawAmount: toWei("100"), isAdding: false, isUnwrapWeth: false }
+        const args = {
+          poolAddress: pool3.address,
+          token: btc.address,
+          rawAmount: toWei("100"),
+          isAdding: false,
+          isUnwrapWeth: false,
+        }
         await pool3.connect(lp1).transfer(orderBook.address, toWei("100"))
         const tx1 = await orderBook.connect(lp1).placeLiquidityOrder(args)
         await expect(tx1)
           .to.emit(orderBook, "NewLiquidityOrder")
-          .withArgs(lp1.address, 4, [args.poolAddress, args.rawAmount, args.isAdding])
+          .withArgs(lp1.address, 4, [args.poolAddress, args.token, args.rawAmount, args.isAdding, args.isUnwrapWeth])
         expect(await pool3.balanceOf(lp1.address)).to.equal(toWei("999700")) // 999800 - 100
         expect(await pool3.balanceOf(orderBook.address)).to.equal(toWei("100"))
       }
@@ -565,6 +585,7 @@ describe("Trade", () => {
       await usdc.mint(orderBook.address, toUnit("0.001", 6))
       const args = {
         poolAddress: pool1.address,
+        token: usdc.address,
         rawAmount: toUnit("0.001", 6),
         isAdding: true,
         isUnwrapWeth: false,
@@ -576,11 +597,59 @@ describe("Trade", () => {
 
     it("removeLiquidity with tiny amount", async () => {
       // pool 1
-      const args = { poolAddress: pool1.address, rawAmount: toWei("0.001"), isAdding: false, isUnwrapWeth: false }
+      const args = {
+        poolAddress: pool1.address,
+        token: usdc.address,
+        rawAmount: toWei("0.001"),
+        isAdding: false,
+        isUnwrapWeth: false,
+      }
       await pool1.connect(lp1).transfer(orderBook.address, toWei("0.001"))
       await orderBook.connect(lp1).placeLiquidityOrder(args)
       await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 930)
       await expect(orderBook.connect(broker).fillLiquidityOrder(3, [])).to.revertedWith("Min liquidity order value")
+    })
+
+    it("removeLiquidity another token", async () => {
+      // donate some arb into the pool
+      await arb.mint(orderBook.address, toWei("10"))
+      await orderBook.grantRole(ethers.utils.id("FEE_DONATOR_ROLE"), admin.address) // so that we can call donateLiquidity
+      await orderBook.donateLiquidity(pool1.address, arb.address, toWei("10"))
+      {
+        const balances = await pool1.liquidityBalances()
+        expect(balances.tokens[0]).to.equal(usdc.address)
+        expect(balances.balances[0]).to.equal(toWei("999900"))
+        expect(balances.tokens[1]).to.equal(arb.address)
+        expect(balances.balances[1]).to.equal(toWei("10"))
+      }
+      {
+        expect(await pool1.getAumUsd()).to.equal(toWei("999920")) // 999900 + 10 * 2
+      }
+      // now nav = 999920 / 999900 = 1.00002
+      await pool1.connect(lp1).transfer(orderBook.address, toWei("15"))
+      {
+        const args = {
+          poolAddress: pool1.address,
+          token: arb.address,
+          rawAmount: toWei("15"),
+          isAdding: false,
+          isUnwrapWeth: false,
+        }
+        await orderBook.connect(lp1).placeLiquidityOrder(args)
+        await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 930)
+        await orderBook.connect(broker).fillLiquidityOrder(3, [])
+        // previous nav = 999920 / 999900 = 1.000020002000200020
+        // 15 * 1.000020002000200020 / 2 = 7.500150015001500150
+        expect(await arb.balanceOf(lp1.address)).to.equal(toWei("1000007.4994")) // 1000000 + 7.500150015001500150 * 0.9999
+      }
+      {
+        const balances = await pool1.liquidityBalances()
+        expect(balances.tokens[0]).to.equal(usdc.address)
+        expect(balances.balances[0]).to.equal(toWei("999900"))
+        expect(balances.tokens[1]).to.equal(arb.address)
+        expect(balances.balances[1]).to.equal(toWei("2.499849984998499850")) // 10 - 7.500150015001500150
+      }
+      expect(await pool1.getAumUsd()).to.equal(toWei("999904.999699969996999700")) // 999900 + 2.499849984998499850 * 2
     })
 
     it("open long: should set trader im before fill a position order", async () => {
@@ -3436,7 +3505,13 @@ describe("Trade", () => {
         {
           expect(await pool1.balanceOf(lp1.address)).to.equal(toWei("999900"))
           await pool1.connect(lp1).transfer(orderBook.address, toWei("959901"))
-          const args = { poolAddress: pool1.address, rawAmount: toWei("959901"), isAdding: false, isUnwrapWeth: false }
+          const args = {
+            poolAddress: pool1.address,
+            token: usdc.address,
+            rawAmount: toWei("959901"),
+            isAdding: false,
+            isUnwrapWeth: false,
+          }
           await orderBook.connect(lp1).placeLiquidityOrder(args)
           expect(await pool1.balanceOf(lp1.address)).to.equal(toWei("39999")) // 999900 - 959901
           await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 30 + 930)
@@ -3448,7 +3523,13 @@ describe("Trade", () => {
         }
         {
           await pool1.connect(lp1).transfer(orderBook.address, toWei("959900"))
-          const args = { poolAddress: pool1.address, rawAmount: toWei("959900"), isAdding: false, isUnwrapWeth: false }
+          const args = {
+            poolAddress: pool1.address,
+            token: usdc.address,
+            rawAmount: toWei("959900"),
+            isAdding: false,
+            isUnwrapWeth: false,
+          }
           await orderBook.connect(lp1).placeLiquidityOrder(args)
           await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 30 + 930 + 930)
           await orderBook.connect(broker).fillLiquidityOrder(5, [])
@@ -3479,7 +3560,13 @@ describe("Trade", () => {
         {
           expect(await pool1.balanceOf(lp1.address)).to.equal(toWei("999900"))
           await pool1.connect(lp1).transfer(orderBook.address, toWei("955124"))
-          const args = { poolAddress: pool1.address, rawAmount: toWei("955124"), isAdding: false, isUnwrapWeth: false }
+          const args = {
+            poolAddress: pool1.address,
+            token: usdc.address,
+            rawAmount: toWei("955124"),
+            isAdding: false,
+            isUnwrapWeth: false,
+          }
           await orderBook.connect(lp1).placeLiquidityOrder(args)
           expect(await pool1.balanceOf(lp1.address)).to.equal(toWei("44776")) // 999900 - 955124
           await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 30 + 930)
@@ -3491,7 +3578,13 @@ describe("Trade", () => {
         }
         {
           await pool1.connect(lp1).transfer(orderBook.address, toWei("955123"))
-          const args = { poolAddress: pool1.address, rawAmount: toWei("955123"), isAdding: false, isUnwrapWeth: false }
+          const args = {
+            poolAddress: pool1.address,
+            token: usdc.address,
+            rawAmount: toWei("955123"),
+            isAdding: false,
+            isUnwrapWeth: false,
+          }
           await orderBook.connect(lp1).placeLiquidityOrder(args)
           await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 30 + 930 + 930)
           await orderBook.connect(broker).fillLiquidityOrder(5, [])
@@ -4400,6 +4493,7 @@ describe("Trade", () => {
         {
           const args = {
             poolAddress: pool3.address,
+            token: btc.address,
             rawAmount: toWei("400000"),
             isAdding: false,
             isUnwrapWeth: false,
@@ -5395,6 +5489,7 @@ describe("Trade", () => {
     {
       const args = {
         poolAddress: pool1.address,
+        token: usdc.address,
         rawAmount: toUnit("1000000", 6),
         isAdding: true,
         isUnwrapWeth: false,
@@ -5472,8 +5567,6 @@ describe("Trade", () => {
           {
             positionId: encodePositionId(trader1.address, 0),
             isUnwrapWeth: false,
-            withdrawSwapToken: zeroAddress,
-            withdrawSwapSlippage: 0,
           },
         ]),
       ])

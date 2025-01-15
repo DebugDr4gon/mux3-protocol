@@ -281,9 +281,10 @@ export function parsePositionOrder(orderData: string) {
 }
 
 export function parseLiquidityOrder(orderData: string) {
-  const [poolAddress, rawAmount, isAdding, isUnwrapWeth] = ethers.utils.defaultAbiCoder.decode(
+  const [poolAddress, token, rawAmount, isAdding, isUnwrapWeth] = ethers.utils.defaultAbiCoder.decode(
     [
       "address", // poolAddress
+      "address", // token
       "uint256", // rawAmount
       "bool", // isAdding
       "bool", // isUnwrapWeth
@@ -292,6 +293,7 @@ export function parseLiquidityOrder(orderData: string) {
   )
   return {
     poolAddress,
+    token,
     rawAmount,
     isAdding,
     isUnwrapWeth,

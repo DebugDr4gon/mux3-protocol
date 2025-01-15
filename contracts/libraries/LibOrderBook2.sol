@@ -36,9 +36,12 @@ library LibOrderBook2 {
         if (orderParams.isAdding) {
             require(!LibOrderBook._isPoolDraining(orderParams.poolAddress), "Draining pool");
             address collateralAddress = ICollateralPool(orderParams.poolAddress).collateralToken();
-            LibOrderBook._transferIn(orderBook, collateralAddress, orderParams.rawAmount);
+            LibOrderBook._transferIn(orderBook, collateralAddress, orderParams.rawAmount); // collateral
+            address collateralToken = ICollateralPool(orderParams.poolAddress).collateralToken();
+            require(orderParams.token == collateralToken, "Token mismatch");
         } else {
-            LibOrderBook._transferIn(orderBook, orderParams.poolAddress, orderParams.rawAmount);
+            LibOrderBook._transferIn(orderBook, orderParams.poolAddress, orderParams.rawAmount); // share
+            LibOrderBook._validateCollateral(orderBook, orderParams.token);
         }
         uint64 orderId = orderBook.nextOrderId++;
         uint64 gasFeeGwei = LibOrderBook._orderGasFeeGwei(orderBook);
@@ -192,6 +195,7 @@ library LibOrderBook2 {
             ICollateralPool.RemoveLiquidityArgs({
                 account: orderData.account,
                 shares: orderParams.rawAmount,
+                token: orderParams.token,
                 isUnwrapWeth: orderParams.isUnwrapWeth,
                 extraFeeCollateral: totalReallocateFeeCollateral
             })

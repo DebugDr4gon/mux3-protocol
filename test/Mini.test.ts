@@ -214,6 +214,7 @@ describe("Mini", () => {
       await time.increaseTo(timestampOfTest + 86400 * 2 + 0)
       const args = {
         poolAddress: pool1.address,
+        token: usdc.address,
         rawAmount: toUnit("1000000", 6),
         isAdding: true,
         isUnwrapWeth: true,
@@ -221,7 +222,7 @@ describe("Mini", () => {
       const tx1 = await orderBook.connect(lp1).placeLiquidityOrder(args)
       await expect(tx1)
         .to.emit(orderBook, "NewLiquidityOrder")
-        .withArgs(lp1.address, 0, [pool1.address, args.rawAmount, args.isAdding])
+        .withArgs(lp1.address, 0, [pool1.address, usdc.address, args.rawAmount, args.isAdding, args.isUnwrapWeth])
       expect(await usdc.balanceOf(lp1.address)).to.equal(toUnit("0", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("1000000", 6))
       const result = await orderBook.getOrder(0)
@@ -380,6 +381,7 @@ describe("Mini", () => {
       await time.increaseTo(timestampOfTest + 86400 * 2)
       const args = {
         poolAddress: pool1.address,
+        token: usdc.address,
         rawAmount: toUnit("1000000", 6),
         isAdding: true,
         isUnwrapWeth: true,
@@ -408,6 +410,7 @@ describe("Mini", () => {
     {
       const args = {
         poolAddress: pool2.address,
+        token: arb.address,
         rawAmount: toUnit("500000", 18),
         isAdding: true,
         isUnwrapWeth: true,
@@ -415,7 +418,7 @@ describe("Mini", () => {
       const tx1 = await orderBook.connect(lp1).placeLiquidityOrder(args)
       await expect(tx1)
         .to.emit(orderBook, "NewLiquidityOrder")
-        .withArgs(lp1.address, 1, [pool2.address, args.rawAmount, args.isAdding])
+        .withArgs(lp1.address, 1, [pool2.address, arb.address, args.rawAmount, args.isAdding, args.isUnwrapWeth])
       expect(await arb.balanceOf(lp1.address)).to.equal(toUnit("500000", 18))
       expect(await arb.balanceOf(orderBook.address)).to.equal(toUnit("500000", 18))
       const result = await orderBook.getOrder(1)

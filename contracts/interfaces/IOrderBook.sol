@@ -93,6 +93,7 @@ struct PositionOrderParams {
 
 struct LiquidityOrderParams {
     address poolAddress;
+    address token; // which address to add/remove. this must be pool.collateralToken when addLiquidity
     uint256 rawAmount; // erc20.decimals
     bool isAdding;
     bool isUnwrapWeth;

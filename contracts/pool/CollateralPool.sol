@@ -411,15 +411,16 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     ) external override onlyOrderBook returns (AddLiquidityResult memory result) {
         _updateAllMarketBorrowing();
         require(args.rawCollateralAmount != 0, InvalidAmount("rawCollateralAmount"));
-        require(_isCollateralExist(_collateralToken), CollateralNotExist(_collateralToken));
+        address token = _collateralToken;
+        require(_isCollateralExist(token), CollateralNotExist(token));
         // nav
-        uint256 collateralPrice = IFacetReader(_core).priceOf(_collateralToken);
+        uint256 collateralPrice = IFacetReader(_core).priceOf(token);
         uint256 aumUsd = _aumUsd();
         uint256 poolCollateralUsd = _collateralTokenUsd(); // used to reserve for potential PnL. important: read this before add liquidity
         uint256 lpPrice = _nav(aumUsd);
         require(lpPrice > 0, PoolBankrupt());
         // token amount
-        uint256 collateralAmount = _toWad(_collateralToken, args.rawCollateralAmount);
+        uint256 collateralAmount = _toWad(token, args.rawCollateralAmount);
         uint256 liquidityFeeCollateral = (collateralAmount * _liquidityFeeRate()) / 1e18;
         require(
             collateralAmount >= liquidityFeeCollateral,
@@ -427,12 +428,8 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         );
         collateralAmount -= liquidityFeeCollateral;
         // to pool
-        _liquidityBalances[_collateralToken] += collateralAmount;
-        ICollateralPoolEventEmitter(_eventEmitter).emitLiquidityBalanceIn(
-            _collateralToken,
-            collateralPrice,
-            collateralAmount
-        );
+        _liquidityBalances[token] += collateralAmount;
+        ICollateralPoolEventEmitter(_eventEmitter).emitLiquidityBalanceIn(token, collateralPrice, collateralAmount);
         // verify
         {
             uint256 liquidityCap = _liquidityCapUsd();
@@ -452,7 +449,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         // done
         ICollateralPoolEventEmitter(_eventEmitter).emitAddLiquidity(
             args.account,
-            _collateralToken,
+            token,
             collateralPrice,
             liquidityFeeCollateral,
             lpPrice,
@@ -471,25 +468,22 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     ) external override onlyOrderBook returns (RemoveLiquidityResult memory result) {
         _updateAllMarketBorrowing();
         require(args.shares != 0, InvalidAmount("shares"));
-        require(_isCollateralExist(_collateralToken), CollateralNotExist(_collateralToken));
+        address token = args.token;
+        require(_isCollateralExist(token), CollateralNotExist(token));
         // nav
         uint256 aumUsd = _aumUsd();
         uint256 poolCollateralUsd = _collateralTokenUsd(); // used to reserve for potential PnL. important: read this before remove liquidity
         uint256 lpPrice = _nav(aumUsd);
         require(lpPrice > 0, PoolBankrupt());
         // from pool
-        uint256 collateralPrice = IFacetReader(_core).priceOf(_collateralToken);
+        uint256 collateralPrice = IFacetReader(_core).priceOf(token);
         uint256 collateralAmount = (args.shares * lpPrice) / collateralPrice;
         require(
-            collateralAmount <= _liquidityBalances[_collateralToken],
-            InsufficientLiquidity(collateralAmount, _liquidityBalances[_collateralToken])
+            collateralAmount <= _liquidityBalances[token],
+            InsufficientLiquidity(collateralAmount, _liquidityBalances[token])
         );
-        _liquidityBalances[_collateralToken] -= collateralAmount;
-        ICollateralPoolEventEmitter(_eventEmitter).emitLiquidityBalanceOut(
-            _collateralToken,
-            collateralPrice,
-            collateralAmount
-        );
+        _liquidityBalances[token] -= collateralAmount;
+        ICollateralPoolEventEmitter(_eventEmitter).emitLiquidityBalanceOut(token, collateralPrice, collateralAmount);
         {
             uint256 removedValue = (collateralPrice * collateralAmount) / 1e18;
             if (removedValue < poolCollateralUsd) {
@@ -507,20 +501,17 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         collateralAmount -= liquidityFeeCollateral + args.extraFeeCollateral;
         _distributeFee(args.account, collateralPrice, liquidityFeeCollateral, args.isUnwrapWeth);
         if (args.extraFeeCollateral > 0) {
-            IERC20Upgradeable(_collateralToken).safeTransfer(
-                _orderBook,
-                _toRaw(_collateralToken, args.extraFeeCollateral)
-            );
+            IERC20Upgradeable(token).safeTransfer(_orderBook, _toRaw(token, args.extraFeeCollateral));
         }
         // send tokens to lp
         _burn(address(this), args.shares);
-        result.rawCollateralAmount = _toRaw(_collateralToken, collateralAmount);
+        result.rawCollateralAmount = _toRaw(token, collateralAmount);
         result.lpPrice = lpPrice;
         result.collateralPrice = collateralPrice;
-        if (_collateralToken == _weth && args.isUnwrapWeth) {
+        if (token == _weth && args.isUnwrapWeth) {
             LibEthUnwrapper.unwrap(_weth, payable(args.account), result.rawCollateralAmount);
         } else {
-            IERC20Upgradeable(_collateralToken).safeTransfer(args.account, result.rawCollateralAmount);
+            IERC20Upgradeable(token).safeTransfer(args.account, result.rawCollateralAmount);
         }
         // since util = reserved / poolCollateralUsd, do not let new poolCollateralUsd < reserved
         {
@@ -529,7 +520,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         }
         ICollateralPoolEventEmitter(_eventEmitter).emitRemoveLiquidity(
             args.account,
-            _collateralToken,
+            token,
             collateralPrice,
             liquidityFeeCollateral + args.extraFeeCollateral,
             lpPrice,

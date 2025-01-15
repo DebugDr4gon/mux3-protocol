@@ -229,6 +229,7 @@ describe("MuxPriceMini", () => {
       await time.increaseTo(timestampOfTest + 86400 * 2 + 0)
       const args = {
         poolAddress: pool1.address,
+        token: usdc.address,
         rawAmount: toUnit("1000000", 6),
         isAdding: true,
         isUnwrapWeth: true,
@@ -243,7 +244,7 @@ describe("MuxPriceMini", () => {
         ])
       await expect(tx1)
         .to.emit(orderBook, "NewLiquidityOrder")
-        .withArgs(lp1.address, 0, [pool1.address, args.rawAmount, args.isAdding])
+        .withArgs(lp1.address, 0, [pool1.address, usdc.address, args.rawAmount, args.isAdding, args.isUnwrapWeth])
       expect(await usdc.balanceOf(lp1.address)).to.equal(toUnit("0", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("1000000", 6))
       const result = await orderBook.getOrder(0)
@@ -411,12 +412,14 @@ describe("MuxPriceMini", () => {
         expect(state.totalSize).to.equal(toWei("1"))
         expect(state.averageEntryPrice).to.equal(toWei("2000"))
       }
+      // remove liq
       await pool1.connect(lp1).approve(orderBook.address, toUnit("500000", 18))
       await orderBook.connect(lp1).multicall([
         orderBook.interface.encodeFunctionData("transferToken", [pool1.address, toUnit("100000", 18)]),
         orderBook.interface.encodeFunctionData("placeLiquidityOrder", [
           {
             poolAddress: pool1.address,
+            token: usdc.address,
             rawAmount: toUnit("100000", 18),
             isAdding: false,
             isUnwrapWeth: true,
@@ -453,6 +456,7 @@ describe("MuxPriceMini", () => {
         orderBook.interface.encodeFunctionData("placeLiquidityOrder", [
           {
             poolAddress: pool1.address,
+            token: usdc.address,
             rawAmount: toUnit("100000", 18),
             isAdding: false,
             isUnwrapWeth: true,
@@ -503,6 +507,7 @@ describe("MuxPriceMini", () => {
       await time.increaseTo(timestampOfTest + 86400 * 2 + 0)
       const args = {
         poolAddress: pool1.address,
+        token: usdc.address,
         rawAmount: toUnit("1000000", 6),
         isAdding: true,
         isUnwrapWeth: true,
@@ -521,7 +526,7 @@ describe("MuxPriceMini", () => {
         )
       await expect(tx1)
         .to.emit(orderBook, "NewLiquidityOrder")
-        .withArgs(lp1.address, 0, [pool1.address, args.rawAmount, args.isAdding])
+        .withArgs(lp1.address, 0, [pool1.address, usdc.address, args.rawAmount, args.isAdding, args.isUnwrapWeth])
       expect(await usdc.balanceOf(lp1.address)).to.equal(toUnit("0", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("1000000", 6))
       const result = await orderBook.getOrder(0)

@@ -50,7 +50,7 @@ library LibOrder {
     ) internal pure returns (LiquidityOrderParams memory orderParams) {
         require(orderData.orderType == OrderType.LiquidityOrder, "Unexpected order type");
         require(orderData.version == 1, "Unexpected order version");
-        require(orderData.payload.length == 4 * 32, "Unexpected order payload length");
+        require(orderData.payload.length == 5 * 32, "Unexpected order payload length");
         orderParams = abi.decode(orderData.payload, (LiquidityOrderParams));
     }
 

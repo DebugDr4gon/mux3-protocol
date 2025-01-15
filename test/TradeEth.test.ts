@@ -165,6 +165,7 @@ describe("Trade, eth collateral", () => {
       {
         const args = {
           poolAddress: pool1.address,
+          token: weth.address,
           rawAmount: toWei("100"),
           isAdding: true,
           isUnwrapWeth: true,
@@ -187,7 +188,13 @@ describe("Trade, eth collateral", () => {
 
     it("remove liquidity", async () => {
       {
-        const args = { poolAddress: pool1.address, rawAmount: toWei("3000"), isAdding: false, isUnwrapWeth: true }
+        const args = {
+          poolAddress: pool1.address,
+          token: weth.address,
+          rawAmount: toWei("3000"),
+          isAdding: false,
+          isUnwrapWeth: true,
+        }
         await expect(orderBook.connect(lp1).placeLiquidityOrder(args)).to.revertedWith("not enough")
         await pool1.connect(lp1).transfer(orderBook.address, toWei("3000"))
         await orderBook.connect(lp1).placeLiquidityOrder(args)
@@ -346,7 +353,13 @@ describe("Trade, eth collateral", () => {
         {
           expect(await pool1.balanceOf(lp1.address)).to.equal(toWei("299970"))
           await pool1.connect(lp1).transfer(orderBook.address, toWei("296976"))
-          const args = { poolAddress: pool1.address, rawAmount: toWei("296976"), isAdding: false, isUnwrapWeth: false }
+          const args = {
+            poolAddress: pool1.address,
+            token: weth.address,
+            rawAmount: toWei("296976"),
+            isAdding: false,
+            isUnwrapWeth: false,
+          }
           await orderBook.connect(lp1).placeLiquidityOrder(args)
           expect(await pool1.balanceOf(lp1.address)).to.equal(toWei("2994")) // 299970 - 296976
           await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 30 + 930)
@@ -358,7 +371,13 @@ describe("Trade, eth collateral", () => {
         }
         {
           await pool1.connect(lp1).transfer(orderBook.address, toWei("296975"))
-          const args = { poolAddress: pool1.address, rawAmount: toWei("296975"), isAdding: false, isUnwrapWeth: false }
+          const args = {
+            poolAddress: pool1.address,
+            token: weth.address,
+            rawAmount: toWei("296975"),
+            isAdding: false,
+            isUnwrapWeth: false,
+          }
           await orderBook.connect(lp1).placeLiquidityOrder(args)
           await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 30 + 930 + 930)
           await orderBook.connect(broker).fillLiquidityOrder(3, [])

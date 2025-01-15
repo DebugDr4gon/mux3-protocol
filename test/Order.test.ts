@@ -189,6 +189,7 @@ describe("Order", () => {
       await token0.transfer(orderBook.address, toWei("40"))
       await orderBook.connect(user0).placeLiquidityOrder({
         poolAddress: pool1.address,
+        token: token0.address,
         rawAmount: toWei("40"),
         isAdding: true,
         isUnwrapWeth: false,
@@ -209,6 +210,7 @@ describe("Order", () => {
       expect(orders.orderDataArray[1].orderType).to.equal(OrderType.Liquidity)
       const order = parseLiquidityOrder(orders.orderDataArray[1].payload)
       expect(order.poolAddress).to.equal(pool1.address)
+      expect(order.token).to.equal(token0.address)
       expect(order.rawAmount).to.equal(toWei("40"))
       expect(order.isAdding).to.equal(true)
     }
@@ -339,6 +341,7 @@ describe("Order", () => {
       await expect(
         orderBook.connect(user0).placeLiquidityOrder({
           poolAddress: user0.address,
+          token: token0.address,
           rawAmount: toWei("40"),
           isAdding: true,
           isUnwrapWeth: false,
@@ -454,6 +457,7 @@ describe("Order", () => {
     {
       await orderBook.placeLiquidityOrder({
         poolAddress: pool1.address,
+        token: token0.address,
         rawAmount: toWei("150"),
         isAdding: true,
         isUnwrapWeth: false,
@@ -483,6 +487,7 @@ describe("Order", () => {
     {
       await orderBook.placeLiquidityOrder({
         poolAddress: pool1.address,
+        token: token0.address,
         rawAmount: toWei("150"),
         isAdding: true,
         isUnwrapWeth: false,
@@ -520,6 +525,7 @@ describe("Order", () => {
     {
       await orderBook.placeLiquidityOrder({
         poolAddress: pool1.address,
+        token: token0.address,
         rawAmount: toWei("150"),
         isAdding: true,
         isUnwrapWeth: false,
@@ -534,6 +540,7 @@ describe("Order", () => {
     {
       await orderBook.placeLiquidityOrder({
         poolAddress: pool1.address,
+        token: token0.address,
         rawAmount: toWei("1"),
         isAdding: false,
         isUnwrapWeth: false,
@@ -561,6 +568,7 @@ describe("Order", () => {
     {
       await orderBook.placeLiquidityOrder({
         poolAddress: pool1.address,
+        token: token0.address,
         rawAmount: toWei("1"),
         isAdding: false,
         isUnwrapWeth: false,
@@ -714,6 +722,7 @@ describe("Order", () => {
     expect(await orderBook.gasBalanceOf(user0.address)).to.equal(toUnit("1", 6 + 9))
     const args = {
       poolAddress: pool1.address,
+      token: token0.address,
       rawAmount: toWei("150"),
       isAdding: true,
       isUnwrapWeth: false,
@@ -946,6 +955,7 @@ describe("Order", () => {
     // no1
     await orderBook.placeLiquidityOrder({
       poolAddress: pool1.address,
+      token: token0.address,
       rawAmount: toWei("150"),
       isAdding: true,
       isUnwrapWeth: false,
@@ -958,6 +968,7 @@ describe("Order", () => {
     await expect(
       orderBook.placeLiquidityOrder({
         poolAddress: pool1.address,
+        token: token0.address,
         rawAmount: toWei("150"),
         isAdding: true,
         isUnwrapWeth: false,
