@@ -2,7 +2,7 @@ import { ethers } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
 import { expect } from "chai"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { Mux3OwnerFacet, DiamondCutFacet, DiamondLoupeFacet, Diamond } from "../typechain"
+import { FacetMux3Owner, DiamondCutFacet, DiamondLoupeFacet, Diamond } from "../typechain"
 import { createContract, createFactory, FacetCutAction, getSelectors, zeroAddress } from "../scripts/deployUtils"
 
 describe("Delegator", () => {
@@ -10,7 +10,7 @@ describe("Delegator", () => {
   let admin2: SignerWithAddress
   let admin3: SignerWithAddress
 
-  let ownershipFacet: Mux3OwnerFacet
+  let ownershipFacet: FacetMux3Owner
   let diamondCutFacet: DiamondCutFacet
   let diamondLoupeFacet: DiamondLoupeFacet
   let diamond: Diamond
@@ -21,7 +21,7 @@ describe("Delegator", () => {
     admin2 = accounts[1]
     admin3 = accounts[2]
 
-    ownershipFacet = (await createContract("Mux3OwnerFacet")) as Mux3OwnerFacet
+    ownershipFacet = (await createContract("FacetMux3Owner")) as FacetMux3Owner
     diamondCutFacet = (await createContract("DiamondCutFacet")) as DiamondCutFacet
     diamondLoupeFacet = (await createContract("DiamondLoupeFacet")) as DiamondLoupeFacet
   })
@@ -53,7 +53,7 @@ describe("Delegator", () => {
   })
 
   it("transferOwner", async () => {
-    const diamondOwner = (await createFactory("Mux3OwnerFacet")).attach(diamond.address) as Mux3OwnerFacet
+    const diamondOwner = (await createFactory("FacetMux3Owner")).attach(diamond.address) as FacetMux3Owner
 
     expect(await diamondOwner.owner()).to.equal(admin1.address)
     await expect(diamondOwner.connect(admin2).transferOwnership(admin2.address)).to.be.revertedWith("NotContractOwner")

@@ -5,9 +5,9 @@ pragma solidity ^0.8.0;
 import "../../third-party/Diamond.sol";
 
 /**
- * @notice Mux3OwnerFacet is the original OwnerFacet with two-phase verification
+ * @notice FacetMux3Owner is the original OwnerFacet with two-phase verification
  */
-contract Mux3OwnerFacet is IERC173 {
+contract FacetMux3Owner is IERC173 {
     bytes32 constant MUX3_OWNER_FACET_STORAGE_POSITION = keccak256("diamond.mux3.owner.storage");
 
     struct Storage {
