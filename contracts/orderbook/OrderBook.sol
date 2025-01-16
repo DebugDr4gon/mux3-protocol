@@ -191,7 +191,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     function placePositionOrder(
         PositionOrderParams memory orderParams,
         bytes32 referralCode
-    ) public payable nonReentrant whenNotPaused(OrderType.PositionOrder) {
+    ) public payable nonReentrant whenNotPaused(OrderType.PositionOrder) updateSequence {
         (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
         if (_isDelegator(msg.sender)) {
             // pass
@@ -215,7 +215,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      */
     function placeLiquidityOrder(
         LiquidityOrderParams memory orderParams
-    ) external payable nonReentrant whenNotPaused(OrderType.LiquidityOrder) {
+    ) external payable nonReentrant whenNotPaused(OrderType.LiquidityOrder) updateSequence {
         LibOrderBook2.placeLiquidityOrder(_storage, orderParams, msg.sender, _blockTimestamp());
     }
 
@@ -227,7 +227,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      */
     function placeWithdrawalOrder(
         WithdrawalOrderParams memory orderParams
-    ) external payable nonReentrant whenNotPaused(OrderType.WithdrawalOrder) {
+    ) external payable nonReentrant whenNotPaused(OrderType.WithdrawalOrder) updateSequence {
         (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
         if (_isDelegator(msg.sender)) {
             // pass
@@ -248,7 +248,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         bytes32 positionId,
         address collateralToken,
         uint256 collateralAmount // token decimals
-    ) external payable updateSequence nonReentrant {
+    ) external payable nonReentrant updateSequence {
         (address positionAccount, ) = LibCodec.decodePositionId(positionId);
         if (_isDelegator(msg.sender)) {
             // pass
@@ -265,7 +265,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      */
     function withdrawAllCollateral(
         WithdrawAllOrderParams memory orderParams
-    ) external updateSequence nonReentrant whenNotPaused(OrderType.WithdrawalOrder) {
+    ) external nonReentrant whenNotPaused(OrderType.WithdrawalOrder) updateSequence {
         (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
         if (_isDelegator(msg.sender)) {
             // pass
@@ -292,7 +292,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      */
     function placeRebalanceOrder(
         RebalanceOrderParams memory orderParams
-    ) external onlyRole(REBALANCER_ROLE) nonReentrant whenNotPaused(OrderType.RebalanceOrder) {
+    ) external onlyRole(REBALANCER_ROLE) nonReentrant whenNotPaused(OrderType.RebalanceOrder) updateSequence {
         address rebalancer = msg.sender;
         LibOrderBook2.placeRebalanceOrder(_storage, rebalancer, orderParams, _blockTimestamp());
     }
