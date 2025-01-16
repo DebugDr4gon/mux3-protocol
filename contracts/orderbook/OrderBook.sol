@@ -150,7 +150,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      *      but if you want to withdraw it, you can call this function
      * @param amount The amount of gas to withdraw
      */
-    function withdrawGas(address account, uint256 amount) external nonReentrant {
+    function withdrawGas(address account, uint256 amount) external payable nonReentrant {
         if (_isDelegator(msg.sender)) {
             // although Delegator does not support withdrawGas yet, it is still safe here
         } else {
@@ -191,7 +191,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     function placePositionOrder(
         PositionOrderParams memory orderParams,
         bytes32 referralCode
-    ) public payable nonReentrant whenNotPaused(OrderType.PositionOrder) updateSequence {
+    ) external payable nonReentrant whenNotPaused(OrderType.PositionOrder) updateSequence {
         (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
         if (_isDelegator(msg.sender)) {
             // pass
@@ -265,7 +265,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      */
     function withdrawAllCollateral(
         WithdrawAllOrderParams memory orderParams
-    ) external nonReentrant whenNotPaused(OrderType.WithdrawalOrder) updateSequence {
+    ) external payable nonReentrant whenNotPaused(OrderType.WithdrawalOrder) updateSequence {
         (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
         if (_isDelegator(msg.sender)) {
             // pass
@@ -280,7 +280,7 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
      *         A Broker can also cancel an Order after expiration.
      * @param orderId The ID of the order to cancel
      */
-    function cancelOrder(uint64 orderId) external nonReentrant updateSequence {
+    function cancelOrder(uint64 orderId) external payable nonReentrant updateSequence {
         LibOrderBook.cancelOrder(_storage, orderId, _blockTimestamp(), msg.sender);
     }
 
@@ -461,6 +461,16 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
         LibOrderBook.donateLiquidity(_storage, poolAddress, collateralAddress, rawAmount);
     }
 
+    function setConfig(bytes32 key, bytes32 value) external nonReentrant updateSequence {
+        _checkRole(MAINTAINER_ROLE, msg.sender);
+        LibConfigMap.setBytes32(_storage.configTable, key, value);
+    }
+
+    function setCallbackWhitelist(address account, bool isWhitelisted) external nonReentrant updateSequence {
+        _checkRole(MAINTAINER_ROLE, msg.sender);
+        _storage.callbackWhitelist[account] = isWhitelisted;
+    }
+
     function _blockTimestamp() internal view virtual returns (uint64) {
         uint256 timestamp = block.timestamp;
         return LibTypeCast.toUint64(timestamp);
@@ -476,15 +486,5 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
             return true;
         }
         return false;
-    }
-
-    function setConfig(bytes32 key, bytes32 value) external nonReentrant updateSequence {
-        _checkRole(MAINTAINER_ROLE, msg.sender);
-        LibConfigMap.setBytes32(_storage.configTable, key, value);
-    }
-
-    function setCallbackWhitelist(address account, bool isWhitelisted) external nonReentrant updateSequence {
-        _checkRole(MAINTAINER_ROLE, msg.sender);
-        _storage.callbackWhitelist[account] = isWhitelisted;
     }
 }

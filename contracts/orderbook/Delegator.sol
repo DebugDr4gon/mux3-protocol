@@ -114,7 +114,7 @@ contract Delegator is Initializable {
      *         A Broker can also cancel an Order after expiration.
      * @param orderId The ID of the order to cancel
      */
-    function mux3CancelOrder(uint64 orderId) external {
+    function mux3CancelOrder(uint64 orderId) external payable {
         (Mux3OrderData memory orderData, bool exists) = IMux3OrderBookGetter(_mux3OrderBook).getOrder(orderId);
         require(exists, "No such orderId");
         address owner = orderData.account;
@@ -139,7 +139,7 @@ contract Delegator is Initializable {
      * @param orderParams The parameters for the withdrawal order
      * @dev do not need depositGas
      */
-    function mux3WithdrawAllCollateral(Mux3WithdrawAllOrderParams memory orderParams) external {
+    function mux3WithdrawAllCollateral(Mux3WithdrawAllOrderParams memory orderParams) external payable {
         (address owner, ) = LibMux3Codec.decodePositionId(orderParams.positionId);
         _consumeDelegation(owner);
         IMux3OrderBook(_mux3OrderBook).withdrawAllCollateral(orderParams);
@@ -156,7 +156,7 @@ contract Delegator is Initializable {
         bytes32 positionId,
         address collateralToken,
         uint256 collateralAmount // token decimals
-    ) external {
+    ) external payable {
         (address owner, ) = LibMux3Codec.decodePositionId(positionId);
         _consumeDelegation(owner);
         IMux3OrderBook(_mux3OrderBook).depositCollateral(positionId, collateralToken, collateralAmount);

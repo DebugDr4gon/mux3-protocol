@@ -199,7 +199,7 @@ interface IOrderBook {
      *      usually your deposited gas should be consumed by your orders immediately,
      *      but if you want to withdraw it, you can call this function
      */
-    function withdrawGas(address account, uint256 amount) external;
+    function withdrawGas(address account, uint256 amount) external payable;
 
     /**
      * @notice A trader should set initial leverage at least once before open-position
@@ -240,13 +240,13 @@ interface IOrderBook {
     /**
      * @notice A Trader can withdraw all collateral only when position = 0
      */
-    function withdrawAllCollateral(WithdrawAllOrderParams memory orderParams) external;
+    function withdrawAllCollateral(WithdrawAllOrderParams memory orderParams) external payable;
 
     /**
      * @notice A Trader/LP can cancel an Order by orderId after a cool down period.
      *         A Broker can also cancel an Order after expiration.
      */
-    function cancelOrder(uint64 orderId) external;
+    function cancelOrder(uint64 orderId) external payable;
 
     /**
      * @notice A Rebalancer can rebalance pool liquidity by swap token 0 for token 1
