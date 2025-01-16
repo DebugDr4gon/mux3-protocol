@@ -21,6 +21,9 @@ bytes32 constant MC_SWAPPER = keccak256("MC_SWAPPER");
 // decimals = 18
 bytes32 constant MC_STRICT_STABLE_DEVIATION = keccak256("MC_STRICT_STABLE_DEVIATION");
 
+// rebalance slippage between two tokens. decimals = 18
+bytes32 constant MC_REBALANCE_SLIPPAGE = keccak256("MC_REBALANCE_SLIPPAGE");
+
 // ==================== market ====================
 
 // positionFee = price * size * MM_POSITION_FEE_RATE when openPosition/closePosition. decimals = 18

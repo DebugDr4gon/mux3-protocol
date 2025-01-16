@@ -1,16 +1,7 @@
 import { ethers } from "hardhat"
 import "@nomiclabs/hardhat-waffle"
 import { expect } from "chai"
-import {
-  toWei,
-  createContract,
-  PositionOrderFlags,
-  toBytes32,
-  encodePositionId,
-  toUnit,
-  zeroAddress,
-  encodePoolMarketKey,
-} from "../scripts/deployUtils"
+import { toWei, createContract, toBytes32, toUnit, encodeRebalanceSlippageKey } from "../scripts/deployUtils"
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import {
   CollateralPool,
@@ -193,6 +184,34 @@ describe("Rebalance", () => {
       }
       {
         expect(await pool1.getAumUsd()).to.equal(toWei("20"))
+      }
+    })
+
+    it("rebalance with slippage", async () => {
+      await usdc.mint(rebalancer.address, toUnit("1000000", 6))
+      await rebalancer.placeOrder({
+        poolAddress: pool1.address,
+        token0: arb.address,
+        rawAmount0: toWei("10"),
+        maxRawAmount1: toUnit("19.8", 6), // 10 * 2 / 1 * 0.99
+        userData: ethers.utils.toUtf8Bytes("TestRebalancer.userData"),
+      })
+      expect(await usdc.balanceOf(rebalancer.address)).to.equal(toUnit("1000000", 6))
+      expect(await arb.balanceOf(rebalancer.address)).to.equal(toUnit("0", 18))
+      await expect(orderBook.connect(broker).fillRebalanceOrder(0)).to.be.revertedWith("LimitPriceNotMet")
+      await core.setConfig(encodeRebalanceSlippageKey(usdc.address, arb.address), u2b(toWei("0.01")))
+      await orderBook.connect(broker).fillRebalanceOrder(0)
+      expect(await usdc.balanceOf(rebalancer.address)).to.equal(toUnit("999980.2", 6)) // 1000000 - 19.8
+      expect(await arb.balanceOf(rebalancer.address)).to.equal(toUnit("10", 18)) // rawAmount0
+      {
+        const balances = await pool1.liquidityBalances()
+        expect(balances.tokens[0]).to.equal(usdc.address)
+        expect(balances.balances[0]).to.equal(toWei("19.8"))
+        expect(balances.tokens[1]).to.equal(arb.address)
+        expect(balances.balances[1]).to.equal(toWei("0"))
+      }
+      {
+        expect(await pool1.getAumUsd()).to.equal(toWei("19.8"))
       }
     })
 

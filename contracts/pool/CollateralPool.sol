@@ -562,6 +562,8 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
         ICollateralPoolEventEmitter(_eventEmitter).emitLiquidityBalanceOut(token0, price0, amount0);
         // expected
         uint256 expectedAmount1 = (amount0 * price0) / price1;
+        uint256 slippage = _rebalanceSlippage(token0, _collateralToken);
+        expectedAmount1 = (expectedAmount1 * (1e18 - slippage)) / 1e18;
         uint256 expectedRawAmount1 = _toRaw(_collateralToken, expectedAmount1);
         require(expectedRawAmount1 <= maxRawAmount1, LimitPriceNotMet(expectedRawAmount1, maxRawAmount1));
         // swap. check amount 1

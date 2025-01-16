@@ -81,6 +81,15 @@ contract CollateralPoolComputed is CollateralPoolStore {
         // false is valid
     }
 
+    function _rebalanceSlippage(address token0, address token1) internal view returns (uint256 slippage) {
+        if (token0 > token1) {
+            (token0, token1) = (token1, token0);
+        }
+        bytes32 key = keccak256(abi.encodePacked(MC_REBALANCE_SLIPPAGE, token0, token1));
+        slippage = IFacetReader(_core).configValue(key).toUint256();
+        require(slippage < 1e18, IErrors.EssentialConfigNotSet("MCP_REBALANCE_SLIPPAGE")); // 0 is valid
+    }
+
     /**
      * @dev _collateralTokenUsd represents the value of pool.collateralToken. this is used to reserve for potential PnL.
      */
