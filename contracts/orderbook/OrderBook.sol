@@ -276,6 +276,24 @@ contract OrderBook is OrderBookStore, ReentrancyGuardUpgradeable, OrderBookGette
     }
 
     /**
+     * @notice A Trader can modify a position order
+     * @param orderParams The parameters for the modify position order
+     * @dev do not need depositGas
+     */
+    function modifyPositionOrder(
+        ModifyPositionOrderParams memory orderParams
+    ) external payable nonReentrant whenNotPaused(OrderType.PositionOrder) updateSequence {
+        (address positionAccount, ) = LibCodec.decodePositionId(orderParams.positionId);
+        if (_isDelegator(msg.sender)) {
+            // pass
+        } else {
+            require(positionAccount == msg.sender, "Not authorized");
+        }
+        // place
+        LibOrderBook2.modifyPositionOrder(_storage, orderParams, _blockTimestamp());
+    }
+
+    /**
      * @notice A Trader/LP can cancel an Order by orderId after a cool down period.
      *         A Broker can also cancel an Order after expiration.
      * @param orderId The ID of the order to cancel

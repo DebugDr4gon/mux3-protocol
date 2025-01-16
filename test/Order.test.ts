@@ -975,4 +975,139 @@ describe("Order", () => {
       })
     ).to.be.revertedWith("Draining")
   })
+
+  describe("place position order", () => {
+    let positionId: string
+    let previousOrderPlaceTime: number
+
+    beforeEach(async () => {
+      await token0.mint(orderBook.address, toWei("1000"))
+      await time.increaseTo(timestampOfTest + 86400)
+      positionId = encodePositionId(user0.address, 0)
+      await orderBook.connect(user0).setInitialLeverage(positionId, mid0, toWei("10"))
+      {
+        await orderBook.placePositionOrder(
+          {
+            positionId,
+            marketId: mid0,
+            size: toWei("0.1"),
+            flags: PositionOrderFlags.OpenPosition,
+            limitPrice: toWei("1000"),
+            expiration: timestampOfTest + 86400 * 3,
+            lastConsumedToken: zeroAddress,
+            collateralToken: token0.address,
+            collateralAmount: toWei("100"),
+            withdrawUsd: toWei("0"),
+            withdrawSwapToken: zeroAddress,
+            withdrawSwapSlippage: toWei("0"),
+            tpPriceDiff: toWei("1.005"),
+            slPriceDiff: toWei("0.995"),
+            tpslExpiration: timestampOfTest + 86400 * 3 + 2000,
+            tpslFlags: 0,
+            tpslWithdrawSwapToken: zeroAddress,
+            tpslWithdrawSwapSlippage: toWei("0"),
+          },
+          refCode
+        )
+      }
+      {
+        const orders = await orderBook.getOrders(0, 100)
+        expect(orders.totalCount).to.equal(1)
+        expect(orders.orderDataArray.length).to.equal(1)
+        expect(orders.orderDataArray[0].account).to.equal(user0.address)
+        previousOrderPlaceTime = orders.orderDataArray[0].placeOrderTime.toNumber()
+        const order = parsePositionOrder(orders.orderDataArray[0].payload)
+        expect(order.positionId).to.equal(positionId)
+        expect(order.marketId).to.equal(mid0)
+        expect(order.size).to.equal(toWei("0.1"))
+        expect(order.limitPrice).to.equal(toWei("1000"))
+        expect(order.expiration).to.equal(timestampOfTest + 86400 * 3)
+        expect(order.tpPriceDiff).to.equal(toWei("1.005"))
+        expect(order.slPriceDiff).to.equal(toWei("0.995"))
+        expect(order.tpslExpiration).to.equal(timestampOfTest + 86400 * 3 + 2000)
+        expect(order.tpslFlags).to.equal(0)
+      }
+    })
+
+    it("modify before cool down", async () => {
+      await expect(
+        orderBook.connect(user0).modifyPositionOrder({
+          orderId: 0,
+          positionId,
+          limitPrice: toWei("1000"),
+          tpPriceDiff: toWei("1.005"),
+          slPriceDiff: toWei("0.995"),
+        })
+      ).to.be.revertedWith("Cool down'")
+    })
+
+    it("modify after expiration", async () => {
+      await time.increaseTo(timestampOfTest + 86400 * 3 + 10)
+      await expect(
+        orderBook.connect(user0).modifyPositionOrder({
+          orderId: 0,
+          positionId,
+          limitPrice: toWei("1000"),
+          tpPriceDiff: toWei("1.005"),
+          slPriceDiff: toWei("0.995"),
+        })
+      ).to.be.revertedWith("Order expired")
+    })
+
+    it("modify limit price", async () => {
+      await time.increaseTo(timestampOfTest + 86400 + 60)
+      await orderBook.connect(user0).modifyPositionOrder({
+        orderId: 0,
+        positionId,
+        limitPrice: toWei("1001"),
+        tpPriceDiff: toWei("0"),
+        slPriceDiff: toWei("0"),
+      })
+      {
+        const orders = await orderBook.getOrders(0, 100)
+        expect(orders.totalCount).to.equal(1)
+        expect(orders.orderDataArray.length).to.equal(1)
+        expect(orders.orderDataArray[0].account).to.equal(user0.address)
+        expect(orders.orderDataArray[0].placeOrderTime.toNumber()).to.equal(previousOrderPlaceTime)
+        const order = parsePositionOrder(orders.orderDataArray[0].payload)
+        expect(order.positionId).to.equal(positionId)
+        expect(order.marketId).to.equal(mid0)
+        expect(order.size).to.equal(toWei("0.1"))
+        expect(order.limitPrice).to.equal(toWei("1001"))
+        expect(order.expiration).to.equal(timestampOfTest + 86400 * 3)
+        expect(order.tpPriceDiff).to.equal(toWei("1.005"))
+        expect(order.slPriceDiff).to.equal(toWei("0.995"))
+        expect(order.tpslExpiration).to.equal(timestampOfTest + 86400 * 3 + 2000)
+        expect(order.tpslFlags).to.equal(0)
+      }
+    })
+
+    it("modify tp price diff", async () => {
+      await time.increaseTo(timestampOfTest + 86400 + 60)
+      await orderBook.connect(user0).modifyPositionOrder({
+        orderId: 0,
+        positionId,
+        limitPrice: toWei("0"),
+        tpPriceDiff: toWei("1.006"),
+        slPriceDiff: toWei("0.994"),
+      })
+      {
+        const orders = await orderBook.getOrders(0, 100)
+        expect(orders.totalCount).to.equal(1)
+        expect(orders.orderDataArray.length).to.equal(1)
+        expect(orders.orderDataArray[0].account).to.equal(user0.address)
+        expect(orders.orderDataArray[0].placeOrderTime.toNumber()).to.equal(previousOrderPlaceTime)
+        const order = parsePositionOrder(orders.orderDataArray[0].payload)
+        expect(order.positionId).to.equal(positionId)
+        expect(order.marketId).to.equal(mid0)
+        expect(order.size).to.equal(toWei("0.1"))
+        expect(order.limitPrice).to.equal(toWei("1000"))
+        expect(order.expiration).to.equal(timestampOfTest + 86400 * 3)
+        expect(order.tpPriceDiff).to.equal(toWei("1.006"))
+        expect(order.slPriceDiff).to.equal(toWei("0.994"))
+        expect(order.tpslExpiration).to.equal(timestampOfTest + 86400 * 3 + 2000)
+        expect(order.tpslFlags).to.equal(0)
+      }
+    })
+  })
 })

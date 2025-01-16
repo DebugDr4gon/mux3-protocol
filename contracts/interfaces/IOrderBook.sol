@@ -83,12 +83,12 @@ struct PositionOrderParams {
     address withdrawSwapToken; // only valid when close a position and withdraw. try to swap to this token
     uint256 withdrawSwapSlippage; // only valid when close a position and withdraw. slippage tolerance for withdrawSwapToken. if swap cannot achieve this slippage, swap will be skipped
     // tpsl strategy, only valid when openPosition
-    uint256 tpPriceDiff; // take-profit price will be marketPrice * diff. decimals = 18. only valid when flags.POSITION_TPSL_STRATEGY
-    uint256 slPriceDiff; // stop-loss price will be marketPrice * diff. decimals = 18. only valid when flags.POSITION_TPSL_STRATEGY
-    uint64 tpslExpiration; // timestamp. decimals = 0. only valid when flags.POSITION_TPSL_STRATEGY
-    uint256 tpslFlags; // POSITION_WITHDRAW_ALL_IF_EMPTY, POSITION_WITHDRAW_PROFIT, POSITION_UNWRAP_ETH. only valid when flags.POSITION_TPSL_STRATEGY
-    address tpslWithdrawSwapToken; // only valid when flags.POSITION_TPSL_STRATEGY
-    uint256 tpslWithdrawSwapSlippage; // only valid when flags.POSITION_TPSL_STRATEGY
+    uint256 tpPriceDiff; // take-profit price will be marketPrice * diff. decimals = 18. leave 0 if no tp
+    uint256 slPriceDiff; // stop-loss price will be marketPrice * diff. decimals = 18. leave 0 if no sl
+    uint64 tpslExpiration; // timestamp. decimals = 0. only valid when tpPriceDiff > 0 or slPriceDiff > 0
+    uint256 tpslFlags; // POSITION_WITHDRAW_ALL_IF_EMPTY, POSITION_WITHDRAW_PROFIT, POSITION_UNWRAP_ETH. only valid when tpPriceDiff > 0 or slPriceDiff > 0
+    address tpslWithdrawSwapToken; // only valid when tpPriceDiff > 0 or slPriceDiff > 0
+    uint256 tpslWithdrawSwapSlippage; // only valid when tpPriceDiff > 0 or slPriceDiff > 0
 }
 
 struct LiquidityOrderParams {
@@ -112,6 +112,15 @@ struct WithdrawalOrderParams {
 struct WithdrawAllOrderParams {
     bytes32 positionId;
     bool isUnwrapWeth;
+}
+
+struct ModifyPositionOrderParams {
+    uint64 orderId;
+    bytes32 positionId; // this is to double check if orderId has the same positionId
+    uint256 limitPrice; // decimals = 18. leave 0 if not changed
+    // tpsl strategy, only valid when openPosition
+    uint256 tpPriceDiff; // take-profit price will be marketPrice * diff. decimals = 18. leave 0 if not changed
+    uint256 slPriceDiff; // stop-loss price will be marketPrice * diff. decimals = 18. leave 0 if not changed
 }
 
 struct RebalanceOrderParams {
@@ -140,6 +149,7 @@ interface IOrderBook {
     event FillOrder(address indexed account, uint64 indexed orderId, OrderData orderData);
     event FillAdlOrder(address indexed account, AdlOrderParams params);
     event CallbackFailed(address indexed account, uint64 indexed orderId, bytes reason);
+    event ModifyPositionOrder(address indexed account, uint64 indexed orderId, ModifyPositionOrderParams params);
 
     /**
      * @dev Trader/LP can wrap ETH to OrderBook, transfer ERC20 to OrderBook, placeOrders
@@ -241,6 +251,11 @@ interface IOrderBook {
      * @notice A Trader can withdraw all collateral only when position = 0
      */
     function withdrawAllCollateral(WithdrawAllOrderParams memory orderParams) external payable;
+
+    /**
+     * @notice A Trader can modify a position order
+     */
+    function modifyPositionOrder(ModifyPositionOrderParams memory orderParams) external payable;
 
     /**
      * @notice A Trader/LP can cancel an Order by orderId after a cool down period.

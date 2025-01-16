@@ -415,4 +415,67 @@ library LibOrderBook2 {
         // gas
         LibOrderBook._payGasFee(orderBook, orderData, msg.sender);
     }
+
+    function modifyPositionOrder(
+        OrderBookStorage storage orderBook,
+        ModifyPositionOrderParams memory modifyParams,
+        uint64 blockTimestamp
+    ) external {
+        require(orderBook.orders.contains(modifyParams.orderId), "No such orderId");
+        OrderData memory orderData = orderBook.orderData[modifyParams.orderId];
+        // verify order
+        require(orderData.orderType == OrderType.PositionOrder, "Order type mismatch");
+        PositionOrderParams memory orderParams = LibOrder.decodePositionOrder(orderData);
+        require(modifyParams.positionId == orderParams.positionId, "PositionId mismatch");
+        // check cool down and expiration
+        uint256 coolDown = LibOrderBook._cancelCoolDown(orderBook);
+        require(blockTimestamp >= orderData.placeOrderTime + coolDown, "Cool down");
+        uint256 deadline = MathUpgradeable
+            .min(
+                orderData.placeOrderTime + LibOrderBook._positionOrderTimeout(orderBook, orderParams),
+                orderParams.expiration
+            )
+            .toUint64();
+        require(blockTimestamp <= deadline, "Order expired");
+        // modify limitPrice
+        if (modifyParams.limitPrice > 0) {
+            orderParams.limitPrice = modifyParams.limitPrice;
+        }
+        // modify tp/sl
+        if (LibOrder.isOpenPosition(orderParams)) {
+            bool isLong = LibOrderBook._isMarketLong(orderBook, orderParams.marketId);
+            // open position
+            if (modifyParams.tpPriceDiff > 0) {
+                require(orderParams.tpPriceDiff > 0, "Original order has no tp");
+                if (!isLong) {
+                    // close a short means buy, tp means limitPrice = tradingPrice * (1 - tpPriceDiff)
+                    require(modifyParams.tpPriceDiff < 1e18, "tpPriceDiff too large");
+                }
+                orderParams.tpPriceDiff = modifyParams.tpPriceDiff;
+            }
+            if (modifyParams.slPriceDiff > 0) {
+                require(orderParams.slPriceDiff > 0, "Original order has no sl");
+                if (isLong) {
+                    // close a long means sell, sl means limitPrice = tradingPrice * (1 - slPriceDiff)
+                    require(modifyParams.slPriceDiff < 1e18, "slPriceDiff too large");
+                }
+                orderParams.slPriceDiff = modifyParams.slPriceDiff;
+            }
+        } else {
+            // tp/sl strategy is not supported
+            require(
+                modifyParams.tpPriceDiff == 0 && modifyParams.slPriceDiff == 0,
+                "Place multiple close-position orders instead"
+            );
+        }
+        // done
+        orderBook.orderData[orderData.id] = LibOrder.encodePositionOrder(
+            orderParams,
+            orderData.id,
+            orderData.account,
+            orderData.placeOrderTime,
+            orderData.gasFeeGwei
+        );
+        emit IOrderBook.ModifyPositionOrder(orderData.account, modifyParams.orderId, modifyParams);
+    }
 }

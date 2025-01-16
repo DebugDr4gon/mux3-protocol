@@ -3,7 +3,9 @@ pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { IOrderBook as IMux3OrderBook, IOrderBookGetter as IMux3OrderBookGetter, PositionOrderParams as Mux3PositionOrderParams, WithdrawalOrderParams as Mux3WithdrawalOrderParams, WithdrawAllOrderParams as Mux3WithdrawAllOrderParams, OrderData as Mux3OrderData } from "../interfaces/IOrderBook.sol";
+import { IOrderBook as IMux3OrderBook, IOrderBookGetter as IMux3OrderBookGetter, PositionOrderParams as Mux3PositionOrderParams } from "../interfaces/IOrderBook.sol";
+import { WithdrawalOrderParams as Mux3WithdrawalOrderParams, WithdrawAllOrderParams as Mux3WithdrawAllOrderParams } from "../interfaces/IOrderBook.sol";
+import { OrderData as Mux3OrderData, ModifyPositionOrderParams as Mux3ModifyPositionOrderParams } from "../interfaces/IOrderBook.sol";
 import { LibCodec as LibMux3Codec } from "../libraries/LibCodec.sol";
 
 contract Delegator is Initializable {
@@ -173,6 +175,17 @@ contract Delegator is Initializable {
         (address owner, ) = LibMux3Codec.decodePositionId(positionId);
         _consumeDelegation(owner);
         IMux3OrderBook(_mux3OrderBook).setInitialLeverage(positionId, marketId, initialLeverage);
+    }
+
+    /**
+     * @notice MUX3: A Trader can modify a position order
+     * @param orderParams The parameters for the modify position order
+     * @dev do not need depositGas
+     */
+    function mux3ModifyPositionOrder(Mux3ModifyPositionOrderParams memory orderParams) external payable {
+        (address owner, ) = LibMux3Codec.decodePositionId(orderParams.positionId);
+        _consumeDelegation(owner);
+        IMux3OrderBook(_mux3OrderBook).modifyPositionOrder(orderParams);
     }
 
     function _consumeDelegation(address owner) private {

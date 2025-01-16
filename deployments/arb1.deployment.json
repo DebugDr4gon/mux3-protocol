@@ -99,7 +99,9 @@
     "facets": {
       "diamondCutFacet": {
         "address": "0xeDBE19730A2778fc12C42DfE8f81DF62A6032D80",
-        "selectors": ["0x1f931c1c"]
+        "selectors": [
+          "0x1f931c1c"
+        ]
       },
       "diamondLoupeFacet": {
         "address": "0x7E82F1a408C8125eCd0ca3a7451371B37b5D6Ea3",
@@ -113,7 +115,12 @@
       },
       "mux3OwnerFacet": {
         "address": "0x8B04a7713630861318fc862c644EE28e74527B18",
-        "selectors": ["0x79ba5097", "0x8da5cb5b", "0xe30c3978", "0xf2fde38b"]
+        "selectors": [
+          "0x79ba5097",
+          "0x8da5cb5b",
+          "0xe30c3978",
+          "0xf2fde38b"
+        ]
       },
       "facetManagement": {
         "address": "0x0549174b5290E1840702DD3fFd70479349f143fa",
@@ -164,11 +171,17 @@
       },
       "facetOpen": {
         "address": "0xa766eE5c2fFC084a62ED84d538f615B24594F402",
-        "selectors": ["0x5876dfce", "0x7d8faddd"]
+        "selectors": [
+          "0x5876dfce",
+          "0x7d8faddd"
+        ]
       },
       "facetClose": {
         "address": "0xEC3E794Da0b9FDEAeCb3dD94330a196d138657C3",
-        "selectors": ["0x98118013", "0x926d2886"]
+        "selectors": [
+          "0x98118013",
+          "0x926d2886"
+        ]
       },
       "facetPositionAccount": {
         "address": "0xC26459538ADEeF231F01278cC36EEEA039abDa89",
@@ -183,23 +196,11 @@
       }
     }
   },
-  "LibOrderBook": {
-    "type": "plain",
-    "name": "LibOrderBook",
-    "address": "0xaC7f14167A7aC056627Ceb73D1b6f86e180Ae8fF",
-    "deployedAt": 295294769
-  },
-  "LibOrderBook2": {
-    "type": "plain",
-    "name": "LibOrderBook2",
-    "address": "0x98dbe49Ab15c2a6D649FC6886552B60dAbABC003",
-    "deployedAt": 295294785
-  },
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0x76EcEd566CdE806CdC9fC50C7a85411Db8E8e96D",
-    "deployedAt": 295294801
+    "address": "0xa01d89Bfdc598e768C140dA6A0aF10ED19Af89c0",
+    "deployedAt": 296021411
   },
   "OrderBook": {
     "type": "upgradeable",
@@ -207,15 +208,15 @@
     "address": "0x72a192120b6AA4E89957197c0DD8766571C86202",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x76EcEd566CdE806CdC9fC50C7a85411Db8E8e96D"
+      "implementation": "0xa01d89Bfdc598e768C140dA6A0aF10ED19Af89c0"
     },
     "deployedAt": 295294816
   },
   "Delegator__implementation": {
     "type": "plain",
     "name": "Delegator__implementation",
-    "address": "0x6067b7B31133743877e810D2b9794E97FF43fc2e",
-    "deployedAt": 295294830
+    "address": "0x42d2ac9b24941EB5Fb9879bf56bc8Af93bD369EF",
+    "deployedAt": 296020865
   },
   "Delegator": {
     "type": "upgradeable",
@@ -223,7 +224,7 @@
     "address": "0x6574170F52A95112060Ee17F02c544F152fc4fD0",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0x6067b7B31133743877e810D2b9794E97FF43fc2e"
+      "implementation": "0x42d2ac9b24941EB5Fb9879bf56bc8Af93bD369EF"
     },
     "deployedAt": 295294845
   },
@@ -262,8 +263,8 @@
   "CollateralPool__implementation": {
     "type": "plain",
     "name": "CollateralPool__implementation",
-    "address": "0x4b6d9d793068C546a9498747F41a6a7b148ec5D8",
-    "deployedAt": 295294934
+    "address": "0xD974B04D6E8A3D49c79ee6EF7E86b72CD4b1e174",
+    "deployedAt": 295968620
   },
   "MuxPriceProvider__implementation": {
     "type": "plain",
@@ -312,5 +313,17 @@
       "implementation": "0xD16916d653ddC77ACD7F5239Cd5FfaeF651D82b5"
     },
     "deployedAt": 295295048
+  },
+  "LibOrderBook": {
+    "type": "plain",
+    "name": "LibOrderBook",
+    "address": "0xb7eE4dd3d76C3ff41e55A73db8d3Dd9980b757f2",
+    "deployedAt": 296021093
+  },
+  "LibOrderBook2": {
+    "type": "plain",
+    "name": "LibOrderBook2",
+    "address": "0xa1F2B27f9cff5E1cFecE1B159ee696ee00fD228d",
+    "deployedAt": 296021394
   }
 }

@@ -93,9 +93,6 @@ library LibOrderBook {
                 _transferIn(orderBook, orderParams.collateralToken, orderParams.collateralAmount);
             }
         }
-        // add order
-        uint64 gasFeeGwei = _orderGasFeeGwei(orderBook);
-        _appendPositionOrder(orderBook, orderParams, blockTimestamp, gasFeeGwei);
         // tp/sl strategy
         if (orderParams.tpPriceDiff > 0 || orderParams.slPriceDiff > 0) {
             require(orderParams.tpslExpiration > blockTimestamp, "tpslExpiration is earlier than now");
@@ -114,6 +111,9 @@ library LibOrderBook {
             }
             require(orderParams.tpslWithdrawSwapSlippage <= 1e18, "tpslWithdrawSwapSlippage too large");
         }
+        // add order
+        uint64 gasFeeGwei = _orderGasFeeGwei(orderBook);
+        _appendPositionOrder(orderBook, orderParams, blockTimestamp, gasFeeGwei);
     }
 
     function _placeClosePositionOrder(
@@ -126,8 +126,6 @@ library LibOrderBook {
             _validateCollateral(orderBook, orderParams.withdrawSwapToken);
         }
         require(orderParams.withdrawSwapSlippage <= 1e18, "withdrawSwapSlippage too large");
-        uint64 gasFeeGwei = _orderGasFeeGwei(orderBook);
-        _appendPositionOrder(orderBook, orderParams, blockTimestamp, gasFeeGwei);
         // tp/sl strategy is not supported
         require(
             orderParams.tpPriceDiff == 0 &&
@@ -138,6 +136,9 @@ library LibOrderBook {
                 orderParams.tpslWithdrawSwapSlippage == 0,
             "Place multiple close-position orders instead"
         );
+        // add order
+        uint64 gasFeeGwei = _orderGasFeeGwei(orderBook);
+        _appendPositionOrder(orderBook, orderParams, blockTimestamp, gasFeeGwei);
     }
 
     function _cancelActivatedTpslOrders(
