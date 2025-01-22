@@ -82,6 +82,7 @@ describe("Order", () => {
       "contracts/libraries/LibOrderBook.sol:LibOrderBook": libOrderBook,
       "contracts/libraries/LibOrderBook2.sol:LibOrderBook2": libOrderBook2,
     })) as OrderBook
+    const callbackRegister = await createContract("CallbackRegister")
     await orderBook.initialize(core.address, weth.address)
     await orderBook.grantRole(ethers.utils.id("BROKER_ROLE"), broker.address)
     await orderBook.setConfig(ethers.utils.id("MCO_LIQUIDITY_LOCK_PERIOD"), u2b(ethers.BigNumber.from(60 * 15)))
@@ -89,6 +90,7 @@ describe("Order", () => {
     await orderBook.setConfig(ethers.utils.id("MCO_LIMIT_ORDER_TIMEOUT"), u2b(ethers.BigNumber.from(86400 * 30)))
     await orderBook.setConfig(ethers.utils.id("MCO_CANCEL_COOL_DOWN"), u2b(ethers.BigNumber.from(5)))
     await orderBook.setConfig(ethers.utils.id("MCO_MIN_LIQUIDITY_ORDER_USD"), u2b(toWei("0.1")))
+    await orderBook.setConfig(ethers.utils.id("MCO_CALLBACK_REGISTER"), a2b(callbackRegister.address))
 
     // collateral pool
     imp = (await createContract("MockCollateralPool", [

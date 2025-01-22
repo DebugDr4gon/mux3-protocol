@@ -3,6 +3,7 @@ import { Deployer, DeploymentOptions } from "./deployer/deployer"
 import { restorableEnviron } from "./deployer/environ"
 import { encodePoolMarketKey, toBytes32, toWei, ensureFinished, encodeRebalanceSlippageKey } from "./deployUtils"
 import {
+  CallbackRegister,
   ChainlinkStreamProvider,
   CollateralPoolAumReader,
   CollateralPoolEventEmitter,
@@ -117,6 +118,11 @@ async function main(deployer: Deployer) {
   const sBtcMarket = toBytes32("ShortBTC")
   const lArbMarket = toBytes32("LongARB")
   const sArbMarket = toBytes32("ShortARB")
+  const callbackRegister = (await deployer.deployUpgradeableOrSkip(
+    "CallbackRegister",
+    "CallbackRegister",
+    proxyAdmin
+  )) as CallbackRegister
 
   const initDefault = async () => {
     // core
@@ -132,6 +138,8 @@ async function main(deployer: Deployer) {
     // event emitter
     await ensureFinished(collateralPoolEventEmitter.initialize(core.address))
 
+    // callback register
+    await ensureFinished(callbackRegister.initialize())
     // orderbook
     await ensureFinished(orderBook.initialize(core.address, weth))
     for (const broker of brokers) {
@@ -153,6 +161,7 @@ async function main(deployer: Deployer) {
     await ensureFinished(
       orderBook.setConfig(ethers.utils.id("MCO_ORDER_GAS_FEE_GWEI"), u2b(ethers.BigNumber.from("5882")))
     ) // 0.02 / 3400 * 1e18 / 1e9
+    await ensureFinished(orderBook.setConfig(ethers.utils.id("MCO_CALLBACK_REGISTER"), a2b(callbackRegister.address)))
 
     // collateral
     await ensureFinished(core.addCollateralToken(usdc, 6, true))

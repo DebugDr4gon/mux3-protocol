@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import "../MockERC20.sol";
+import "../integration/MockERC20.sol";
 import "../../core/management/FacetManagement.sol";
 import "../../pool/CollateralPool.sol";
 import "../../pool/CollateralPoolEventEmitter.sol";

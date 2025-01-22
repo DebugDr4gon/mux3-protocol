@@ -4,8 +4,8 @@ pragma solidity 0.8.28;
 import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
 import "../../core/management/FacetManagement.sol";
-import "../MockERC20.sol";
-import "../SimplePriceProvider.sol";
+import "../integration/MockERC20.sol";
+import "../integration/SimplePriceProvider.sol";
 
 import "../TestSuit.sol";
 

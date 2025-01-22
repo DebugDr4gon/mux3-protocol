@@ -7,9 +7,9 @@ import "../../orderbook/providers/MuxPriceProvider.sol";
 import "../../core/management/PricingManager.sol";
 import "../../interfaces/IRoles.sol";
 import "../TestSuit.sol";
-import "../SimplePriceProvider.sol";
+import "../integration/MockERC20.sol";
+import "../integration/SimplePriceProvider.sol";
 import "../integration/MockChainlinkVerifier.sol";
-import "../MockERC20.sol";
 
 contract TestOracle is PricingManager, TestSuit {
     address chainlinkVerifier = 0x478Aa2aC9F6D65F84e09D9185d126c3a17c2a93C;

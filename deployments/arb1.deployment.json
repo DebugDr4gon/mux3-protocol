@@ -199,8 +199,8 @@
   "OrderBook__implementation": {
     "type": "plain",
     "name": "OrderBook__implementation",
-    "address": "0xa01d89Bfdc598e768C140dA6A0aF10ED19Af89c0",
-    "deployedAt": 296021411
+    "address": "0xF084f1030D52a76Aa573EDAd71A504d9CBC81348",
+    "deployedAt": 298041278
   },
   "OrderBook": {
     "type": "upgradeable",
@@ -208,7 +208,7 @@
     "address": "0x72a192120b6AA4E89957197c0DD8766571C86202",
     "dependencies": {
       "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
-      "implementation": "0xa01d89Bfdc598e768C140dA6A0aF10ED19Af89c0"
+      "implementation": "0xF084f1030D52a76Aa573EDAd71A504d9CBC81348"
     },
     "deployedAt": 295294816
   },
@@ -323,7 +323,23 @@
   "LibOrderBook2": {
     "type": "plain",
     "name": "LibOrderBook2",
-    "address": "0xa1F2B27f9cff5E1cFecE1B159ee696ee00fD228d",
-    "deployedAt": 296021394
+    "address": "0x6307ff42a7da0C132E4e13cEe243C1835e174327",
+    "deployedAt": 298041261
+  },
+  "CallbackRegister__implementation": {
+    "type": "plain",
+    "name": "CallbackRegister__implementation",
+    "address": "0x3CE83753671e520751238785EA6648D1476e7a31",
+    "deployedAt": 298041662
+  },
+  "CallbackRegister": {
+    "type": "upgradeable",
+    "name": "CallbackRegister",
+    "address": "0xA13410346009a72E065d8E2f595b3416efdba020",
+    "dependencies": {
+      "admin": "0x67740DdDEa7A555C30Af42536C786133c7E58508",
+      "implementation": "0x3CE83753671e520751238785EA6648D1476e7a31"
+    },
+    "deployedAt": 298041681
   }
 }

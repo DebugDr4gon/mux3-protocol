@@ -37,7 +37,7 @@ const u2b = (u) => {
 const SWAPPER_UNI3 = "00"
 const SWAPPER_BAL2 = "01"
 
-describe("ReferralAndFeeDistributor", () => {
+describe("Referral", () => {
   const refCode = toBytes32("")
   const refCode2 = toBytes32("testCode")
   const long1 = toBytes32("LongBTC")
@@ -104,12 +104,14 @@ describe("ReferralAndFeeDistributor", () => {
       "contracts/libraries/LibOrderBook.sol:LibOrderBook": libOrderBook,
       "contracts/libraries/LibOrderBook2.sol:LibOrderBook2": libOrderBook2,
     })) as OrderBook
+    const callbackRegister = await createContract("CallbackRegister")
     await orderBook.initialize(core.address, weth.address)
     await orderBook.setConfig(ethers.utils.id("MCO_LIQUIDITY_LOCK_PERIOD"), u2b(ethers.BigNumber.from(0)))
     await orderBook.setConfig(ethers.utils.id("MCO_MARKET_ORDER_TIMEOUT"), u2b(ethers.BigNumber.from(60 * 2)))
     await orderBook.setConfig(ethers.utils.id("MCO_LIMIT_ORDER_TIMEOUT"), u2b(ethers.BigNumber.from(86400 * 30)))
     await orderBook.setConfig(ethers.utils.id("MCO_CANCEL_COOL_DOWN"), u2b(ethers.BigNumber.from(5)))
     await orderBook.setConfig(ethers.utils.id("MCO_MIN_LIQUIDITY_ORDER_USD"), u2b(toWei("0.1")))
+    await orderBook.setConfig(ethers.utils.id("MCO_CALLBACK_REGISTER"), a2b(callbackRegister.address))
 
     // collateral pool
     emitter = (await createContract("CollateralPoolEventEmitter")) as CollateralPoolEventEmitter

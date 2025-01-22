@@ -133,3 +133,6 @@ bytes32 constant MCO_MIN_LIQUIDITY_ORDER_USD = keccak256("MCO_MIN_LIQUIDITY_ORDE
 
 // callback gas limit for liquidity order
 bytes32 constant MCO_CALLBACK_GAS_LIMIT = keccak256("MCO_CALLBACK_GAS_LIMIT");
+
+// to verify that callback is whitelisted
+bytes32 constant MCO_CALLBACK_REGISTER = keccak256("MCO_CALLBACK_REGISTER");

@@ -54,7 +54,7 @@ struct OrderBookStorage {
     mapping(address => uint256) gasBalances;
     mapping(bytes32 => bytes32) configTable;
     mapping(address => uint256) previousTokenBalance;
-    mapping(address => bool) callbackWhitelist;
+    mapping(address => bool) _reserved2; // was callbackWhitelist
     bytes32[46] __gap;
 }
 

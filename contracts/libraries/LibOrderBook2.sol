@@ -12,6 +12,7 @@ import "../interfaces/IMarket.sol";
 import "../interfaces/IOrderBook.sol";
 import "../interfaces/IWETH9.sol";
 import "../interfaces/ICallback.sol";
+import "../interfaces/ICallbackRegister.sol";
 import "../libraries/LibCodec.sol";
 import "../libraries/LibConfigMap.sol";
 import "../libraries/LibEthUnwrapper.sol";
@@ -92,22 +93,41 @@ library LibOrderBook2 {
         emit IOrderBook.FillOrder(orderData.account, orderId, orderData);
         // gas
         LibOrderBook._payGasFee(orderBook, orderData, msg.sender);
+        _runLiquidityCallback(orderBook, orderId, orderData, orderParams, outAmount, lpPrice, collateralPrice);
+    }
 
-        if (orderBook.callbackWhitelist[orderData.account]) {
-            uint256 assetAmount = orderParams.isAdding ? orderParams.rawAmount : outAmount;
-            uint256 lpAmount = orderParams.isAdding ? outAmount : orderParams.rawAmount;
-            try
-                ICallback(orderData.account).afterLiquidityOrderFilled{ gas: _callbackGasLimit(orderBook) }(
-                    orderId,
-                    assetAmount,
-                    lpAmount,
-                    collateralPrice,
-                    lpPrice
-                )
-            {} catch (bytes memory reason) {
-                emit IOrderBook.CallbackFailed(orderData.account, orderId, reason);
-            }
+    function _runLiquidityCallback(
+        OrderBookStorage storage orderBook,
+        uint64 orderId,
+        OrderData memory orderData,
+        LiquidityOrderParams memory orderParams,
+        uint256 outAmount,
+        uint256 lpPrice,
+        uint256 collateralPrice
+    ) internal {
+        address callback = orderData.account;
+        address register = _callbackRegister(orderBook);
+        if (!ICallbackRegister(register).isCallbackRegistered(callback)) {
+            return;
         }
+        uint256 assetAmount = orderParams.isAdding ? orderParams.rawAmount : outAmount;
+        uint256 lpAmount = orderParams.isAdding ? outAmount : orderParams.rawAmount;
+        try
+            ICallback(callback).afterLiquidityOrderFilled{ gas: _callbackGasLimit(orderBook) }(
+                orderId,
+                assetAmount,
+                lpAmount,
+                collateralPrice,
+                lpPrice
+            )
+        {} catch (bytes memory reason) {
+            emit IOrderBook.CallbackFailed(callback, orderId, reason);
+        }
+    }
+
+    function _callbackRegister(OrderBookStorage storage orderBook) internal view returns (address register) {
+        register = orderBook.configTable.getAddress(MCO_CALLBACK_REGISTER);
+        require(register != address(0), "Callback register not set");
     }
 
     function _callbackGasLimit(OrderBookStorage storage orderBook) internal view returns (uint256) {
