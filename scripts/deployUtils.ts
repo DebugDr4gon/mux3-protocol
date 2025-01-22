@@ -143,8 +143,18 @@ export function encodePositionId(account: string, index: number | EthersBigNumbe
 }
 
 export function encodePoolMarketKey(prefix: string, marketId: string) {
+  return ethers.utils.keccak256(ethers.utils.solidityPack(["bytes32", "bytes32"], [ethers.utils.id(prefix), marketId]))
+}
+
+export function encodeRebalanceSlippageKey(token0: string, token1: string) {
+  if (token0.toLowerCase() > token1.toLowerCase()) {
+    ;[token0, token1] = [token1, token0]
+  }
   return ethers.utils.keccak256(
-    ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32"], [ethers.utils.id(prefix), marketId])
+    ethers.utils.solidityPack(
+      ["bytes32", "address", "address"],
+      [ethers.utils.id("MC_REBALANCE_SLIPPAGE"), token0, token1]
+    )
   )
 }
 

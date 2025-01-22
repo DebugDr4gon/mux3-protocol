@@ -1,7 +1,7 @@
 import hre, { ethers } from "hardhat"
 import { Deployer, DeploymentOptions } from "./deployer/deployer"
 import { restorableEnviron } from "./deployer/environ"
-import { encodePoolMarketKey, toBytes32, toWei, ensureFinished } from "./deployUtils"
+import { encodePoolMarketKey, toBytes32, toWei, ensureFinished, encodeRebalanceSlippageKey } from "./deployUtils"
 import {
   ChainlinkStreamProvider,
   CollateralPoolAumReader,
@@ -258,6 +258,13 @@ async function main(deployer: Deployer) {
     await ensureFinished(
       collateralPoolAumReader.setMarketPriceProvider(sArbMarket, "0xb2A824043730FE05F3DA2efaFa1CBbe83fa548D6")
     )
+
+    // rebalance slippage
+    await ensureFinished(core.setConfig(encodeRebalanceSlippageKey(weth, susde), u2b(toWei("0.0005"))))
+    await ensureFinished(core.setConfig(encodeRebalanceSlippageKey(wbtc, susde), u2b(toWei("0.0005"))))
+    await ensureFinished(core.setConfig(encodeRebalanceSlippageKey(arb, susde), u2b(toWei("0.0005"))))
+    await ensureFinished(core.setConfig(encodeRebalanceSlippageKey(weth, arb), u2b(toWei("0.0005"))))
+    await ensureFinished(core.setConfig(encodeRebalanceSlippageKey(wbtc, arb), u2b(toWei("0.0005"))))
   }
 
   const initDefaultPools = async () => {
