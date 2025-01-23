@@ -41,6 +41,8 @@ const muxReferralTiers = "0xef6868929C8FCf11996e621cfd1b89d3B3aa6Bda"
 
 const muxReferralManager = "0xa68d96F26112377abdF3d6b9fcde9D54f2604C2a"
 
+const mux3Tranche = "0xE84fE6066191D9c0D72aB10F8e56Bc686fc12537"
+
 async function main(deployer: Deployer) {
   // deploy
   const proxyAdmin = deployer.addressOf("ProxyAdmin")
@@ -140,6 +142,8 @@ async function main(deployer: Deployer) {
 
     // callback register
     await ensureFinished(callbackRegister.initialize())
+    await ensureFinished(callbackRegister.setMux3Tranche(mux3Tranche))
+
     // orderbook
     await ensureFinished(orderBook.initialize(core.address, weth))
     for (const broker of brokers) {
