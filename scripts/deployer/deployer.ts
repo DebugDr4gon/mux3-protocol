@@ -62,7 +62,9 @@ export class Deployer {
 
   public async load() {
     try {
-      const savedProgress = JSON.parse(fs.readFileSync(this.SAVE_PREFIX + this.options.network + this.SAVE_POSTFIX, "utf-8"))
+      const savedProgress = JSON.parse(
+        fs.readFileSync(this.SAVE_PREFIX + this.options.network + this.SAVE_POSTFIX, "utf-8")
+      )
       this.deployedContracts = savedProgress
     } catch (err) {
       this._log("save not found")
@@ -70,7 +72,10 @@ export class Deployer {
   }
 
   public async save() {
-    fs.writeFileSync(this.SAVE_PREFIX + this.options.network + this.SAVE_POSTFIX, JSON.stringify(this.deployedContracts, null, 2))
+    fs.writeFileSync(
+      this.SAVE_PREFIX + this.options.network + this.SAVE_POSTFIX,
+      JSON.stringify(this.deployedContracts, null, 2)
+    )
   }
 
   public async deployOrSkip(contractName: string, aliasName: string, ...args: any[]): Promise<any> {
@@ -80,9 +85,14 @@ export class Deployer {
     return this.getDeployedContract(contractName, aliasName)
   }
 
-  public async deployUpgradeableOrSkip(contractName: string, aliasName: string, admin: string): Promise<any> {
+  public async deployUpgradeableOrSkip(
+    contractName: string,
+    aliasName: string,
+    admin: string,
+    ...args: any[]
+  ): Promise<any> {
     if (!(aliasName in this.deployedContracts)) {
-      await this.deployUpgradeable(contractName, aliasName, admin)
+      await this.deployUpgradeable(contractName, aliasName, admin, ...args)
     }
     return this.getDeployedContract(contractName, aliasName)
   }
@@ -99,8 +109,8 @@ export class Deployer {
     return deployed
   }
 
-  public async deployUpgradeable(contractName: string, aliasName: string, admin: string): Promise<any> {
-    let implementation = await this.deployOrSkip(contractName, contractName + "__implementation")
+  public async deployUpgradeable(contractName: string, aliasName: string, admin: string, ...args: any[]): Promise<any> {
+    let implementation = await this.deployOrSkip(contractName, contractName + "__implementation", ...args)
     const { deployed, receipt } = await this._deploy("TransparentUpgradeableProxy", implementation.address, admin, "0x")
     this.deployedContracts[aliasName] = {
       type: "upgradeable",
@@ -113,7 +123,12 @@ export class Deployer {
     return await this.getContractAt(contractName, deployed.address)
   }
 
-  public async upgrade(contractName: string, aliasName: string, admin: string, newImplementation?: string): Promise<any> {
+  public async upgrade(
+    contractName: string,
+    aliasName: string,
+    admin: string,
+    newImplementation?: string
+  ): Promise<any> {
     let proxyAdmin = await this.getContractAt("ProxyAdmin", admin)
     let proxy = this.deployedContracts[aliasName]
     if (!proxy || !proxy.address || proxy.type !== "upgradeable" || !proxy.dependencies) {
@@ -192,7 +207,11 @@ export class Deployer {
     return this._deployWithSigner(null, contractName, ...args)
   }
 
-  private async _deployWithSigner(signer: Signer | null, contractName: string, ...args: any[]): Promise<{ deployed: any; receipt: TransactionReceipt }> {
+  private async _deployWithSigner(
+    signer: Signer | null,
+    contractName: string,
+    ...args: any[]
+  ): Promise<{ deployed: any; receipt: TransactionReceipt }> {
     const factory = await this._getFactory(contractName)
     if (this.beforeDeployed != null) {
       await this.beforeDeployed(contractName, factory, ...args)

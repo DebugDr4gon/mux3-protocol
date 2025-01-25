@@ -112,7 +112,8 @@ async function main(deployer: Deployer) {
   const collateralPoolAumReader = (await deployer.deployUpgradeableOrSkip(
     "CollateralPoolAumReader",
     "CollateralPoolAumReader",
-    proxyAdmin
+    proxyAdmin,
+    core.address
   )) as CollateralPoolAumReader
   const lEthMarket = toBytes32("LongETH")
   const sEthMarket = toBytes32("ShortETH")
@@ -372,8 +373,8 @@ async function main(deployer: Deployer) {
       [lArbMarket, pools[7]],
     ]) {
       await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", m), u2b(toWei("0.80"))))
-      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", m), u2b(toWei("4.90"))))
-      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", m), u2b(toWei("4.95"))))
+      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", m), u2b(toWei("0.75"))))
+      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", m), u2b(toWei("0.79"))))
     }
 
     // adl group 2: eth based long btc
@@ -383,8 +384,8 @@ async function main(deployer: Deployer) {
       [lArbMarket, pools[9]],
     ]) {
       await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", m), u2b(toWei("0.80"))))
-      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", m), u2b(toWei("1.50"))))
-      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", m), u2b(toWei("1.60"))))
+      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", m), u2b(toWei("0.60"))))
+      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", m), u2b(toWei("0.64"))))
     }
 
     // adl group 3: usd based long/short eth
@@ -407,8 +408,8 @@ async function main(deployer: Deployer) {
       [sArbMarket, pools[15]],
     ]) {
       await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", m), u2b(toWei("1.00"))))
-      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", m), u2b(toWei("0.90"))))
-      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", m), u2b(toWei("0.95"))))
+      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", m), u2b(toWei("0.95"))))
+      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", m), u2b(toWei("0.99"))))
     }
   }
 

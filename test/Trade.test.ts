@@ -234,7 +234,7 @@ describe("Trade", () => {
     await core.setConfig(ethers.utils.id("MC_SWAPPER"), a2b(swapper.address))
 
     // aum reader
-    aumReader = (await createContract("CollateralPoolAumReader", [])) as CollateralPoolAumReader
+    aumReader = (await createContract("CollateralPoolAumReader", [core.address])) as CollateralPoolAumReader
     await aumReader.initialize()
 
     wethFeeder = (await createContract("MockChainlinkFeeder", [])) as MockChainlinkFeeder

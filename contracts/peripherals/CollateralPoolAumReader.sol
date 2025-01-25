@@ -36,6 +36,8 @@ contract CollateralPoolAumReader is Initializable, Ownable2StepUpgradeable {
     using LibTypeCast for uint256;
     using LibTypeCast for bytes32;
 
+    address public immutable _mux3Facet;
+
     /** @notice Default price expiration period in seconds */
     uint256 public constant PRICE_EXPIRATION = 86400; // 1 day
 
@@ -54,6 +56,10 @@ contract CollateralPoolAumReader is Initializable, Ownable2StepUpgradeable {
     event SetMarketPriceProvider(bytes32 marketId, address oracleProvider);
     /** @notice Emitted when price expiration period is updated */
     event SetPriceExpiration(uint256 priceExpiration);
+
+    constructor(address mux3Facet_) {
+        _mux3Facet = mux3Facet_;
+    }
 
     /**
      * @notice Initializes the contract with default settings
@@ -176,8 +182,7 @@ contract CollateralPoolAumReader is Initializable, Ownable2StepUpgradeable {
         // trader upnl is affected by adl parameters
         if (upnlUsd > 0) {
             uint256 maxPnlRate = _adlMaxPnlRate(pool, marketId);
-            uint256 maxPnlUsd = (data.totalSize * data.averageEntryPrice) / 1e18;
-            maxPnlUsd = (maxPnlUsd * maxPnlRate) / 1e18;
+            uint256 maxPnlUsd = _adlValue(pool, marketId, maxPnlRate, data.averageEntryPrice, data.totalSize);
             upnlUsd = MathUpgradeable.min(uint256(upnlUsd), maxPnlUsd).toInt256();
         }
     }
@@ -186,6 +191,26 @@ contract CollateralPoolAumReader is Initializable, Ownable2StepUpgradeable {
         bytes32 key = keccak256(abi.encodePacked(MCP_ADL_MAX_PNL_RATE, marketId));
         rate = ICollateralPool(pool).configValue(key).toUint256();
         require(rate > 0, "AdlMaxPnlRateNotSet");
+    }
+
+    // see CollateralPoolComputed._adlValue
+    function _adlValue(
+        address pool,
+        bytes32 marketId,
+        uint256 ratio,
+        uint256 entryPrice,
+        uint256 size
+    ) internal view returns (uint256) {
+        address collateralToken = ICollateralPool(pool).collateralToken();
+        (, , bool isStable) = IFacetReader(_mux3Facet).getCollateralToken(collateralToken);
+        if (isStable) {
+            uint256 sizeUsd = (size * entryPrice) / 1e18;
+            return (sizeUsd * ratio) / 1e18;
+        } else {
+            uint256 marketPrice = _priceOf(marketId);
+            uint256 sizeUsd = (size * marketPrice) / 1e18;
+            return (sizeUsd * ratio) / 1e18;
+        }
     }
 
     function _aumUsdWithoutPnl(address pool) internal view returns (uint256 aum) {

@@ -158,8 +158,7 @@ contract CollateralPoolComputed is CollateralPoolStore {
         // trader upnl is affected by adl parameters
         if (upnlUsd > 0) {
             uint256 maxPnlRate = _adlMaxPnlRate(marketId);
-            uint256 maxPnlUsd = (data.totalSize * data.averageEntryPrice) / 1e18;
-            maxPnlUsd = (maxPnlUsd * maxPnlRate) / 1e18;
+            uint256 maxPnlUsd = _adlValue(marketId, maxPnlRate, data.averageEntryPrice, data.totalSize);
             upnlUsd = MathUpgradeable.min(uint256(upnlUsd), maxPnlUsd).toInt256();
         }
     }
@@ -173,20 +172,34 @@ contract CollateralPoolComputed is CollateralPoolStore {
      *        note that both numerator and denominator of util contain marketPrice.
      */
     function _reservedUsd() internal view returns (uint256 reservedUsd) {
-        (, , bool isStable) = IFacetReader(_core).getCollateralToken(_collateralToken);
         uint256 length = _marketIds.length();
         for (uint256 i = 0; i < length; i++) {
             bytes32 marketId = _marketIds.at(i);
             MarketState storage data = _marketStates[marketId];
-            uint256 reserveRatio = _adlReserveRate(marketId);
-            if (isStable) {
-                uint256 sizeUsd = (data.totalSize * data.averageEntryPrice) / 1e18;
-                reservedUsd += (sizeUsd * reserveRatio) / 1e18;
-            } else {
-                uint256 marketPrice = IFacetReader(_core).priceOf(_marketOracleId(marketId));
-                uint256 sizeUsd = (data.totalSize * marketPrice) / 1e18;
-                reservedUsd += (sizeUsd * reserveRatio) / 1e18;
-            }
+            uint256 reserveRate = _adlReserveRate(marketId);
+            reservedUsd += _adlValue(marketId, reserveRate, data.averageEntryPrice, data.totalSize);
+        }
+    }
+
+    /**
+     * @dev Apply ADL_* into a USD value.
+     *
+     *      See comment in _reservedUsd().
+     */
+    function _adlValue(
+        bytes32 marketId,
+        uint256 rate,
+        uint256 entryPrice,
+        uint256 size
+    ) internal view returns (uint256) {
+        (, , bool isStable) = IFacetReader(_core).getCollateralToken(_collateralToken);
+        if (isStable) {
+            uint256 sizeUsd = (size * entryPrice) / 1e18;
+            return (sizeUsd * rate) / 1e18;
+        } else {
+            uint256 marketPrice = IFacetReader(_core).priceOf(_marketOracleId(marketId));
+            uint256 sizeUsd = (size * marketPrice) / 1e18;
+            return (sizeUsd * rate) / 1e18;
         }
     }
 

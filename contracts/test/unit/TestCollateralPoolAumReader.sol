@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import "../../peripherals/CollateralPoolAumReader.sol";
 import "../TestSuit.sol";
+import "../integration/MockMux3.sol";
 
 contract TestFeeder {
     uint8 _decimals;
@@ -35,9 +36,10 @@ contract TestFeeder {
 
 contract TestCollateralPoolAumReader is TestSuit {
     function test_getPrice() external {
+        MockMux3 mux3 = new MockMux3();
         TestFeeder feeder = new TestFeeder();
 
-        CollateralPoolAumReader reader = new CollateralPoolAumReader();
+        CollateralPoolAumReader reader = new CollateralPoolAumReader(address(mux3));
         reader.initialize();
 
         reader.setTokenPriceProvider(address(0x1), address(feeder));

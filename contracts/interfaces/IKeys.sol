@@ -79,14 +79,14 @@ bytes32 constant MCP_IS_DRAINING = keccak256("MCP_IS_DRAINING");
 
 // ==================== pool + market ====================
 
-// reserve = price * positions * MCP_ADL_RESERVE_RATE. affects borrowing fee rate and open interest.
+// reserve = (entryPrice or marketPrice) * positions * MCP_ADL_RESERVE_RATE. affects borrowing fee rate and open interest.
 // the open interest is constrained by both this rate and MM_OPEN_INTEREST_CAP_USD of the market. decimals = 18
 bytes32 constant MCP_ADL_RESERVE_RATE = keccak256("MCP_ADL_RESERVE_RATE");
 
-// position pnl is capped at entryPrice * size * MCP_ADL_MAX_PNL_RATE. decimals = 18
+// position pnl is capped at (entryPrice or marketPrice) * positions * MCP_ADL_MAX_PNL_RATE. decimals = 18
 bytes32 constant MCP_ADL_MAX_PNL_RATE = keccak256("MCP_ADL_MAX_PNL_RATE");
 
-// if upnl > entryPrice * size * MCP_ADL_TRIGGER_RATE, ADL is allowed. decimals = 18
+// if upnl > (entryPrice or marketPrice) * positions * MCP_ADL_TRIGGER_RATE, ADL is allowed. decimals = 18
 bytes32 constant MCP_ADL_TRIGGER_RATE = keccak256("MCP_ADL_TRIGGER_RATE");
 
 // ==================== order book ====================
