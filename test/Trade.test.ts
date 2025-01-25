@@ -908,6 +908,7 @@ describe("Trade", () => {
             expect(positions[0].pools[0].size).to.equal(toWei("1"))
             expect(positions[0].pools[0].entryPrice).to.equal(toWei("50000"))
             expect(positions[0].pools[0].entryBorrowing).to.equal(toWei("0"))
+            expect(positions[0].realizedBorrowingUsd).to.equal(toWei("0"))
             const activated = await core.listActivePositionIds(0, 10)
             expect(activated.totalLength).to.equal(1)
             expect(activated.positionIds[0]).to.equal(positionId)
@@ -1146,6 +1147,7 @@ describe("Trade", () => {
               expect(positions[0].pools[1].size).to.equal(toWei("11.5719"))
               expect(positions[0].pools[1].entryPrice).to.equal(toWei("50500"))
               expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0"))
+              expect(positions[0].realizedBorrowingUsd).to.equal(toWei("0"))
               const activated = await core.listActivePositionIds(0, 10)
               expect(activated.totalLength).to.equal(1)
               expect(activated.positionIds[0]).to.equal(positionId)
@@ -1317,6 +1319,7 @@ describe("Trade", () => {
                 expect(positions[0].pools[1].size).to.equal(toWei("6.0615"))
                 expect(positions[0].pools[1].entryPrice).to.equal(toWei("50500"))
                 expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0.002703710487661317"))
+                expect(positions[0].realizedBorrowingUsd).to.equal(toWei("3406.685814281621855268")) // accumulate until fully closed
                 const activated = await core.listActivePositionIds(0, 10)
                 expect(activated.totalLength).to.equal(1)
                 expect(activated.positionIds[0]).to.equal(positionId)
@@ -1656,6 +1659,7 @@ describe("Trade", () => {
                 expect(positions[0].pools[1].size).to.equal(toWei("6.0615"))
                 expect(positions[0].pools[1].entryPrice).to.equal(toWei("50500"))
                 expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0.002703710487661317"))
+                expect(positions[0].realizedBorrowingUsd).to.equal(toWei("2838.904845234684879390")) // accumulate until fully closed
                 const activated = await core.listActivePositionIds(0, 10)
                 expect(activated.totalLength).to.equal(1)
                 expect(activated.positionIds[0]).to.equal(positionId)
@@ -1917,6 +1921,7 @@ describe("Trade", () => {
               expect(positions[0].pools[1].size).to.equal(toWei("0"))
               expect(positions[0].pools[1].entryPrice).to.equal(toWei("0"))
               expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0"))
+              expect(positions[0].realizedBorrowingUsd).to.equal(toWei("0")) // because removed in previous close
               const activated = await core.listActivePositionIds(0, 10)
               expect(activated.totalLength).to.equal(1)
               expect(activated.positionIds[0]).to.equal(positionId)
@@ -2066,6 +2071,7 @@ describe("Trade", () => {
                 expect(positions[0].pools[1].size).to.equal(toWei("6.0615"))
                 expect(positions[0].pools[1].entryPrice).to.equal(toWei("50500"))
                 expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0.002703710487661317"))
+                expect(positions[0].realizedBorrowingUsd).to.equal(toWei("3406.685814281621855268")) // accumulate until fully closed
                 const activated = await core.listActivePositionIds(0, 10)
                 expect(activated.totalLength).to.equal(1)
                 expect(activated.positionIds[0]).to.equal(positionId)
@@ -2292,6 +2298,7 @@ describe("Trade", () => {
               expect(positions[0].pools[1].size).to.equal(toWei("6.0615"))
               expect(positions[0].pools[1].entryPrice).to.equal(toWei("50500"))
               expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0.002703710487661317"))
+              expect(positions[0].realizedBorrowingUsd).to.equal(toWei("2838.904845234684879390")) // accumulate until fully closed
               const activated = await core.listActivePositionIds(0, 10)
               expect(activated.totalLength).to.equal(1)
               expect(activated.positionIds[0]).to.equal(positionId)
@@ -2383,6 +2390,7 @@ describe("Trade", () => {
             expect(positions[0].pools[1].size).to.equal(toWei("11.5719")) // unchanged
             expect(positions[0].pools[1].entryPrice).to.equal(toWei("50500")) // unchanged
             expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0.002703710487661317")) // update
+            expect(positions[0].realizedBorrowingUsd).to.equal(toWei("3406.685814281621855268")) // accumulate until fully closed
             const activated = await core.listActivePositionIds(0, 10)
             expect(activated.totalLength).to.equal(1)
             expect(activated.positionIds[0]).to.equal(positionId)
@@ -2796,6 +2804,7 @@ describe("Trade", () => {
               expect(positions[0].pools[1].size).to.equal(toWei("11.5719"))
               expect(positions[0].pools[1].entryPrice).to.equal(toWei("50500"))
               expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0"))
+              expect(positions[0].realizedBorrowingUsd).to.equal(toWei("0"))
               const activated = await core.listActivePositionIds(0, 10)
               expect(activated.totalLength).to.equal(2)
               expect(activated.positionIds[0]).to.equal(positionId)
@@ -3161,6 +3170,7 @@ describe("Trade", () => {
             expect(positions[0].pools[1].size).to.equal(toWei("12.5719"))
             expect(positions[0].pools[1].entryPrice).to.equal(toWei("50500"))
             expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0.002703710487661317"))
+            expect(positions[0].realizedBorrowingUsd).to.equal(toWei("3244.462060741508555268")) // accumulate until fully closed
           }
           {
             const positions = await core.listAccountPositions(positionId)
@@ -3171,6 +3181,7 @@ describe("Trade", () => {
             expect(positions[0].pools[1].size).to.equal(toWei("0"))
             expect(positions[0].pools[1].entryPrice).to.equal(toWei("0"))
             expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0"))
+            expect(positions[0].realizedBorrowingUsd).to.equal(toWei("0")) // accumulate until fully closed
           }
           {
             const state = await pool1.marketState(long1)
@@ -3272,6 +3283,7 @@ describe("Trade", () => {
             expect(positions[0].pools[1].size).to.equal(toWei("11.5719"))
             expect(positions[0].pools[1].entryPrice).to.equal(toWei("50500"))
             expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0"))
+            expect(positions[0].realizedBorrowingUsd).to.equal(toWei("0")) // accumulate until fully closed
           }
           {
             const positions = await core.listAccountPositions(positionId)
@@ -3285,6 +3297,7 @@ describe("Trade", () => {
             expect(positions[0].pools[2].size).to.equal(toWei("1"))
             expect(positions[0].pools[2].entryPrice).to.equal(toWei("50000"))
             expect(positions[0].pools[2].entryBorrowing).to.equal(toWei("0.002872628708424787"))
+            expect(positions[0].realizedBorrowingUsd).to.equal(toWei("134.9160883608608945")) // accumulate until fully closed
           }
           {
             const state = await pool1.marketState(long1)
@@ -3351,6 +3364,7 @@ describe("Trade", () => {
           expect(positions[0].pools[0].size).to.equal(toWei("1"))
           expect(positions[0].pools[0].entryPrice).to.equal(toWei("50000"))
           expect(positions[0].pools[0].entryBorrowing).to.equal(toWei("0"))
+          expect(positions[0].realizedBorrowingUsd).to.equal(toWei("0"))
           const activated = await core.listActivePositionIds(0, 10)
           expect(activated.totalLength).to.equal(1)
           expect(activated.positionIds[0]).to.equal(positionId)
@@ -3678,6 +3692,7 @@ describe("Trade", () => {
             expect(positions[0].pools[0].size).to.equal(toWei("1"))
             expect(positions[0].pools[0].entryPrice).to.equal(toWei("50000"))
             expect(positions[0].pools[0].entryBorrowing).to.equal(toWei("0"))
+            expect(positions[0].realizedBorrowingUsd).to.equal(toWei("0"))
             const activated = await core.listActivePositionIds(0, 10)
             expect(activated.totalLength).to.equal(1)
             expect(activated.positionIds[0]).to.equal(positionId)
@@ -3733,6 +3748,7 @@ describe("Trade", () => {
           expect(positions[0].pools[0].size).to.equal(toWei("1"))
           expect(positions[0].pools[0].entryPrice).to.equal(toWei("50000"))
           expect(positions[0].pools[0].entryBorrowing).to.equal(toWei("0"))
+          expect(positions[0].realizedBorrowingUsd).to.equal(toWei("0"))
           const activated = await core.listActivePositionIds(0, 10)
           expect(activated.totalLength).to.equal(1)
           expect(activated.positionIds[0]).to.equal(positionId)
@@ -3948,6 +3964,7 @@ describe("Trade", () => {
             expect(positions[0].pools[2].size).to.equal(toWei("23.6359"))
             expect(positions[0].pools[2].entryPrice).to.equal(toWei("50000"))
             expect(positions[0].pools[2].entryBorrowing).to.equal(toWei("0"))
+            expect(positions[0].realizedBorrowingUsd).to.equal(toWei("0"))
             const activated = await core.listActivePositionIds(0, 10)
             expect(activated.totalLength).to.equal(1)
             expect(activated.positionIds[0]).to.equal(positionId)
@@ -4466,6 +4483,7 @@ describe("Trade", () => {
           expect(positions[0].pools[2].size).to.equal(toWei("23.6359"))
           expect(positions[0].pools[2].entryPrice).to.equal(toWei("50000"))
           expect(positions[0].pools[2].entryBorrowing).to.equal(toWei("0.009561917260076335"))
+          expect(positions[0].realizedBorrowingUsd).to.equal(toWei("34422.798981035799314838")) // accumulate until fully closed
           const activated = await core.listActivePositionIds(0, 10)
           expect(activated.totalLength).to.equal(1)
           expect(activated.positionIds[0]).to.equal(positionId)
@@ -4809,6 +4827,7 @@ describe("Trade", () => {
               expect(positions[0].pools[2].size).to.equal(toWei("23.6359"))
               expect(positions[0].pools[2].entryPrice).to.equal(toWei("50000"))
               expect(positions[0].pools[2].entryBorrowing).to.equal(toWei("0"))
+              expect(positions[0].realizedBorrowingUsd).to.equal(toWei("0"))
               expect(positions[1].pools[0].size).to.equal(toWei("10931.5"))
               expect(positions[1].pools[0].entryPrice).to.equal(toWei("2"))
               expect(positions[1].pools[0].entryBorrowing).to.equal(toWei("0"))
@@ -4818,6 +4837,7 @@ describe("Trade", () => {
               expect(positions[1].pools[2].size).to.equal(toWei("40848"))
               expect(positions[1].pools[2].entryPrice).to.equal(toWei("2"))
               expect(positions[1].pools[2].entryBorrowing).to.equal(toWei("0"))
+              expect(positions[1].realizedBorrowingUsd).to.equal(toWei("0"))
               const activated = await core.listActivePositionIds(0, 10)
               expect(activated.totalLength).to.equal(1)
               expect(activated.positionIds[0]).to.equal(positionId)

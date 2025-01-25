@@ -122,9 +122,9 @@ contract FacetOpen is Mux3TradeBase, IFacetOpen {
      *      initiated by trader's intention. However, the external contract can implement its own fee strategy.
      * @dev Reallocation strategy suggestions:
      *      1. If the PnL of fromPool is capped, toPool will incur a loss. This can be prevented by either
-     *              using ADL on this position or by reallocating other positions.
+     *         using ADL on this position or by reallocating other positions.
      *      2. If PnL is negative, toPool will compensate fromPool with collateral. This could lead to insufficient reserves in toPool
-     *         (i.e., aumWithoutPnl < reserved), which needs to be prevented.
+     *         (i.e., poolCollateralUsd < reservedUsd), which needs to be prevented.
      */
     function reallocatePosition(
         ReallocatePositionArgs memory args
@@ -182,8 +182,7 @@ contract FacetOpen is Mux3TradeBase, IFacetOpen {
             args.lastConsumedToken,
             args.isUnwrapWeth
         );
-        // transfer trader's position
-        _closeAccountPosition(args.positionId, args.marketId, mem.allocations);
+        // transfer trader's position. open then close, so that PositionAccount won't recognize this as fully closed
         mem.allocations[mem.fromIndex] = 0;
         mem.allocations[mem.toIndex] = args.size;
         _openAccountPosition(
@@ -193,6 +192,9 @@ contract FacetOpen is Mux3TradeBase, IFacetOpen {
             mem.cumulatedBorrowingPerUsd,
             mem.fromPoolOldEntryPrice
         );
+        mem.allocations[mem.fromIndex] = args.size;
+        mem.allocations[mem.toIndex] = 0;
+        _closeAccountPosition(args.positionId, args.marketId, mem.allocations);
         // transfer pool's position and settle PnL between them
         mem.poolPnlUsds[mem.fromIndex] = _reallocateMarketPosition(
             args.marketId,
