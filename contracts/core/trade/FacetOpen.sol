@@ -125,6 +125,7 @@ contract FacetOpen is Mux3TradeBase, IFacetOpen {
      *         using ADL on this position or by reallocating other positions.
      *      2. If PnL is negative, toPool will compensate fromPool with collateral. This could lead to insufficient reserves in toPool
      *         (i.e., poolCollateralUsd < reservedUsd), which needs to be prevented.
+     *      3. toPool should not be a draining pool
      */
     function reallocatePosition(
         ReallocatePositionArgs memory args
