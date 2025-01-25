@@ -650,7 +650,10 @@ library LibOrderBook {
         OrderData memory orderData,
         address msgSender
     ) private {
+        // account owner can cancel order
         require(msgSender == orderData.account, "Not authorized");
+        // Delegator does not support liquidity order yet. if we want to support in the future,
+        // _isDelegator(msgSender) should be checked here
         LiquidityOrderParams memory orderParams = LibOrder.decodeLiquidityOrder(orderData);
         if (orderParams.isAdding) {
             address collateralAddress = ICollateralPool(orderParams.poolAddress).collateralToken();
@@ -661,8 +664,6 @@ library LibOrderBook {
                 orderParams.rawAmount,
                 orderParams.isUnwrapWeth
             );
-        } else if (_isDelegator(msgSender)) {
-            // although Delegator does not support liquidity order yet, it is still safe here
         } else {
             _transferOut(
                 orderBook,
