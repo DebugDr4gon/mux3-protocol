@@ -146,7 +146,10 @@ describe("Delegator", () => {
     const positionId = encodePositionId(trader1.address, 0)
     await delegator.connect(trader2).mux3SetInitialLeverage(positionId, long1, toWei("20"))
     expect(await core.getInitialLeverage(positionId, long1)).to.equal(toWei("20"))
-    expect(await delegator.getDelegationByOwner(trader1.address)).to.deep.equal([trader2.address, BigNumber.from("99")])
+    expect(await delegator.getDelegationByOwner(trader1.address)).to.deep.equal([
+      trader2.address,
+      BigNumber.from("100"), // setInitialLeverage does not consume action count
+    ])
   })
 
   it("place, cancel", async () => {
@@ -189,7 +192,11 @@ describe("Delegator", () => {
         .multicall(
           [
             delegator.interface.encodeFunctionData("mux3DepositGas", [trader1.address, toWei("0.001")]),
-            delegator.interface.encodeFunctionData("mux3TransferToken", [trader1.address, usdc.address, toUnit("1000", 6)]),
+            delegator.interface.encodeFunctionData("mux3TransferToken", [
+              trader1.address,
+              usdc.address,
+              toUnit("1000", 6),
+            ]),
             delegator.interface.encodeFunctionData("mux3PlacePositionOrder", [args, refCode]),
           ],
           { value: toWei("0.001") }
@@ -216,6 +223,10 @@ describe("Delegator", () => {
           args.tpslWithdrawSwapToken,
           args.tpslWithdrawSwapSlippage,
         ])
+      expect(await delegator.getDelegationByOwner(trader1.address)).to.deep.equal([
+        trader2.address,
+        BigNumber.from("99"),
+      ])
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("99000", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("1000", 6))
     }
@@ -226,6 +237,10 @@ describe("Delegator", () => {
       await expect(delegator.connect(trader3).mux3CancelOrder(0)).to.revertedWith("Not authorized")
       await expect(delegator.connect(trader2).mux3CancelOrder(1)).to.revertedWith("No such orderId")
       await delegator.connect(trader2).mux3CancelOrder(0)
+      expect(await delegator.getDelegationByOwner(trader1.address)).to.deep.equal([
+        trader2.address,
+        BigNumber.from("98"),
+      ])
       expect(await usdc.balanceOf(trader1.address)).to.equal(toUnit("100000", 6))
       expect(await usdc.balanceOf(orderBook.address)).to.equal(toUnit("0", 6))
     }
@@ -255,8 +270,16 @@ describe("Delegator", () => {
       const tx1 = await delegator
         .connect(trader2)
         .multicall([
-          delegator.interface.encodeFunctionData("mux3TransferToken", [trader1.address, usdc.address, toUnit("1000", 6)]),
-          delegator.interface.encodeFunctionData("mux3DepositCollateral", [positionId, usdc.address, toUnit("1000", 6)]),
+          delegator.interface.encodeFunctionData("mux3TransferToken", [
+            trader1.address,
+            usdc.address,
+            toUnit("1000", 6),
+          ]),
+          delegator.interface.encodeFunctionData("mux3DepositCollateral", [
+            positionId,
+            usdc.address,
+            toUnit("1000", 6),
+          ]),
         ])
       await expect(tx1).to.emit(core, "Deposit").withArgs(trader1.address, positionId, usdc.address, toUnit("1000", 6))
       await expect(tx1)
@@ -266,7 +289,7 @@ describe("Delegator", () => {
       expect(await core.listAccountCollaterals(positionId)).to.deep.equal([[usdc.address, toUnit("1000", 18)]])
       expect(await delegator.getDelegationByOwner(trader1.address)).to.deep.equal([
         trader2.address,
-        BigNumber.from("99"),
+        BigNumber.from("100"), // deposit does not consume action count
       ])
     }
     // withdraw
@@ -295,10 +318,11 @@ describe("Delegator", () => {
       expect(await core.listAccountCollaterals(positionId)).to.deep.equal([[usdc.address, toUnit("1000", 18)]])
       expect(await delegator.getDelegationByOwner(trader1.address)).to.deep.equal([
         trader2.address,
-        BigNumber.from("98"),
+        BigNumber.from("99"),
       ])
     }
     // cancel withdraw
     await delegator.connect(trader2).mux3CancelOrder(0)
+    expect(await delegator.getDelegationByOwner(trader1.address)).to.deep.equal([trader2.address, BigNumber.from("98")])
   })
 })

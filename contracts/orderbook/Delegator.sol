@@ -19,7 +19,7 @@ contract Delegator is Initializable {
     address internal _mux3OrderBook;
     mapping(address => Delegation) internal _reserved1; // was delegator => Delegation
     mapping(address => Delegation) internal _delegations; // owner => Delegation
-    uint256 transient _actionCountDeductedInTx; // a flag to track if actionCount has been deducted in current tx. 1 means already deducted, 0 means not yet
+    uint256 internal _reserved2; // was _actionCountDeductedInTx
 
     function initialize(address mux3OrderBook) external initializer {
         require(mux3OrderBook != address(0), "Invalid order book address");
@@ -78,7 +78,7 @@ contract Delegator is Initializable {
      *               there is no Delegator.wrapNative, and Delegator.depositGas consumes msg.value and deposit it as gas to OrderBook.
      */
     function mux3DepositGas(address owner, uint256 amount) external payable {
-        _consumeDelegation(owner);
+        _consumeDelegation(owner, 0);
         IMux3OrderBook(_mux3OrderBook).wrapNative{ value: amount }(amount);
         IMux3OrderBook(_mux3OrderBook).depositGas(owner, amount);
     }
@@ -93,7 +93,7 @@ contract Delegator is Initializable {
      * @param amount Amount of tokens to transfer
      */
     function mux3TransferToken(address owner, address token, uint256 amount) external payable {
-        _consumeDelegation(owner);
+        _consumeDelegation(owner, 0);
         IMux3OrderBook(_mux3OrderBook).transferTokenFrom(owner, token, amount);
     }
 
@@ -107,7 +107,7 @@ contract Delegator is Initializable {
      */
     function mux3PlacePositionOrder(Mux3PositionOrderParams memory orderParams, bytes32 referralCode) external payable {
         (address owner, ) = LibMux3Codec.decodePositionId(orderParams.positionId);
-        _consumeDelegation(owner);
+        _consumeDelegation(owner, 1);
         IMux3OrderBook(_mux3OrderBook).placePositionOrder(orderParams, referralCode);
     }
 
@@ -120,7 +120,7 @@ contract Delegator is Initializable {
         (Mux3OrderData memory orderData, bool exists) = IMux3OrderBookGetter(_mux3OrderBook).getOrder(orderId);
         require(exists, "No such orderId");
         address owner = orderData.account;
-        _consumeDelegation(owner);
+        _consumeDelegation(owner, 1);
         IMux3OrderBook(_mux3OrderBook).cancelOrder(orderId);
     }
 
@@ -132,7 +132,7 @@ contract Delegator is Initializable {
      */
     function mux3PlaceWithdrawalOrder(Mux3WithdrawalOrderParams memory orderParams) external payable {
         (address owner, ) = LibMux3Codec.decodePositionId(orderParams.positionId);
-        _consumeDelegation(owner);
+        _consumeDelegation(owner, 1);
         IMux3OrderBook(_mux3OrderBook).placeWithdrawalOrder(orderParams);
     }
 
@@ -143,7 +143,7 @@ contract Delegator is Initializable {
      */
     function mux3WithdrawAllCollateral(Mux3WithdrawAllOrderParams memory orderParams) external payable {
         (address owner, ) = LibMux3Codec.decodePositionId(orderParams.positionId);
-        _consumeDelegation(owner);
+        _consumeDelegation(owner, 1);
         IMux3OrderBook(_mux3OrderBook).withdrawAllCollateral(orderParams);
     }
 
@@ -160,7 +160,7 @@ contract Delegator is Initializable {
         uint256 collateralAmount // token decimals
     ) external payable {
         (address owner, ) = LibMux3Codec.decodePositionId(positionId);
-        _consumeDelegation(owner);
+        _consumeDelegation(owner, 0);
         IMux3OrderBook(_mux3OrderBook).depositCollateral(positionId, collateralToken, collateralAmount);
     }
 
@@ -173,7 +173,7 @@ contract Delegator is Initializable {
      */
     function mux3SetInitialLeverage(bytes32 positionId, bytes32 marketId, uint256 initialLeverage) external payable {
         (address owner, ) = LibMux3Codec.decodePositionId(positionId);
-        _consumeDelegation(owner);
+        _consumeDelegation(owner, 0);
         IMux3OrderBook(_mux3OrderBook).setInitialLeverage(positionId, marketId, initialLeverage);
     }
 
@@ -184,18 +184,15 @@ contract Delegator is Initializable {
      */
     function mux3ModifyPositionOrder(Mux3ModifyPositionOrderParams memory orderParams) external payable {
         (address owner, ) = LibMux3Codec.decodePositionId(orderParams.positionId);
-        _consumeDelegation(owner);
+        _consumeDelegation(owner, 1);
         IMux3OrderBook(_mux3OrderBook).modifyPositionOrder(orderParams);
     }
 
-    function _consumeDelegation(address owner) private {
+    function _consumeDelegation(address owner, uint256 deductActionCount) private {
         address delegator = msg.sender;
         Delegation storage delegation = _delegations[owner];
         require(delegation.delegator == delegator, "Not authorized");
-        if (_actionCountDeductedInTx == 0) {
-            require(delegation.actionCount > 0, "No action count");
-            delegation.actionCount -= 1;
-            _actionCountDeductedInTx = 1;
-        }
+        require(delegation.actionCount > 0, "No action count"); // actionCount = 0 is the same as no delegation
+        delegation.actionCount -= deductActionCount;
     }
 }
