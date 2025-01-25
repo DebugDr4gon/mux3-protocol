@@ -139,7 +139,7 @@ contract FacetClose is Mux3TradeBase, IFacetClose {
         require(_isPositionAccountExist(args.positionId), PositionAccountNotExist(args.positionId));
         // gether information for all markets before liquidating
         LiquidateMemory memory mem;
-        _getherLiquidateInfo(args, mem, result);
+        _gatherLiquidateInfo(args, mem, result);
         // should mm unsafe
         require(
             !_isMaintenanceMarginSafe(args.positionId, mem.borrowingFeeUsd),
@@ -162,7 +162,7 @@ contract FacetClose is Mux3TradeBase, IFacetClose {
         _finalizeLiquidation(args, mem, result);
     }
 
-    function _getherLiquidateInfo(
+    function _gatherLiquidateInfo(
         LiquidateArgs memory args,
         LiquidateMemory memory mem,
         LiquidateResult memory result
