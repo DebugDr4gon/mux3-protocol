@@ -497,9 +497,16 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
             collateralAmount >= liquidityFeeCollateral + args.extraFeeCollateral,
             InsufficientCollateral(collateralAmount, liquidityFeeCollateral + args.extraFeeCollateral)
         );
-        collateralAmount -= liquidityFeeCollateral + args.extraFeeCollateral;
+        collateralAmount -= liquidityFeeCollateral;
         _distributeFee(args.account, collateralPrice, liquidityFeeCollateral, args.isUnwrapWeth);
         if (args.extraFeeCollateral > 0) {
+            // send extra fee to OrderBook. we can not call _distributeFee here because it sends fee to FeeDistributor
+            collateralAmount -= args.extraFeeCollateral;
+            ICollateralPoolEventEmitter(_eventEmitter).emitCollectFee(
+                _collateralToken,
+                collateralPrice,
+                args.extraFeeCollateral
+            );
             IERC20Upgradeable(token).safeTransfer(_orderBook, _toRaw(token, args.extraFeeCollateral));
         }
         // send tokens to lp
@@ -608,9 +615,9 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
     }
 
     /**
-     * @dev Distribute fee to fee distributor
+     * @dev Distribute fee to FeeDistributor
      *
-     *         note: we assume the fee is not added to _liquidityBalances
+     *      note: we assume the fee is not added to _liquidityBalances
      */
     function _distributeFee(
         address lp,
