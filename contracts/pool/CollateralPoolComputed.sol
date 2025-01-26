@@ -158,7 +158,7 @@ contract CollateralPoolComputed is CollateralPoolStore {
         // trader upnl is affected by adl parameters
         if (upnlUsd > 0) {
             uint256 maxPnlRate = _adlMaxPnlRate(marketId);
-            uint256 maxPnlUsd = _adlValue(marketId, maxPnlRate, data.averageEntryPrice, data.totalSize);
+            uint256 maxPnlUsd = _assetValueForAdl(marketId, maxPnlRate, data.averageEntryPrice, data.totalSize);
             upnlUsd = MathUpgradeable.min(uint256(upnlUsd), maxPnlUsd).toInt256();
         }
     }
@@ -177,7 +177,7 @@ contract CollateralPoolComputed is CollateralPoolStore {
             bytes32 marketId = _marketIds.at(i);
             MarketState storage data = _marketStates[marketId];
             uint256 reserveRate = _adlReserveRate(marketId);
-            reservedUsd += _adlValue(marketId, reserveRate, data.averageEntryPrice, data.totalSize);
+            reservedUsd += _assetValueForAdl(marketId, reserveRate, data.averageEntryPrice, data.totalSize);
         }
     }
 
@@ -186,7 +186,7 @@ contract CollateralPoolComputed is CollateralPoolStore {
      *
      *      See comment in _reservedUsd().
      */
-    function _adlValue(
+    function _assetValueForAdl(
         bytes32 marketId,
         uint256 rate,
         uint256 entryPrice,

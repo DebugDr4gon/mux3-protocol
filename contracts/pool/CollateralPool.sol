@@ -266,7 +266,7 @@ contract CollateralPool is CollateralPoolToken, CollateralPoolStore, CollateralP
             // note that this is not strictly identical to deleverage all positions. this is just an estimated
             //      value when the price increases dramatically.
             uint256 maxPnlRate = _adlMaxPnlRate(marketId);
-            uint256 maxPnlUsd = _adlValue(marketId, maxPnlRate, entryPrice, size);
+            uint256 maxPnlUsd = _assetValueForAdl(marketId, maxPnlRate, entryPrice, size);
             cappedPnlUsd = MathUpgradeable.min(uint256(pnlUsd), maxPnlUsd).toInt256();
         }
     }

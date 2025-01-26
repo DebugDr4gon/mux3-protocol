@@ -182,7 +182,7 @@ contract CollateralPoolAumReader is Initializable, Ownable2StepUpgradeable {
         // trader upnl is affected by adl parameters
         if (upnlUsd > 0) {
             uint256 maxPnlRate = _adlMaxPnlRate(pool, marketId);
-            uint256 maxPnlUsd = _adlValue(pool, marketId, maxPnlRate, data.averageEntryPrice, data.totalSize);
+            uint256 maxPnlUsd = _assetValueForAdl(pool, marketId, maxPnlRate, data.averageEntryPrice, data.totalSize);
             upnlUsd = MathUpgradeable.min(uint256(upnlUsd), maxPnlUsd).toInt256();
         }
     }
@@ -194,7 +194,7 @@ contract CollateralPoolAumReader is Initializable, Ownable2StepUpgradeable {
     }
 
     // see CollateralPoolComputed._adlValue
-    function _adlValue(
+    function _assetValueForAdl(
         address pool,
         bytes32 marketId,
         uint256 ratio,
