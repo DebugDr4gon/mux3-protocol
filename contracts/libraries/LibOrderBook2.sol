@@ -246,6 +246,7 @@ library LibOrderBook2 {
             for (uint256 i = 0; i < reallocateArgs.length; i++) {
                 address toPool = reallocateArgs[i].toPool;
                 require(!LibOrderBook._isPoolDraining(toPool), "toPool is draining");
+                require(toPool != reallocateArgs[i].fromPool, "fromPool and toPool should be different");
                 uint256 rawFee = LibOrderBook._collateralToRaw(
                     orderBook,
                     collateralAddress,

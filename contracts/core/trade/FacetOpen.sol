@@ -138,6 +138,7 @@ contract FacetOpen is Mux3TradeBase, IFacetOpen {
         require(_isMarketExist(args.marketId), MarketNotExists(args.marketId));
         require(!_marketDisableTrade(args.marketId), MarketTradeDisabled(args.marketId));
         require(_isPositionAccountExist(args.positionId), PositionAccountNotExist(args.positionId));
+        require(args.fromPool != args.toPool, DuplicatedAddress(args.fromPool));
         mem.fromIndex = _findBackedPoolIndex(args.marketId, args.fromPool);
         mem.toIndex = _findBackedPoolIndex(args.marketId, args.toPool);
         result.tradingPrice = _priceOf(_marketOracleId(args.marketId));

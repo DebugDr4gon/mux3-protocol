@@ -477,6 +477,7 @@ library LibOrderBook {
         bool isUnwrapWeth
     ) external returns (uint256 tradingPrice) {
         require(!_isPoolDraining(toPool), "toPool is draining");
+        require(fromPool != toPool, "fromPool and toPool should be different");
         IFacetOpen.ReallocatePositionResult memory result = IFacetOpen(orderBook.mux3Facet).reallocatePosition(
             IFacetOpen.ReallocatePositionArgs({
                 positionId: positionId,
