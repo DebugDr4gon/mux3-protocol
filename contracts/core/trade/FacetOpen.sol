@@ -179,7 +179,7 @@ contract FacetOpen is Mux3TradeBase, IFacetOpen {
             args.positionId,
             args.marketId,
             mem.cumulatedBorrowingPerUsd,
-            false, // shouldCollateralSufficient
+            true, // shouldCollateralSufficient
             args.lastConsumedToken,
             args.isUnwrapWeth
         );
