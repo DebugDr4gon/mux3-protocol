@@ -103,7 +103,7 @@ library LibBalancer2 {
         // we always assume assets[0] is assetIn, assets[-1] is assetOut
         args.swaps[0].amount = amountIn;
         // approve
-        SafeERC20Upgradeable.safeApprove(IERC20Upgradeable(tokenIn), address(vault), amountIn);
+        SafeERC20Upgradeable.forceApprove(IERC20Upgradeable(tokenIn), address(vault), amountIn);
         // fund will come from the contract
         IBalancer2Vault.FundManagement memory funds;
         funds.sender = address(this);

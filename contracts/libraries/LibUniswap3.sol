@@ -62,7 +62,7 @@ library LibUniswap3 {
     ) internal returns (bool success, uint256 amountOut) {
         require(address(swapRouter) != address(0), "Swapper::uniswap3Router not set");
         // executes the swap on uniswap pool
-        IERC20Upgradeable(tokenIn).approve(address(swapRouter), amountIn);
+        SafeERC20Upgradeable.forceApprove(IERC20Upgradeable(tokenIn), address(swapRouter), amountIn);
         // exact input swap to convert exact amount of tokens into usdc
         IUniswapV3SwapRouter.ExactInputParams memory params = IUniswapV3SwapRouter.ExactInputParams({
             path: path,

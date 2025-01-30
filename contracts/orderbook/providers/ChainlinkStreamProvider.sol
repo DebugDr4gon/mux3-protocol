@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity 0.8.28;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 
 import "../../interfaces/chainlink/ICommon.sol";
@@ -80,7 +80,7 @@ contract ChainlinkStreamProvider is Ownable2StepUpgradeable {
         );
         (Asset memory fee, , ) = feeManager.getFeeAndReward(address(this), reportData, feeTokenAddress);
         // Approve rewardManager to spend this contract's balance in fees
-        IERC20Upgradeable(feeTokenAddress).approve(rewardManager, fee.amount);
+        SafeERC20Upgradeable.forceApprove(IERC20Upgradeable(feeTokenAddress), rewardManager, fee.amount);
         // Verify the report
         bytes memory verifiedReportData = verifier.verify(unverifiedReport, abi.encode(feeTokenAddress));
         Report memory verifiedReport = abi.decode(verifiedReportData, (Report));
