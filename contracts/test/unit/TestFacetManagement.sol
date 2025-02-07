@@ -56,9 +56,11 @@ contract TestFacetManagement is FacetManagement, TestSuit {
     }
 
     function test_MarketManager_createMarket() external {
-        address fakePool0 = address(new FakeCollateralPool());
-        address fakePool1 = address(new FakeCollateralPool());
-        address fakePool2 = address(new FakeCollateralPool());
+        _addCollateralToken(address(d6), 6, true);
+
+        address fakePool0 = address(new FakeCollateralPool(address(d6)));
+        address fakePool1 = address(new FakeCollateralPool(address(d6)));
+        address fakePool2 = address(new FakeCollateralPool(address(d6)));
         {
             // inject fake pools
             _collateralPoolList.add(fakePool0);
@@ -166,7 +168,12 @@ contract TestFacetManagement is FacetManagement, TestSuit {
 }
 
 contract FakeCollateralPool {
+    address public immutable collateralToken;
     bytes32[] _markets;
+
+    constructor(address collateralToken_) {
+        collateralToken = collateralToken_;
+    }
 
     function markets() external view returns (bytes32[] memory) {
         return _markets;

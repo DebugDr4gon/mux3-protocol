@@ -35,6 +35,13 @@ contract MarketManager is Mux3FacetBase {
             for (uint256 j = 0; j < market.pools.length; j++) {
                 require(market.pools[j].backedPool != newBackedPool, PoolAlreadyExist(newBackedPool));
             }
+            // if pool collateral is non-stable and market is short, the Reserve mechanism will not work
+            if (!market.isLong) {
+                address poolCollateralToken = ICollateralPool(newBackedPool).collateralToken();
+                CollateralTokenInfo storage collateralToken = _collateralTokens[poolCollateralToken];
+                require(collateralToken.isStable, MarketTradeDisabled(marketId));
+            }
+            // append
             market.pools.push(BackedPoolState({ backedPool: newBackedPool }));
             ICollateralPool(newBackedPool).setMarket(marketId, market.isLong);
         }

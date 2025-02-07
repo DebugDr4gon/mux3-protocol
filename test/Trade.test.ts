@@ -199,7 +199,7 @@ describe("Trade", () => {
       short1,
       "Short1",
       false, // isLong
-      [pool2.address, pool3.address]
+      [pool2.address]
     )
     await core.setMarketConfig(short1, ethers.utils.id("MM_POSITION_FEE_RATE"), u2b(toWei("0.001")))
     await core.setMarketConfig(short1, ethers.utils.id("MM_LIQUIDATION_FEE_RATE"), u2b(toWei("0.002")))
@@ -3805,11 +3805,11 @@ describe("Trade", () => {
                 false, // isLong
                 toWei("0.5"), // size
                 toWei("10000"), // tradingPrice
-                [pool2.address, pool3.address], // backedPools
-                [toWei("0.5"), toWei("0")], // allocations
-                [toWei("0.5"), toWei("0")], // newSizes
-                [toWei("50000"), toWei("0")], // newEntryPrices
-                [toWei("17500"), toWei("0")], // poolPnlUsds
+                [pool2.address], // backedPools
+                [toWei("0.5")], // allocations
+                [toWei("0.5")], // newSizes
+                [toWei("50000")], // newEntryPrices
+                [toWei("17500")], // poolPnlUsds
                 toWei("5"), // positionFeeUsd
                 toWei("0"), // borrowingFeeUsd
                 [usdc.address],
@@ -3854,9 +3854,9 @@ describe("Trade", () => {
               false, // isLong
               toWei("1"), // oldSize
               toWei("59950"), // tradingPrice
-              [pool2.address, pool3.address], // backedPools
-              [toWei("1"), toWei("0")], // allocations
-              [toWei("-9950"), toWei("0")], // poolPnlUsds
+              [pool2.address], // backedPools
+              [toWei("1")], // allocations
+              [toWei("-9950")], // poolPnlUsds
               toWei("0"), // positionFeeUsd (not fully charged)
               toWei("0"), // borrowingFeeUsd
               [],
@@ -4692,7 +4692,7 @@ describe("Trade", () => {
             short2,
             "Short2",
             false, // isLong
-            [pool1.address, pool2.address, pool3.address]
+            [pool1.address, pool2.address]
           )
           await core.setMarketConfig(short2, ethers.utils.id("MM_POSITION_FEE_RATE"), u2b(toWei("0.001")))
           await core.setMarketConfig(short2, ethers.utils.id("MM_LIQUIDATION_FEE_RATE"), u2b(toWei("0.002")))
@@ -4818,25 +4818,22 @@ describe("Trade", () => {
               expect(collaterals[1].collateralAmount).to.equal(toWei("30000")) // unchanged
               const positions = await core.listAccountPositions(positionId)
               expect(positions[0].marketId).to.equal(long1)
-              expect(positions[0].pools[0].size).to.equal(toWei("15.1989"))
+              expect(positions[0].pools[0].size).to.equal(toWei("15.1989")) // unchanged
               expect(positions[0].pools[0].entryPrice).to.equal(toWei("50000"))
               expect(positions[0].pools[0].entryBorrowing).to.equal(toWei("0"))
-              expect(positions[0].pools[1].size).to.equal(toWei("21.1652"))
+              expect(positions[0].pools[1].size).to.equal(toWei("21.1652")) // unchanged
               expect(positions[0].pools[1].entryPrice).to.equal(toWei("50000"))
               expect(positions[0].pools[1].entryBorrowing).to.equal(toWei("0"))
-              expect(positions[0].pools[2].size).to.equal(toWei("23.6359"))
+              expect(positions[0].pools[2].size).to.equal(toWei("23.6359")) // unchanged
               expect(positions[0].pools[2].entryPrice).to.equal(toWei("50000"))
               expect(positions[0].pools[2].entryBorrowing).to.equal(toWei("0"))
               expect(positions[0].realizedBorrowingUsd).to.equal(toWei("0"))
-              expect(positions[1].pools[0].size).to.equal(toWei("10931.5"))
+              expect(positions[1].pools[0].size).to.equal(toWei("26249.5"))
               expect(positions[1].pools[0].entryPrice).to.equal(toWei("2"))
               expect(positions[1].pools[0].entryBorrowing).to.equal(toWei("0"))
-              expect(positions[1].pools[1].size).to.equal(toWei("18220.5"))
+              expect(positions[1].pools[1].size).to.equal(toWei("43750.5"))
               expect(positions[1].pools[1].entryPrice).to.equal(toWei("2"))
               expect(positions[1].pools[1].entryBorrowing).to.equal(toWei("0"))
-              expect(positions[1].pools[2].size).to.equal(toWei("40848"))
-              expect(positions[1].pools[2].entryPrice).to.equal(toWei("2"))
-              expect(positions[1].pools[2].entryBorrowing).to.equal(toWei("0"))
               expect(positions[1].realizedBorrowingUsd).to.equal(toWei("0"))
               const activated = await core.listActivePositionIds(0, 10)
               expect(activated.totalLength).to.equal(1)
@@ -4845,21 +4842,14 @@ describe("Trade", () => {
             {
               const state = await pool1.marketState(short2)
               expect(state.isLong).to.equal(false)
-              expect(state.totalSize).to.equal(toWei("10931.5"))
+              expect(state.totalSize).to.equal(toWei("26249.5"))
               expect(state.averageEntryPrice).to.equal(toWei("2"))
               expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
             }
             {
               const state = await pool2.marketState(short2)
               expect(state.isLong).to.equal(false)
-              expect(state.totalSize).to.equal(toWei("18220.5"))
-              expect(state.averageEntryPrice).to.equal(toWei("2"))
-              expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
-            }
-            {
-              const state = await pool3.marketState(short2)
-              expect(state.isLong).to.equal(false)
-              expect(state.totalSize).to.equal(toWei("40848"))
+              expect(state.totalSize).to.equal(toWei("43750.5"))
               expect(state.averageEntryPrice).to.equal(toWei("2"))
               expect(state.cumulatedBorrowingPerUsd).to.equal(toWei("0"))
             }
@@ -4873,34 +4863,31 @@ describe("Trade", () => {
 
         it("liquidate cross margin. 0 < fee < margin < MM. arb loss, btc profit", async () => {
           await time.increaseTo(timestampOfTest + 86400 * 2 + 930 + 86400 * 7)
-          // fr1 0.10 + exp( 10 * (15.1989 * 50000 + 10931.5 * 2) * 0.80 / 999900 - 7)           = 0.574776794810861239
-          // fr2 0.10 + exp(  6 * (21.1652 * 50000 + 18220.5 * 2) * 0.80 / 999900 - 6)           = 0.574777174670434989
-          // fr2 0.10 + exp(2.2 * (23.6359 * 60000 + 40848   * ?) * 0.80 / (19.998 * 60000) - 3) = ?
-          // acc1 0.574776794810861239 * 7 / 365 = 0.011023116612811037
-          // acc2 0.574777174670434989 * 7 / 365 = 0.011023123897789164
-          // acc2 ?
+          // fr1 0.10 + exp( 10 * (15.1989 * 50000 + 26249.5 * 2) * 0.80 / 999900 - 7) = 0.706653203536787298
+          // fr2 0.10 + exp(  6 * (21.1652 * 50000 + 43750.5 * 2) * 0.80 / 999900 - 6) = 0.706653688908081406
+          // fr2 0.10 + exp(2.2 * (23.6359 * 60000) * 0.80 / (19.998 * 60000) - 3)     = 0.498585685703980362
+          // acc1 0.706653203536787298 * 7 / 365 = 0.013552253218513729
+          // acc2 0.706653688908081406 * 7 / 365 = 0.013552262527004300
+          // acc2 0.498585685703980362 * 7 / 365 = 0.009561917260076335
           // Solve[26860 + 30000 * x
-          //   - (60000 * 15.1989 + x * 10931.5) * 0.011023116612811037
-          //   - (60000 * 21.1652 + x * 18220.5) * 0.011023123897789164
-          //   - (60000 * 23.6359 + x * 40848) * (0.10 + exp(2.2 * (23.6359 * 60000 + 40848 * x) * 0.80 / (19.998 * 60000) - 3)) * 7 / 365
+          //   - (60000 * 15.1989 + x * 26249.5) * 0.013552253218513729
+          //   - (60000 * 21.1652 + x * 43750.5) * 0.013552262527004300
+          //   - (60000 * 23.6359) * 0.009561917260076335
           //   + (60000 - 50000) * 60
           //   + (2 - x) * 70000
           // == (60000 * 60 + x * 70000) * 0.005]
-          // x = 16.6525
+          // x = 17.0885
           await core.setMockPrice(a2b(btc.address), toWei("60000"))
-          await core.setMockPrice(a2b(arb.address), toWei("16.7"))
-          // fr2 0.10 + exp(2.2 * (23.6359 * 60000 + 40848 * 16.7) * 0.80 / (19.998 * 60000) - 3) = 1.184122557548513336
-          // acc2 1.184122557548513336 * 7 / 365 = 0.022709199733807105
-          // borrowing (60000 * 15.1989) * 0.011023116612811037
-          //         + (60000 * 21.1652) * 0.011023123897789164
-          //         + (60000 * 23.6359) * 0.022709199733807105
-          //         = 56255.894579773934233296
-          // borrowing (16.7 * 10931.5) * 0.011023116612811037
-          //         + (16.7 * 18220.5) * 0.011023123897789164
-          //         + (16.7 * 40848) * 0.022709199733807105
-          //         = 20857.82269661803777574725
+          await core.setMockPrice(a2b(arb.address), toWei("17.1"))
+          // borrowing (60000 * 15.1989) * 0.013552253218513729
+          //         + (60000 * 21.1652) * 0.013552262527004300
+          //         + (60000 * 23.6359) * 0.009561917260076335
+          //         = 43129.212506811478349076
+          // borrowing (17.1 * 26249.5) * 0.013552253218513729
+          //         + (17.1 * 43750.5) * 0.013552262527004300
+          //         = 16222.05406655502963675705
           // position fee = 60000 * 60 * 0.002 = 7200
-          // position fee = 16.7 * 70000 * 0.002 = 2338
+          // position fee = 17.1 * 70000 * 0.002 = 2394
           const tx = await orderBook.connect(broker).liquidate(positionId, usdc.address, false, false)
           {
             // {
@@ -4914,21 +4901,23 @@ describe("Trade", () => {
               await expect(tx).to.emit(emitter, "UpdateMarketBorrowing").withArgs(
                 pool1.address,
                 market,
-                toWei("0.574776794810861239"), // apy
-                toWei("0.011023116612811037") // acc
+                toWei("0.706653203536787300"), // apy
+                toWei("0.013552253218513729") // acc
               )
               await expect(tx).to.emit(emitter, "UpdateMarketBorrowing").withArgs(
                 pool2.address,
                 market,
-                toWei("0.574777174670434989"), // apy
-                toWei("0.011023123897789164") // acc
+                toWei("0.706653688908081407"), // apy
+                toWei("0.013552262527004300") // acc
               )
-              await expect(tx).to.emit(emitter, "UpdateMarketBorrowing").withArgs(
-                pool3.address,
-                market,
-                toWei("1.184122557548513335"), // apy
-                toWei("0.022709199733807105") // acc
-              )
+              if (market !== short2) {
+                await expect(tx).to.emit(emitter, "UpdateMarketBorrowing").withArgs(
+                  pool3.address,
+                  market,
+                  toWei("0.498585685703980363"), // apy
+                  toWei("0.009561917260076335") // acc
+                )
+              }
             }
           }
           // 1. realize profit
@@ -4936,9 +4925,9 @@ describe("Trade", () => {
           //    * 30000 unchanged
           //    * 0 + (60000 - 50000) * 23.6359 / 60000 = 3.93931666
           // 2. realize loss
-          //    loss = (2 - 16.7) * 70000 = -1029000
-          //    * 390501 - (1029000 - 501000 - 236358.9996) = 98859.9996
-          //    * 30000 - 30000 = 0 (realize 30000 * 16.7 = 501000)
+          //    loss = (2 - 17.1) * 70000 = -1057000
+          //    * 390501 - (1057000 - 513000 - 236358.9996) = 82859.9996
+          //    * 30000 - 30000 = 0 (realize 30000 * 17.1 = 513000)
           //    * 3.93931666 - 3.93931666 = 0 (realize 3.93931666 * 60000 = 236358.9996)
           // 3. fees
           {
@@ -4962,9 +4951,9 @@ describe("Trade", () => {
                 [toWei("15.1989"), toWei("21.1652"), toWei("23.6359")], // allocations
                 [toWei("151989"), toWei("211652"), toWei("236358.9996")], // poolPnlUsds
                 toWei("7200"), // positionFeeUsd = 60000 * 60 * 0.002
-                toWei("56255.894579773934233296"), // borrowingFeeUsd
+                toWei("43129.212506811478349076"), // borrowingFeeUsd
                 [usdc.address],
-                [toWei("35404.105020226065766700")] // 98859.9996 - 7200 - 56255.894579773934233296
+                [toWei("32530.787093188521650920")] // 82859.9996 - 7200 - 43129.212506811478349076
               )
             await expect(tx)
               .to.emit(core, "LiquidatePosition")
@@ -4974,16 +4963,32 @@ describe("Trade", () => {
                 short2,
                 false,
                 toWei("70000"), // size
-                toWei("16.7"), // tradingPrice
-                [pool1.address, pool2.address, pool3.address],
-                [toWei("10931.5"), toWei("18220.5"), toWei("40848")], // allocations
-                [toWei("-160693.05"), toWei("-267841.35"), toWei("-600465.6")], // poolPnlUsds
-                toWei("2338"), // positionFeeUsd = 16.7 * 70000 * 0.002
-                toWei("20857.822696618037775746"), // borrowingFeeUsd
+                toWei("17.1"), // tradingPrice
+                [pool1.address, pool2.address],
+                [toWei("26249.5"), toWei("43750.5")], // allocations
+                [toWei("-396367.45"), toWei("-660632.55")], // poolPnlUsds
+                toWei("2394"), // positionFeeUsd = 17.1 * 70000 * 0.002
+                toWei("16222.054066555029636757"), // borrowingFeeUsd
                 [usdc.address],
-                [toWei("12208.282323608027990954")] // 35404.105020226065766700 - 20857.82269661803777574725 - 2338
+                [toWei("13914.733026633492014163")] // 32530.787093188521650920 - 16222.054066555029636757 - 2394
               )
           }
+        })
+
+        it("pool collateral ETH, short ETH is forbidden", async () => {
+          await expect(core.appendBackedPoolsToMarket(short2, [pool3.address])).to.be.revertedWith(
+            "MarketTradeDisabled"
+          )
+
+          let short3 = toBytes32("ShortArb2")
+          await expect(
+            core.createMarket(
+              short3,
+              "Short3",
+              false, // isLong
+              [pool1.address, pool2.address, pool3.address]
+            )
+          ).to.be.revertedWith("MarketTradeDisabled")
         })
       }) // cross margin
 

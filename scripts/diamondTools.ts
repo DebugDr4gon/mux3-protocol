@@ -36,10 +36,10 @@ export async function deployDiamondOrSkip(
       init: diamondInit.address,
       initCalldata: diamondInit.interface.encodeFunctionData("init"),
     }
-    console.log("deploying diamond. save the following args to a file to verify the code:", [
-      initialCuts,
-      initialCutArgs,
-    ])
+    console.log(
+      "deploying diamond. save the following args to a file to verify the code:",
+      JSON.stringify([initialCuts, initialCutArgs], null, 2)
+    )
     await deployer.deploy("Diamond", alias, initialCuts, initialCutArgs)
     deployer.deployedContracts[alias].type = "diamond"
     deployer.deployedContracts[alias].facets = dump
