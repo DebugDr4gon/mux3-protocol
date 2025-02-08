@@ -35,8 +35,6 @@ const brokers = [
   "0xBc5bb8fe68eFBB9d5Bf6dEfAB3D8c01b5F36A80f", // mux broker
 ]
 
-const mux3OracleSigner = "0x4A14ea8A87794157981303FA8aA317A8d6bc2612"
-
 const muxReferralTiers = "0xef6868929C8FCf11996e621cfd1b89d3B3aa6Bda"
 
 const muxReferralManager = "0xa68d96F26112377abdF3d6b9fcde9D54f2604C2a"
@@ -219,7 +217,9 @@ async function main(deployer: Deployer) {
     await ensureFinished(core.setOracleProvider(mux3PriceProvider.address, true))
     await ensureFinished(mux3PriceProvider.initialize())
     await ensureFinished(mux3PriceProvider.setPriceExpirationSeconds(86400))
-    await ensureFinished(mux3PriceProvider.grantRole(ethers.utils.id("ORACLE_SIGNER"), mux3OracleSigner))
+    for (const broker of brokers) {
+      await ensureFinished(mux3PriceProvider.grantRole(ethers.utils.id("ORACLE_SIGNER"), broker))
+    }
 
     // swapper
     const uni3Router = "0xE592427A0AEce92De3Edee1F18E0157C05861564"
@@ -304,7 +304,7 @@ async function main(deployer: Deployer) {
       await ensureFinished(core.setPoolConfig(pool, ethers.utils.id("MCP_BORROWING_K"), u2b(toWei("6.36306"))))
       await ensureFinished(core.setPoolConfig(pool, ethers.utils.id("MCP_BORROWING_B"), u2b(toWei("-6.58938"))))
       await ensureFinished(core.setPoolConfig(pool, ethers.utils.id("MCP_LIQUIDITY_CAP_USD"), u2b(toWei("1000000"))))
-      await ensureFinished(core.setPoolConfig(pool, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0006"))))
+      await ensureFinished(core.setPoolConfig(pool, ethers.utils.id("MCP_LIQUIDITY_FEE_RATE"), u2b(toWei("0.0005"))))
       await ensureFinished(
         core.setPoolConfig(pool, ethers.utils.id("MCP_IS_DRAINING"), u2b(ethers.BigNumber.from("0")))
       )
@@ -373,8 +373,8 @@ async function main(deployer: Deployer) {
       [lArbMarket, pools[7]],
     ]) {
       await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", m), u2b(toWei("0.80"))))
-      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", m), u2b(toWei("0.75"))))
       await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", m), u2b(toWei("0.79"))))
+      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", m), u2b(toWei("0.75"))))
     }
 
     // adl group 2: eth based long btc
@@ -383,9 +383,9 @@ async function main(deployer: Deployer) {
       [lEthMarket, pools[1]],
       [lArbMarket, pools[9]],
     ]) {
-      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", m), u2b(toWei("0.80"))))
-      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", m), u2b(toWei("0.60"))))
-      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", m), u2b(toWei("0.64"))))
+      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", m), u2b(toWei("1.00"))))
+      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", m), u2b(toWei("0.99"))))
+      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", m), u2b(toWei("0.95"))))
     }
 
     // adl group 3: usd based long/short eth
@@ -408,14 +408,14 @@ async function main(deployer: Deployer) {
       [sArbMarket, pools[15]],
     ]) {
       await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_RESERVE_RATE", m), u2b(toWei("1.00"))))
-      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", m), u2b(toWei("0.95"))))
       await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_MAX_PNL_RATE", m), u2b(toWei("0.99"))))
+      await ensureFinished(core.setPoolConfig(p, encodePoolMarketKey("MCP_ADL_TRIGGER_RATE", m), u2b(toWei("0.95"))))
     }
   }
 
-  await initDefault()
-  await initDefaultPools()
-  await initDefaultMarkets()
+  // await initDefault()
+  // await initDefaultPools()
+  // await initDefaultMarkets()
 }
 
 restorableEnviron(ENV, main)
