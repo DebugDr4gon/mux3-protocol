@@ -325,5 +325,21 @@
       "implementation": "0x482DD8D90Cfbe5DC4cB8ea8865A654512a4d7A51"
     },
     "deployedAt": 302780182
+  },
+  "Mux3POL__implementation": {
+    "type": "plain",
+    "name": "Mux3POL__implementation",
+    "address": "0x2ef6D4B46C71f7eA0b8D0309F342100d3a5Cf7A6",
+    "deployedAt": 310004010
+  },
+  "Mux3POL": {
+    "type": "upgradeable",
+    "name": "Mux3POL",
+    "address": "0x3d1BF07B62EfCd553b0fDE81d0A4354444320F9a",
+    "dependencies": {
+      "admin": "0xc83805E374D67954Fa61B08f6e025662850aB1b6",
+      "implementation": "0x2ef6D4B46C71f7eA0b8D0309F342100d3a5Cf7A6"
+    },
+    "deployedAt": 310004024
   }
 }
