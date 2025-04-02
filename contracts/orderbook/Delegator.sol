@@ -7,6 +7,9 @@ import { IOrderBook as IMux3OrderBook, IOrderBookGetter as IMux3OrderBookGetter,
 import { WithdrawalOrderParams as Mux3WithdrawalOrderParams, WithdrawAllOrderParams as Mux3WithdrawAllOrderParams } from "../interfaces/IOrderBook.sol";
 import { OrderData as Mux3OrderData, ModifyPositionOrderParams as Mux3ModifyPositionOrderParams } from "../interfaces/IOrderBook.sol";
 import { LibCodec as LibMux3Codec } from "../libraries/LibCodec.sol";
+import { IMuxOrderBook } from "../interfaces/IMuxOrderBook.sol";
+import { IMux2ProxyFactory } from "../interfaces/IMux2ProxyFactory.sol";
+import { IMuxDegenOrderBook } from "../interfaces/IMuxDegenOrderBook.sol";
 
 contract Delegator is Initializable {
     event SetDelegator(address indexed owner, address indexed delegator, uint256 actionCount);
@@ -16,14 +19,25 @@ contract Delegator is Initializable {
         uint256 actionCount;
     }
 
-    address internal _mux3OrderBook;
-    mapping(address => Delegation) internal _reserved1; // was delegator => Delegation
+    address internal immutable _mux3OrderBook;
+    address internal immutable _mux2ProxyFactory;
+    address internal immutable _muxOrderBook;
+    address internal immutable _muxDegenOrderBook;
+    bytes32 private _reserved1;
+    bytes32 private _reserved2;
+    bytes32 private _reserved3;
+    bytes32 private _reserved4;
     mapping(address => Delegation) internal _delegations; // owner => Delegation
-    uint256 internal _reserved2; // was _actionCountDeductedInTx
 
-    function initialize(address mux3OrderBook) external initializer {
-        require(mux3OrderBook != address(0), "Invalid order book address");
+    constructor(address mux3OrderBook, address mux2ProxyFactory, address muxOrderBook, address muxDegenOrderBook) {
         _mux3OrderBook = mux3OrderBook;
+        _mux2ProxyFactory = mux2ProxyFactory;
+        _muxOrderBook = muxOrderBook;
+        _muxDegenOrderBook = muxDegenOrderBook;
+    }
+
+    function initialize() external initializer {
+        // do nothing
     }
 
     function getDelegationByOwner(address owner) external view returns (Delegation memory) {
@@ -70,6 +84,149 @@ contract Delegator is Initializable {
         }
     }
 
+    // ============================ MUX1 ============================
+
+    function muxFunctionCall(bytes memory muxCallData, uint256 value) external payable {
+        bytes32 subAccountId = _decodeSubAccountId(muxCallData);
+        address account = _getSubAccountOwner(subAccountId);
+        _consumeDelegation(account, 1);
+        bytes4 sig = _decodeFunctionSig(muxCallData);
+        require(
+            sig == IMuxOrderBook.placePositionOrder3.selector ||
+                sig == IMuxOrderBook.depositCollateral.selector ||
+                sig == IMuxOrderBook.placeWithdrawalOrder.selector,
+            "Forbidden"
+        );
+        IMux2ProxyFactory(_mux2ProxyFactory).muxFunctionCall{ value: value }(muxCallData, value);
+    }
+
+    // note: you can only cancel PositionOrder and WithdrawalOrder (which is restricted in the OrderBook)
+    function muxCancelOrder(uint64 orderId) external payable {
+        (bytes32[3] memory order, bool isOrderExist) = IMuxOrderBook(_muxOrderBook).getOrder(orderId);
+        require(isOrderExist, "orderNotExist");
+        address orderOwner = _getSubAccountOwner(order[0]);
+        _consumeDelegation(orderOwner, 1);
+        IMuxOrderBook(_muxOrderBook).cancelOrder(orderId);
+    }
+
+    // ============================ MUX2 ============================
+
+    function mux2TransferToken(
+        uint256 projectId,
+        address account,
+        address collateralToken,
+        address assetToken,
+        bool isLong,
+        address token,
+        uint256 amount
+    ) public payable {
+        _consumeDelegation(account, 0);
+        IMux2ProxyFactory(_mux2ProxyFactory).transferToken2(
+            projectId,
+            account,
+            collateralToken,
+            assetToken,
+            isLong,
+            token,
+            amount
+        );
+    }
+
+    function mux2WrapAndTransferNative(
+        uint256 projectId,
+        address account,
+        address collateralToken,
+        address assetToken,
+        bool isLong,
+        uint256 amount
+    ) public payable {
+        _consumeDelegation(account, 0);
+        IMux2ProxyFactory(_mux2ProxyFactory).wrapAndTransferNative2{ value: amount }(
+            projectId,
+            account,
+            collateralToken,
+            assetToken,
+            isLong,
+            amount
+        );
+    }
+
+    function mux2ProxyFunctionCall(
+        address account,
+        IMux2ProxyFactory.ProxyCallParams calldata params
+    ) external payable {
+        _consumeDelegation(account, 1);
+        IMux2ProxyFactory(_mux2ProxyFactory).proxyFunctionCall2{ value: params.value }(account, params);
+    }
+
+    // ============================ Degen ============================
+
+    function muxDegenPlacePositionOrder(
+        IMuxDegenOrderBook.PositionOrderParams memory orderParams,
+        bytes32 referralCode
+    ) external {
+        address account = _getSubAccountOwner(orderParams.subAccountId);
+        _consumeDelegation(account, 1);
+        IMuxDegenOrderBook(_muxDegenOrderBook).placePositionOrder(orderParams, referralCode);
+    }
+
+    function muxDegenPlaceWithdrawalOrder(IMuxDegenOrderBook.WithdrawalOrderParams memory orderParams) external {
+        address account = _getSubAccountOwner(orderParams.subAccountId);
+        _consumeDelegation(account, 1);
+        IMuxDegenOrderBook(_muxDegenOrderBook).placeWithdrawalOrder(orderParams);
+    }
+
+    function muxDegenWithdrawAllCollateral(bytes32 subAccountId) external {
+        address account = _getSubAccountOwner(subAccountId);
+        _consumeDelegation(account, 1);
+        IMuxDegenOrderBook(_muxDegenOrderBook).withdrawAllCollateral(subAccountId);
+    }
+
+    function muxDegenDepositCollateral(bytes32 subAccountId, uint256 collateralAmount) external {
+        address account = _getSubAccountOwner(subAccountId);
+        _consumeDelegation(account, 1);
+        IMuxDegenOrderBook(_muxDegenOrderBook).depositCollateral(subAccountId, collateralAmount);
+    }
+
+    // note: you can only cancel PositionOrder and WithdrawalOrder (which is restricted in the OrderBook)
+    function muxDegenCancelOrder(uint64 orderId) external {
+        (IMuxDegenOrderBook.OrderData memory orderData, bool exists) = IMuxDegenOrderBook(_muxDegenOrderBook).getOrder(
+            orderId
+        );
+        require(exists, "No such orderId");
+        address owner = orderData.account;
+        _consumeDelegation(owner, 1);
+        IMuxDegenOrderBook(_muxDegenOrderBook).cancelOrder(orderId);
+    }
+
+    // ============================ MUX3 ============================
+
+    function mux3PositionCall(
+        address collateralToken,
+        uint256 collateralAmount,
+        bytes memory positionOrderCallData,
+        uint256 initialLeverage, // 0 = ignore
+        uint256 gas // 0 = ignore
+    ) external payable {
+        bytes32 positionId = _decodeBytes32(positionOrderCallData, 0);
+        address account = _getSubAccountOwner(positionId);
+        _consumeDelegation(account, 1);
+        uint256 value = gas;
+        if (
+            collateralAmount > 0 &&
+            (collateralToken == address(0x0) || collateralToken == address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE))
+        ) {
+            value += collateralAmount;
+        }
+        IMux2ProxyFactory(_mux2ProxyFactory).mux3PositionCall{ value: value }(
+            collateralToken,
+            collateralAmount,
+            positionOrderCallData,
+            initialLeverage,
+            gas
+        );
+    }
+
     /**
      * @notice MUX3: Trader should pay for gas for their orders
      *         you should pay at least configValue(MCO_ORDER_GAS_FEE_GWEI) * 1e9 / 1e18 ETH for each order
@@ -112,8 +269,7 @@ contract Delegator is Initializable {
     }
 
     /**
-     * @notice MUX3: A Trader/LP can cancel an Order by orderId after a cool down period.
-     *         A Broker can also cancel an Order after expiration.
+     * @notice MUX3: A Trader/LP can cancel a PositionOrder or WithdrawalOrder by orderId (which is restricted in the OrderBook).
      * @param orderId The ID of the order to cancel
      */
     function mux3CancelOrder(uint64 orderId) external payable {
@@ -188,11 +344,43 @@ contract Delegator is Initializable {
         IMux3OrderBook(_mux3OrderBook).modifyPositionOrder(orderParams);
     }
 
+    // ============================ tools ============================
+
     function _consumeDelegation(address owner, uint256 deductActionCount) private {
         address delegator = msg.sender;
         Delegation storage delegation = _delegations[owner];
         require(delegation.delegator == delegator, "Not authorized");
         require(delegation.actionCount > 0, "No action count"); // actionCount = 0 is the same as no delegation
         delegation.actionCount -= deductActionCount;
+    }
+
+    function _decodeFunctionSig(bytes memory muxCallData) internal pure returns (bytes4 sig) {
+        require(muxCallData.length >= 0x20, "BadMuxCallData");
+        bytes32 data;
+        assembly {
+            data := mload(add(muxCallData, 0x20))
+        }
+        sig = bytes4(data);
+    }
+
+    // for mux2
+    function _decodeSubAccountId(bytes memory muxCallData) internal pure returns (bytes32 subAccountId) {
+        require(muxCallData.length >= 0x24, "BadMuxCallData");
+        assembly {
+            subAccountId := mload(add(muxCallData, 0x24))
+        }
+    }
+
+    // for mux1, degen
+    function _getSubAccountOwner(bytes32 subAccountId) internal pure returns (address account) {
+        account = address(uint160(uint256(subAccountId) >> 96));
+    }
+
+    function _decodeBytes32(bytes memory callData, uint256 index) internal pure returns (bytes32 data) {
+        require(callData.length >= 32 * (index + 1), "BadCallData");
+        uint256 offset = 0x20 + index * 32;
+        assembly {
+            data := mload(add(callData, offset))
+        }
     }
 }

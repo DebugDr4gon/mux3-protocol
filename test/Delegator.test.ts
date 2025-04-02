@@ -103,8 +103,13 @@ describe("Delegator", () => {
     await core.setMarketConfig(long1, ethers.utils.id("MM_OPEN_INTEREST_CAP_USD"), u2b(toWei("100000000")))
 
     // delegator
-    delegator = (await createContract("Delegator", [])) as Delegator
-    await delegator.initialize(orderBook.address)
+    delegator = (await createContract("Delegator", [
+      orderBook.address,
+      zeroAddress,
+      zeroAddress,
+      zeroAddress,
+    ])) as Delegator
+    await delegator.initialize()
 
     // role
     await orderBook.grantRole(ethers.utils.id("DELEGATOR_ROLE"), delegator.address)
