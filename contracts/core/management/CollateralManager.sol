@@ -9,7 +9,7 @@ contract CollateralManager is Mux3FacetBase {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
 
-    function _addCollateralToken(address token, uint8 decimals, bool isStable) internal {
+    function _addCollateralToken(address token, uint8 decimals, bool isStable) internal { //q-it's acceptting uint8 decimals, check how it is converting to uint18 decimals 
         require(token != address(0), InvalidAddress(token));
         require(!_isCollateralExist(token), CollateralAlreadyExist(token));
         _collateralTokens[token] = CollateralTokenInfo({
