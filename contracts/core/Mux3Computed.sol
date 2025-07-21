@@ -52,7 +52,7 @@ contract Mux3Computed is Mux3Store, IErrors {
         } else {
             wadAmount = rawAmount / (10 ** (decimals - 18));
         }
-    }
+    } //Mux3 only supports the 18 decimals tokens therefore this function will make other token decimals to 18
 
     function _collateralToRaw(address collateralToken, uint256 wadAmount) internal view returns (uint256 rawAmount) {
         uint8 decimals = _collateralTokens[collateralToken].decimals;
