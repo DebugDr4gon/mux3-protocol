@@ -61,10 +61,10 @@ contract Mux3Computed is Mux3Store, IErrors {
         } else {
             rawAmount = wadAmount * 10 ** (decimals - 18);
         }
-    }
+    } //reverse of _collateralToWad to convert back from wad (18 decimal to it's original decimals) when sending it back to the user 
 
     function _marketPositionFeeRate(bytes32 marketId) internal view returns (uint256 rate) {
-        rate = _markets[marketId].configs.getUint256(MM_POSITION_FEE_RATE);
+        rate = _markets[marketId].configs.getUint256(MM_POSITION_FEE_RATE); //q- what the fee rate? how it actually calculated??
         // 0 is valid
     }
 
